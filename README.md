@@ -1,4 +1,4 @@
-[LAST EDITED: 23 Jul 2025 12:01]
+[LAST EDITED: 23 Jul 2025 16:38]
 # 📌 What to Code First (MVP Plan)
 
 ## ✅ Step 1: Set Up Basic Robot Communication
@@ -70,15 +70,93 @@ yg lawas ada di repo lama.
 Project Milestones & Progress
 ## Important Deadlines:
 
-* **PRASEM DAFTAR (P_DAFTAR):** September 9, 2025
-* **PRASEM ACT (P_AKTUAL):** September 15-19, 2025 (Actual date will be updated :>)
-* **DOSEN ESTETIK (D_ESTETIK):** September 25, 2025
-* **SEMINAR DAFTAR (S_DAFTAR):** October 7, 2025
-* **SEMINAR AKTUAL (S_AKTUAL):** October 13-17, 2025
-* **BUKU BAA (BUKU_BAA):** November 7, 2025
-* **SYARAT YUDIS (SYAR_YUDI):** November 10, 2025
+* **PRASEM DAFTAR (P_DAFTAR):** 
+#Tuesday, 9 Sep, 2025
+
+* **PRASEM ACT (P_SIDANG):** 
+#Monday, 15 Sep - Friday, 19 Sep, 2025 (Actual date will be updated :>)
+
+* **DOSEN ESTETIK (D_ESTETIK):** 
+#Thursday, 25 Sep, 2025
+
+* **SEMINAR DAFTAR (S_DAFTAR):** 
+#Tuesday, 7 Oct, 2025
+
+* **SEMINAR AKTUAL (S_SIDANG):** 
+#Monday, 13 Oct - Friday, 17 Oct, 2025
+
+* **BUKU BAA (BUKU_BAA):** 
+#Friday, 7 Nov, 2025
+
+* **SYARAT YUDIS (SYAR_YUDI):** 
+#Monday, 10 Nov, 2025
+
 * **YUDISIUM (YUDISIUM):** November 12, 2025
 
+
+This calendar highlights your key project milestones and deadlines for the coming months.
+
+---
+
+## July 2025
+
+| Mon | Tue | Wed | Thu | Fri | Sat | Sun |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+|     | 1   | 2   | 3   | 4   | 5   | 6   |
+| 7   | 8   | 9   | 10  | 11  | 12  | 13  |
+| 14  | 15  | 16  | 17  | 18  | 19  | 20  |
+| 21  | 22  | **23** | 24  | 25  | 26  | 27  |
+| 28  | 29  | 30  | 31  |     |     |     |
+
+---
+
+## August 2025
+
+| Mon | Tue | Wed | Thu | Fri | Sat | Sun |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+|     |     |     |     | 1   | 2   | 3   |
+| 4   | 5   | 6   | 7   | 8   | 9   | 10  |
+| 11  | 12  | 13  | 14  | 15  | 16  | 17  |
+| 18  | 19  | 20  | 21  | 22  | 23  | 24  |
+| 25  | 26  | 27  | 28  | 29  | 30  | 31  |
+
+---
+
+## September 2025
+
+| Mon | Tue | Wed | Thu | Fri | Sat | Sun |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+| 1   | 2   | 3   | 4   | 5   | 6   | 7   |
+| 8 💀   | **9 (💀 P_DAFTAR)** | 10  | 11  | 12  | 13  | 14  |
+| **15 (P_AKTUAL)** | 16  | 17  | 18  | 19  | 20  | 21  |
+| 22  | 23  | 24  | **25 (D_ESTETIK)** | 26  | 27  | 28  |
+| 29  | 30  |     |     |     |     |     |
+
+---
+
+## October 2025
+
+| Mon | Tue | Wed | Thu | Fri | Sat | Sun |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+|     |     | 1   | 2   | 3   | 4   | 5   |
+| 6 💀   | **7 (💀 S_DAFTAR)** | 8   | 9   | 10  | 11  | 12  |
+| **13 (S_AKTUAL)** | 14  | 15  | 16  | 17  | 18  | 19  |
+| 20  | 21  | 22  | 23  | 24  | 25  | 26  |
+| 27  | 28  | 29  | 30  | 31  |     |     |
+
+---
+
+## November 2025
+
+| Mon | Tue | Wed | Thu | Fri | Sat | Sun |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+|     |     |     |     |     | 1   | 2   |
+| 3   | 4   | 5   | 6   | **7 (BUKU_BAA)** | 8   | 9   |
+| **10 (SYAR_YUDI)** | 11  | **12 (YUDISIUM)** | 13  | 14  | 15  | 16  |
+| 17  | 18  | 19  | 20  | 21  | 22  | 23  |
+| 24  | 25  | 26  | 27  | 28  | 29  | 30  |
+
+---
 ---
 
 ## Weekly Logs (July - November 2025)
