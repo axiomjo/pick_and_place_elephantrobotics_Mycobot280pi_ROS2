@@ -14,7 +14,7 @@ class MyCobotExecutor(Node):
         super().__init__('mycobot_executor_node')
 
         # Adjust the port as needed
-        self.mc = MyCobot(MyCobot.PI_PORT, MyCobot.PI_BAUD)
+        self.mc = MyCobot(PI_PORT, PI_BAUD)
         
         # Create subscriber for pose goals
         self.pose_sub = self.create_subscription(
