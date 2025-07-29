@@ -15,11 +15,12 @@ setup(
     zip_safe=True,
     maintainer='axiomjo',
     maintainer_email='jojo.josephined@gmail.com',
-    description='TODO: Package description',
+    description='calls pymycobot mc.sendcoords([sentthinggy],50,1',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'executor_node = mycobot_executor.rasppi_executor_node:main'
         ],
     },
 )
