@@ -13,7 +13,7 @@ from sensor_msgs.msg import JointState
 
 class MyCobotGUI(Node, QWidget):
     def __init__(self):
-        Node.__init__(self, 'gui_node')
+        Node.__init__(self, 'mycobot_gui_node_di_lappy')
         QWidget.__init__(self)
         self.setWindowTitle("MyCobot GUI Controller 29jul")
 

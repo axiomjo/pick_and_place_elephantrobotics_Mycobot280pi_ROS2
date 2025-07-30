@@ -10,7 +10,7 @@ import time
 
 class MyCobotExecutor(Node):
     def __init__(self):
-        super().__init__('mycobot_executor_node')
+        super().__init__('mycobot_executor_node_di_rasppi')
 
         # Adjust the port as needed
         self.mc = MyCobot(PI_PORT, PI_BAUD)
