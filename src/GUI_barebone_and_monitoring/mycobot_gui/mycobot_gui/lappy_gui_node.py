@@ -10,16 +10,24 @@ from rclpy.node import Node
 from mycobot_interfaces.msg import MycobotCoords
 from sensor_msgs.msg import JointState
 
+import math
 
-class MyCobotGUI(Node, QWidget):
+class MyCobotGUI(QWidget):
     def __init__(self):
-        Node.__init__(self, 'mycobot_gui_node_di_lappy')
-        QWidget.__init__(self)
-        self.setWindowTitle("MyCobot GUI Controller 29jul")
+        super().__init__()
+        self.setWindowTitle("MyCobot GUI Controller 31jul")
+        
+        # --- Initialize rclpy once for the *main thread* (for the publisher) ---
+        # It's crucial to initialize rclpy in the thread that will *create* the node.
+        # Since self.pose_pub is created directly in this class's __init__ (main thread),
+        # rclpy.init() must be called here.
+        if not rclpy.ok():
+            rclpy.init(args=None)
 
-        # ROS Publisher & Subscriber
-        self.pose_pub = self.create_publisher(MycobotCoords, 'mycobot_280pi_29jul/pose_goal', 10)
-        self.joint_sub = self.create_subscription(JointState, 'joint_states', self.joint_callback, 10)
+        # ROS Publisher
+        self.minimal_pub_node_name = rclpy.node.Node('mycobot_gui_publisher_node_di_lappy')
+        self.pose_pub = self.minimal_pub_node_name.create_publisher(MycobotCoords, 'mycobot_280pi_29jul/pose_goal', 10)
+        self.minimal_pub_node_name.get_logger().info("GUI Publisher Node created. udh bisa yapping coords")
 
         self.joint_labels = []
         self.slider_labels = []
@@ -38,6 +46,7 @@ class MyCobotGUI(Node, QWidget):
 
 
         self.init_ui()
+        self.start_ros_subscriber_thread() 
 
     def init_ui(self):
         layout = QVBoxLayout()
@@ -59,10 +68,8 @@ class MyCobotGUI(Node, QWidget):
 
             label = QLabel(f"{name}:")
             slider = QSlider(Qt.Horizontal)
-            # --- MODIFIED: Set slider min/max based on calculated integer ranges ---
             slider.setMinimum(slider_min_int)
             slider.setMaximum(slider_max_int)
-            # --- Set initial slider value to corresponding min_val (scaled to int) ---
             slider.setValue(slider_min_int) 
             slider.setTickInterval( (slider_max_int - slider_min_int) // 10 ) # Adjust tick interval for better visual spread
             slider.valueChanged.connect(self.update_slider_values)
@@ -113,23 +120,81 @@ class MyCobotGUI(Node, QWidget):
         msg = MycobotCoords()
         msg.x, msg.y, msg.z, msg.rx, msg.ry, msg.rz = self.slider_values
         self.pose_pub.publish(msg)
-        self.get_logger().info(f"Sent pose: {self.slider_values}")
+        self.minimal_pub_node_name.get_logger().info(f"Sent pose: {self.slider_values}")
 
-    def joint_callback(self, msg):
-        # Assumes 6 DOF
-        for i in range(min(6, len(msg.position))):
-            deg = round(msg.position[i] * 180.0 / 3.14159, 1)
+    @pyqtSlot(list) # Mark this method as a slot that receives a list
+    def update_joint_positions_gui(self, positions):
+        """
+        This slot is called when the joint_state_received signal is emitted
+        from the ROS worker thread. It safely updates the GUI.
+        """
+        for i in range(min(6, len(positions))):
+            rad = positions[i]
+            deg = round(rad * 180.0 / math.pi, 1) # Assuming PI is 3.14159 or math.pi
             self.joint_labels[i].setText(f"Joint {i+1}: {deg}°")
+        self.minimal_pub_node_name.get_logger().info(f"GUI updated with positions: {positions}") 
 
+
+
+    def start_ros_subscriber_thread(self):
+        """
+        Sets up and starts the QThread for the ROS 2 subscriber node.
+        """
+        self.ros_signal_emitter = JointStateSignalEmitter()
+        # Connect the signal from the ROS subscriber to the GUI's update slot
+        self.ros_signal_emitter.joint_state_received.connect(self.update_joint_positions_gui)
+
+        self.ros_thread = QThread()
+        # The 'worker' here is actually a simple wrapper that calls the
+        # run_ros_node_in_thread function.
+        class WorkerWrapper(QObject):
+            def __init__(self, signal_emitter):
+                super().__init__()
+                self.signal_emitter = signal_emitter
+            @pyqtSlot()
+            def run(self):
+                run_ros_node_in_thread(self.signal_emitter)
+        
+        self.ros_worker = WorkerWrapper(self.ros_signal_emitter)
+        self.ros_worker.moveToThread(self.ros_thread)
+
+        # Start the ROS thread when the QThread starts
+        self.ros_thread.started.connect(self.ros_worker.run)
+        
+        # Clean up when the thread finishes
+        self.ros_thread.finished.connect(self.ros_thread.deleteLater)
+        self.ros_thread.finished.connect(self.ros_worker.deleteLater)
+
+        self.ros_thread.start()
+        self.minimal_pub_node_name.get_logger().info("ROS 2 subscriber thread started.")
+
+    def closeEvent(self, event):
+        """
+        Handles graceful shutdown of the ROS 2 thread when the GUI is closed.
+        """
+        self.minimal_pub_node_name.get_logger().info("GUI closing: Stopping ROS 2 subscriber thread...")
+        self.ros_thread.quit() # Request the thread to exit its event loop
+        self.ros_thread.wait() # Wait for the thread to finish execution
+        self.minimal_pub_node_name.get_logger().info("ROS 2 subscriber thread stopped.")
+        
+        # Destroy the publisher node
+        if self.minimal_pub_node_name:
+            self.minimal_pub_node_name.destroy_node()
+            self.minimal_pub_node_name = None # Clear reference
+
+        # Global rclpy shutdown
+        if rclpy.ok(): # Check if it's still running before trying to shut down
+            rclpy.shutdown()
+            
+        super().closeEvent(event)
 
 def main(args=None):
-    rclpy.init(args=args)
     app = QApplication(sys.argv)
     gui = MyCobotGUI()
-
-    # Run both PyQt5 and rclpy
-    timer = gui.create_timer(0.1, lambda: None)
     sys.exit(app.exec_())
-    gui.destroy_node()
-    rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()
+
 
