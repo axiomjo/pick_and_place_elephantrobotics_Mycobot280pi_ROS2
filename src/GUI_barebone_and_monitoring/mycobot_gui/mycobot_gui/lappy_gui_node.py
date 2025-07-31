@@ -9,6 +9,8 @@ from rclpy.node import Node
 from mycobot_interfaces.msg import MycobotCoords
 from sensor_msgs.msg import JointState
 
+from joint_state_subscriber_for_gui import JointStateSignalEmitter, run_ros_node_in_thread
+
 import math
 
 class MyCobotGUI(QWidget):
