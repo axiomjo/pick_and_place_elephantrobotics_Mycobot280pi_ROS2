@@ -3,8 +3,7 @@ from PyQt5.QtWidgets import (
     QApplication, QWidget, QSlider, QLabel, QPushButton,
     QVBoxLayout, QHBoxLayout, QGridLayout, QGroupBox, QLineEdit
 )
-from PyQt5.QtCore import Qt
-
+from PyQt5.QtCore import Qt, QThread, QObject, pyqtSignal, pyqtSlot
 import rclpy
 from rclpy.node import Node
 from mycobot_interfaces.msg import MycobotCoords
