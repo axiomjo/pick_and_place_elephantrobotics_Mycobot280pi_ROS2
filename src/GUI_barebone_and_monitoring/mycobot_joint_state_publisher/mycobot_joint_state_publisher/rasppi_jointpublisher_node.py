@@ -7,7 +7,7 @@ from sensor_msgs.msg import JointState
 from std_msgs.msg import Header
 
 import pymycobot
-from pymycobot.mycobot import MyCobot, PI_PORT, PI_BAUD
+from pymycobot import MyCobot, PI_PORT, PI_BAUD
 
 class MyCobotRealJointPublisher(Node):
     def __init__(self):
