@@ -2,7 +2,7 @@
 
 
 jadi, di branch sandbox_25jul, udh ada minimal working example buat Step 1.
-I will save it as branch `mvp 1_done`.  
+I will save it as branch `MVP1_manualcontrol`.  
 
 ![foto updatean terakhir](ASSET_README/progress_1Ag.png)  
 
@@ -25,9 +25,10 @@ terdiri atas 5 node yg di-trigger di terminal
 `rviz2 -d "/home/axiomjo/lab_robotik/eksperimental/ws_ROS2_mycobot280pi/install/mycobot_280pi/share/mycobot_280pi/config/mycobot_with_marker.rviz" `  
 
 ## Robot State Publisher Node (bawaan ROS2)  
-`XACROED=$(xacro '/home/axiomjo/lab_robotik/eksperimental/ws_ROS2_mycobot280pi/install/mycobot_description/share/mycobot_description/urdf/mycobot_280_pi/mycobot_280_pi_with_pump.urdf' )`  
+`XACROED=$(xacro "/home/axiomjo/lab_robotik/eksperimental/ws_ROS2_mycobot280pi/install/mycobot_description/share/mycobot_description/urdf/mycobot_280_pi/mycobot_280_pi_with_pump.urdf" )`  
 
-`ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_description:="${XACROED}"`
+`ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_description:="${XACROED}"`  
+
 ---
 
 
