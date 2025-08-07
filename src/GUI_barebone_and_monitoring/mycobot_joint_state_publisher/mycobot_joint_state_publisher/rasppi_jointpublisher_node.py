@@ -16,24 +16,13 @@ class MyCobotRealJointPublisher(Node):
         self.get_logger().info(f"Connecting to MyCobot on port:{PI_PORT}, baud:{PI_BAUD}")
         self.mc = MyCobot(PI_PORT, PI_BAUD)
 
-        self.get_logger().info("MyCobot Joint Publisher Node is ready. udh bisa yapping kondisi tiap joint robotnya :D")
-        self.start_publishing() # Call a method to encapsulate publishing logic
-
-    def start_publishing(self):
-        pub = self.create_publisher(
-            msg_type=JointState,
-            topic="joint_states", # Standard topic for joint states
+        self.publisher = self.create_publisher(
+            JointState,
+            "joint_states",
             qos_profile=10
         )
-        rate = self.create_rate(30)  # 30hz
 
-        # pub joint state
-        joint_state_send = JointState()
-        joint_state_send.header = Header()
-
-        # You might want to align these names with your URDF if you have one
-        # These names should match your robot's joint names in its URDF description
-        joint_state_send.name = [
+        self.joint_names = [
             "joint2_to_joint1",
             "joint3_to_joint2",
             "joint4_to_joint3",
@@ -42,39 +31,34 @@ class MyCobotRealJointPublisher(Node):
             "joint6output_to_joint6",
         ]
 
-        joint_state_send.velocity = [] # Can be left empty if not publishing velocity
-        joint_state_send.effort = [] # Can be left empty if not publishing effort
+        timer_period = 1.0 / 30.0  # 30 Hz
+        self.timer = self.create_timer(timer_period, self.publish_joint_states)
 
-        while rclpy.ok():
-            # get real angles from server.
+        self.get_logger().info("MyCobot Joint Publisher Node is ready to Y A P P P.")
+
+    def publish_joint_states(self):
+        try:
             res = self.mc.get_angles()
-            try:
-                # Check for valid data (e.g., if all angles are 0.0 it might mean connection issue)
-                if not res or len(res) != 6 or all(angle == 0.0 for angle in res):
-                    self.get_logger().warn("Received invalid angles, skipping publication. uh.. keknya ada yg broken, s e k i p s e k")
-                    rclpy.spin_once(self, timeout_sec=0) # Process callbacks even if skipping
-                    rate.sleep()
-                    continue
+            if not res or len(res) != 6 or all(angle == 0.0 for angle in res):
+                self.get_logger().warn("Invalid joint angles received. Skipping.")
+                return
 
-                radians_list = [
-                    res[0] * (math.pi / 180),
-                    res[1] * (math.pi / 180),
-                    res[2] * (math.pi / 180),
-                    res[3] * (math.pi / 180),
-                    res[4] * (math.pi / 180),
-                    res[5] * (math.pi / 180),
-                ]
-                self.get_logger().info("Publishing angles: {}".format(radians_list)) # Uncomment for verbose logging
+            radians_list = [math.radians(angle) for angle in res]
 
-                # publish angles.
-                joint_state_send.header.stamp = self.get_clock().now().to_msg()
-                joint_state_send.position = radians_list
-                pub.publish(joint_state_send)
-            except Exception as e:
-                self.get_logger().error(f"Error getting or publishing angles: {e}")
+            joint_state_msg = JointState()
+            joint_state_msg.header = Header()
+            joint_state_msg.header.stamp = self.get_clock().now().to_msg()
+            joint_state_msg.name = self.joint_names
+            joint_state_msg.position = radians_list
+            joint_state_msg.velocity = []
+            joint_state_msg.effort = []
 
-            rclpy.spin_once(self, timeout_sec=0) # Process any pending callbacks
-            rate.sleep()
+            self.publisher.publish(joint_state_msg)
+            self.get_logger().debug(f"Published: {radians_list}")
+
+        except Exception as e:
+            self.get_logger().error(f"Error while publishing joint states: {e}")
+
 
 
 def main(args=None):
