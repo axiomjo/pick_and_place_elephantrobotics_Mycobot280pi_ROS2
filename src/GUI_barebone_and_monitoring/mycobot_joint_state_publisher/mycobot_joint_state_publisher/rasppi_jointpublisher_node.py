@@ -33,7 +33,6 @@ class MyCobotRealJointPublisher(Node):
 
         timer_period = 1.0 / 30.0  # 30 Hz
         self.timer = self.create_timer(timer_period, self.publish_joint_states)
-
         self.get_logger().info("MyCobot Joint Publisher Node is ready to Y A P P P.")
 
     def publish_joint_states(self):
@@ -58,8 +57,6 @@ class MyCobotRealJointPublisher(Node):
 
         except Exception as e:
             self.get_logger().error(f"Error while publishing joint states: {e}")
-
-
 
 def main(args=None):
     rclpy.init(args=args)
