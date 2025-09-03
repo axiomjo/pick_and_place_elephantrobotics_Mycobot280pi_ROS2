@@ -1,9 +1,9 @@
-[LAST EDITED: 3 SEP 2025 21:45]
+[LAST EDITED: 4 SEP 2025 01:53]
 
 current final_version aim?  
 
-### **1. Camera Node** 📸
-**"Ciri Khas":** The Raw Feeder
+### **1. vision_usb_cam_node** 📸
+**"Ciri Khas":** The Raw Image Publisher
 
 **Role:** Publisher
 
@@ -12,12 +12,12 @@ current final_version aim?
 **Expected Task:** Continuously stream raw images from the webcam.
 
 **Communication:**
-* **Publishers:** `/camera/image_raw` (`sensor_msgs/msg/Image`)
+* **Publishers:** `/camera/image_raw` (`sensor_msgs/msg/Image`) to `vision_undistorter_node`
 
 ---
 
-### **2. Raw Corrector Node** 🛠️
-**"Ciri Khas":** The Barrel Fixer
+### **2. `vision_undistorter_node`** 🛠️
+**"Ciri Khas":** The Barrel Distortion Fixer
 
 **Role:** Subscriber & Publisher
 
@@ -26,13 +26,17 @@ current final_version aim?
 **Expected Task:** Provide undistorted images for downstream nodes.
 
 **Communication:**
-* **Subscribers:** `/camera/image_raw` (`sensor_msgs/msg/Image`)
-* **Publishers:** `/camera/image_undistorted` (`sensor_msgs/msg/Image`)
+* **Subscribers:** 
+    *`/camera/image_raw` (`sensor_msgs/msg/Image`) from 'lcamera_usb_driver_node`  
+
+* **Publishers:**
+    * `/camera/image_undistorted` (`sensor_msgs/msg/Image`) to `vision_perspective_transformer_node` and `ui_robot_control_gui_node`  
+    
 
 ---
 
-### **3. Perspective Correction Node** 📐
-**"Ciri Khas":** The Work Area Adjuster
+### **3. `vision_perspective_transformer_node`** 📐
+**"Ciri Khas":** The Work Area Adjust
 
 **Role:** Subscriber & Publisher
 
@@ -42,120 +46,167 @@ current final_version aim?
 
 **Communication:**
 * **Subscribers:**
-    * `/camera/image_undistorted` (`sensor_msgs/msg/Image`)
-    * `/perspective/points` (Custom Message)
+    * `/camera/image_undistorted` (`sensor_msgs/msg/Image`) from `vision_undistorter_node`
+    * `/perspective/points` (`Custom Message`) from `ui_robot_control_gui_node`  
+    
 * **Publishers:**
-    * `/corrected_image` (`sensor_msgs/msg/Image`)
+    * `/corrected_image` (`sensor_msgs/msg/Image`) to `vision_object_detector_node` and `ui_robot_control_gui_node`
 
 ---
 
-### **4. Object Detection Node** 🎯
+### **4. `vision_object_detector_node`** 🎯
 **"Ciri Khas":** The Finder
 
 **Role:** Subscriber & Publisher
 
-**Function:** Subscribes to the perspective-corrected image, runs your blob detection algorithm, and publishes detected object data and the image for the GUI.
+**Function:** Subscribes to the perspective-corrected image, runs blob detection algorithm, and publishes detected object data and the image for the GUI.
 
 **Expected Task:** Detect objects in the corrected image and publish results.
 
 **Communication:**
-* **Subscribers:** `/corrected_image` (`sensor_msgs/msg/Image`)
-* **Publishers:** `/detected_objects` (Custom Message)
+* **Subscribers:** 
+     *`/corrected_image` (`sensor_msgs/msg/Image`) from `vision_perspective_transformer_node`  
+
+* **Publishers:** 
+    * `/detected_objects` (Custom Message) to `robot_planner_node` and `ui_robot_control_gui_node`
 
 ---
 
-### **5. GUI Node** 💻
+### **5. `ui_robot_control_gui_node`** 💻
 **"Ciri Khas":** The Commander
 
-**Role:** Subscriber & Publisher
+**Role:** User Interface
 
-**Function:** The user interface for monitoring and controlling the robot. It displays images, lets users set perspective points, and displays the final detection results.
+**Function:** The user interface for monitoring and controlling the robot. It displays live data, lets users set perspective points, displays the final detection results,  provides manual controls, and initiates complex tasks.
 
 **Expected Task:**
 * Display image streams and detection results
 * Allow interactive perspective editing
 * Publish points to trigger a one-time scene processing
 * Display final processed image and object cutouts
+* Display image streams and detection results.
+ * Display the robot's current joint angles and Cartesian coordinates.  
+
 
 **Communication:**
 * **Subscribers:**
-    * `/camera/image_undistorted` (`sensor_msgs/msg/Image`)
-    * `/corrected_image` (`sensor_msgs/msg/Image`)
-    * `/detected_objects` (Custom Message)
+    * `/camera/image_undistorted` (`sensor_msgs/msg/Image`) from `vision_undistorter_node`
+    * `/corrected_image` (`sensor_msgs/msg/Image`) from `vision_perspective_transformer_node`
+    * `/detected_objects` (Custom Message) from `vision_object_detector_node`
+    * `/joint_states` (`sensor_msgs/msg/JointState`) from `mycobot_joint_publisher_node`  
+    
 * **Publishers:**
-    * `/perspective_points` (Custom Message)
+     * `/perspective/points` (`Custom Message`) to `vision_perspective_transformer_node`
+     * `/joint_commands` (`Custom Message`) to `robot_mycobot_executor_node`  
 
+* **Service Clients:**
+    * `/set_coords` (`mycobot_interfaces/srv/SetCoords`) to `robot_serviceclient_translator_node`  
+
+* **Action Clients:**
+    * `/process_workspace` (`Custom Action`) to `robot_planner_node`  
+    
+* **TF Listeners:**
+    * `tf` (`tf2_msgs/msg/TFMessage`) from `mycobot_state_broadcaster_node`
 ---
 
-### **6. SetCoords Service Server Node** 🤖
+### **6. `robot_serviceclient_translator_node`** 🤖
 **"Ciri Khas":** The Robot Mover
 
 **Role:** Service Server
 
-**Function:** Receives coordinate requests (likely from a separate robot control node or GUI) and moves the robot accordingly.
+**Function:** Receives coordinate requests and translates the service request into a message format understood by the `robot_mycobot_executor_node`.
 
 **Expected Task:** Move robot and reply with success/failure.
 
 **Communication:**
-* **Service Server:** `/set_coords` (`mycobot_interfaces/srv/SetCoords`)
+* **Publishers:**
+    *`/robot/commands` (`std_msgs/msg/String`) to `robot_mycobot_executor_node`  
+
+* **Service Server:** 
+    * `/set_coords` (`mycobot_interfaces/srv/SetCoords`) from `ui_robot_control_gui_node`
 
 ---
 
-### **7. Joint State Publisher Node** 🦾
+### **7. `mycobot_joint_publisher_node`** 🦾
 **"Ciri Khas":** The Joint Reporter
 
 **Role:** Publisher
 
 **Function:** Publishes the robot’s joint states for visualization and monitoring.
 
-**Expected Task:** Continuously report joint positions.
+**Expected Task:** Continuously report joint state.
 
 **Communication:**
-* **Publishers:** `/joint_states` (`sensor_msgs/msg/JointState`)
+* **Publishers:** 
+   * `/joint_states` (`sensor_msgs/msg/JointState`) to `mycobot_state_broadcaster_node` and `ui_robot_control_gui_node`
+
 
 ---
 
-### **8. Executor Node** 🏃
+### **8. `robot_mycobot_executor_node`** 🏃
 **"Ciri Khas":** The Command Executor
 
-**Role:** Subscriber & Executor
+**Role:** MyCobot pymycobot API Executor
 
-**Function:** Executes robot commands received from other nodes.
+**Function:** Translates commands received from either the `robot_planner_node` or the `robot_serviceclient_translator_node` into physical actions for the MyCobot robot. This node directly controls the robot's motors and end-effector.
 
 **Expected Task:** Perform robot actions as commanded.
 
 **Communication:**
 * **Subscribers:** (various command topics)
+   * `/robot/commands` (`std_msgs/msg/String`) from `robot_planner_node` and `robot_serviceclient_translator_node`
+   * `/joint_commands` (`Custom Message`) from `ui_robot_control_gui_node`
 
 ---
 
-### **9. RViz Node** 🖼️
+### **9. `ui_rviz2_node`** 🖼️
 **"Ciri Khas":** The Visualizer
 
 **Role:** Visualization Tool
 
-**Function:** Visualizes robot state, camera feeds, and detected objects.
+**Function:** Subscribes to a variety of topics to display a complete 3D visualization of the robot 
 
 **Expected Task:** Display robot and scene data for monitoring.
 
 **Communication:**
-* **Subscribers:** (various topics as configured)
+(AM ACTUALLY CONFUSED ABT THIS coz preexisting pkg)
+* **Subscribers:** 
+   * `/tf` (`tf2_msgs/msg/TFMessage`) from `mycobot_state_broadcaster_node`
 
 ---
 
-### **10. Robot State Publisher Node** 📝
+### **10. `mycobot_state_broadcaster_node`** 📝
 **"Ciri Khas":** The State Broadcaster
 
 **Role:** Publisher
 
-**Function:** Publishes the robot’s URDF-based state for visualization and other nodes.
+**Function:** Publishes the robot’s internal state for visualization.
 
 **Expected Task:** Broadcast robot state for RViz and other consumers.
 
 **Communication:**
 * **Publishers:** `/robot_description` (parameter), `/tf` (transforms)
 ---
-  
+### **11. `robot_planner_node`** 🧠
+**"Ciri Khas":** The FSM Planner
+
+**Role:** Action Server
+
+**Function:** Serves as the high-level brain for the robot's tasks. It receives a goal from the GUI, uses data from the vision nodes to form a plan, and sends a sequence of low-level commands to the executor.
+
+**Expected Task:** Plan and execute a sequence of robot actions and report progress back to the GUI.
+
+**Communication:**
+* **Subscribers:**
+    *`/detected_objects` (`Custom Message`) from `vision_object_detector_node`
+    
+* **Publishers:**
+     * `/robot/commands` (`std_msgs/msg/String`) to `robot_mycobot_executor_node`
+
+* **Action Server:**
+    * `/process_workspace` (`Custom Action`) from `ui_robot_control_gui_node
+
+
 this branch will be the one with clear patterns.
 
 # 📌 What to Code First (MVP Plan)
