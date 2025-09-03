@@ -1,4 +1,163 @@
-[LAST EDITED: 23 Jul 2025 12:01]
+[LAST EDITED: 3 SEP 2025 21:45]
+
+current final_version aim?  
+
+### **1. Camera Node** 📸
+**"Ciri Khas":** The Raw Feeder
+
+**Role:** Publisher
+
+**Function:** Captures raw, barrel-distorted images from the webcam using the `usb_cam` package. It's the main image source for the pipeline.
+
+**Expected Task:** Continuously stream raw images from the webcam.
+
+**Communication:**
+* **Publishers:** `/camera/image_raw` (`sensor_msgs/msg/Image`)
+
+---
+
+### **2. Raw Corrector Node** 🛠️
+**"Ciri Khas":** The Barrel Fixer
+
+**Role:** Subscriber & Publisher
+
+**Function:** Subscribes to `/camera/image_raw`, applies lens correction, and publishes a cleaner, undistorted image stream.
+
+**Expected Task:** Provide undistorted images for downstream nodes.
+
+**Communication:**
+* **Subscribers:** `/camera/image_raw` (`sensor_msgs/msg/Image`)
+* **Publishers:** `/camera/image_undistorted` (`sensor_msgs/msg/Image`)
+
+---
+
+### **3. Perspective Correction Node** 📐
+**"Ciri Khas":** The Work Area Adjuster
+
+**Role:** Subscriber & Publisher
+
+**Function:** Listens for perspective points from the GUI and the latest undistorted image, performs a perspective transform, and publishes the corrected image.
+
+**Expected Task:** Transform the image based on user-selected points and publish the result.
+
+**Communication:**
+* **Subscribers:**
+    * `/camera/image_undistorted` (`sensor_msgs/msg/Image`)
+    * `/perspective/points` (Custom Message)
+* **Publishers:**
+    * `/corrected_image` (`sensor_msgs/msg/Image`)
+
+---
+
+### **4. Object Detection Node** 🎯
+**"Ciri Khas":** The Finder
+
+**Role:** Subscriber & Publisher
+
+**Function:** Subscribes to the perspective-corrected image, runs your blob detection algorithm, and publishes detected object data and the image for the GUI.
+
+**Expected Task:** Detect objects in the corrected image and publish results.
+
+**Communication:**
+* **Subscribers:** `/corrected_image` (`sensor_msgs/msg/Image`)
+* **Publishers:** `/detected_objects` (Custom Message)
+
+---
+
+### **5. GUI Node** 💻
+**"Ciri Khas":** The Commander
+
+**Role:** Subscriber & Publisher
+
+**Function:** The user interface for monitoring and controlling the robot. It displays images, lets users set perspective points, and displays the final detection results.
+
+**Expected Task:**
+* Display image streams and detection results
+* Allow interactive perspective editing
+* Publish points to trigger a one-time scene processing
+* Display final processed image and object cutouts
+
+**Communication:**
+* **Subscribers:**
+    * `/camera/image_undistorted` (`sensor_msgs/msg/Image`)
+    * `/corrected_image` (`sensor_msgs/msg/Image`)
+    * `/detected_objects` (Custom Message)
+* **Publishers:**
+    * `/perspective_points` (Custom Message)
+
+---
+
+### **6. SetCoords Service Server Node** 🤖
+**"Ciri Khas":** The Robot Mover
+
+**Role:** Service Server
+
+**Function:** Receives coordinate requests (likely from a separate robot control node or GUI) and moves the robot accordingly.
+
+**Expected Task:** Move robot and reply with success/failure.
+
+**Communication:**
+* **Service Server:** `/set_coords` (`mycobot_interfaces/srv/SetCoords`)
+
+---
+
+### **7. Joint State Publisher Node** 🦾
+**"Ciri Khas":** The Joint Reporter
+
+**Role:** Publisher
+
+**Function:** Publishes the robot’s joint states for visualization and monitoring.
+
+**Expected Task:** Continuously report joint positions.
+
+**Communication:**
+* **Publishers:** `/joint_states` (`sensor_msgs/msg/JointState`)
+
+---
+
+### **8. Executor Node** 🏃
+**"Ciri Khas":** The Command Executor
+
+**Role:** Subscriber & Executor
+
+**Function:** Executes robot commands received from other nodes.
+
+**Expected Task:** Perform robot actions as commanded.
+
+**Communication:**
+* **Subscribers:** (various command topics)
+
+---
+
+### **9. RViz Node** 🖼️
+**"Ciri Khas":** The Visualizer
+
+**Role:** Visualization Tool
+
+**Function:** Visualizes robot state, camera feeds, and detected objects.
+
+**Expected Task:** Display robot and scene data for monitoring.
+
+**Communication:**
+* **Subscribers:** (various topics as configured)
+
+---
+
+### **10. Robot State Publisher Node** 📝
+**"Ciri Khas":** The State Broadcaster
+
+**Role:** Publisher
+
+**Function:** Publishes the robot’s URDF-based state for visualization and other nodes.
+
+**Expected Task:** Broadcast robot state for RViz and other consumers.
+
+**Communication:**
+* **Publishers:** `/robot_description` (parameter), `/tf` (transforms)
+---
+  
+this branch will be the one with clear patterns.
+
 # 📌 What to Code First (MVP Plan)
 
 ## ✅ Step 1: Set Up Basic Robot Communication
