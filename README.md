@@ -1,6 +1,7 @@
-[LAST EDITED: 5 SEP 2025 16:21]
+[LAST EDITED: 5 SEP 2025 17:05]
 
-current final_version aim?  
+# Implementasi_MyCobot280pi_ROS2
+branch FINAL_VERSION
 
 ### **1. vision_usb_cam_node** 📸
 **"Ciri Khas":** The Raw Image Publisher
@@ -26,8 +27,8 @@ current final_version aim?
 **Expected Task:** Provide undistorted images for downstream nodes.
 
 **Communication:**
-* **Subscribers:** 
-    *`/camera/image_raw` (`sensor_msgs/msg/Image`) from 'vision_usb_cam_node`  
+* **Subscribers:**  
+    * `/camera/image_raw` (`sensor_msgs/msg/Image`) from 'vision_usb_cam_node`  
 
 * **Publishers:**
     * `/vision/undistorted_image` (`sensor_msgs/msg/Image`) to `vision_perspective_transformer_node` and `ui_robot_control_gui_node`  
@@ -261,12 +262,6 @@ trus:
 (ini apalagi yg kurang? mumet gw baca panduan BAA)
 ---
 
-# Implementasi_MyCobot280pi_ROS2
-haha. TA. 💀  
-semoga repo yg ini branchingnya lebih rapih ya.
-
-yg lawas ada di repo lama.
-()[https://github.com/axiomjo/TA_jojo] 
 
 Project Milestones & Progress
 ## Important Deadlines:
@@ -280,56 +275,4 @@ Project Milestones & Progress
 * **SYARAT YUDIS (SYAR_YUDI):** November 10, 2025
 * **YUDISIUM (YUDISIUM):** November 12, 2025
 
----
-| Deadline Countdown | Date Range          | Observation | Notes |
-| :----------------- | :------------------ | :---------- | :---- |
-| **S_SIDANG: -0** | Oct 13 - Oct 19     | *(SEMINAR AKTUAL Week)* | (Continue with seminar activities) |
 
-| Deadline Countdown | Date Range          | Observation | Notes |
-| :----------------- | :------------------ | :---------- | :---- |
-| **BUKU_BAA: -17** | Oct 20 - Oct 26     |             |       |
-| **BUKU_BAA: -10** | Oct 27 - Nov 02     |             |       |
-
-***
-
-## **MILESTONE: FINAL SUBMISSIONS (BUKU_BAA & SYAR_YUDI)**
-### **Week of November 03 - November 09, 2025**
-
-| Deadline Countdown | Date Range          | Observation | Notes                                          |
-| :----------------- | :------------------ | :---------- | :--------------------------------------------- |
-| **BUKU_BAA: -3** | Nov 03 - Nov 09     |             | **Deadline: BUKU BAA (Nov 7)**<br>**Deadline: SYARAT YUDIS (Nov 10)** |
-
-***
-
-## **MILESTONE: YUDISIUM!**
-### **Week of November 10 - November 16, 2025**
-
-| Deadline Countdown | Date Range          | Observation | Notes                           |
-| :----------------- | :------------------ | :---------- | :------------------------------ |
-| **YUDISIUM: -2** | Nov 10 - Nov 16     | *(YUDISIUM Week)* | **Event: YUDISIUM (Nov 12)** |
-
----
-
-## Template for New Weeks (Non-Milestone)
-
-Copy and paste this template for each new week, updating the countdown (`CODENAME: -XX`) and dates accordingly. Calculate the days remaining to the *next closest major deadline*.
-
-| Deadline Countdown | Date Range          | Observation | Notes |
-| :----------------- | :------------------ | :---------- | :---- |
-| CODENAME: -XX      | YYYY-MM-DD - YYYY-MM-DD |             |       |
-
----
-
-## Template for New Milestone Weeks
-
-When you hit a week containing a deadline, use a banner like this, then a new table for that week's entry.
-
-```markdown
-***
-
-## **MILESTONE: [YOUR MILESTONE CODENAME]**
-### **Week of YYYY-MM-DD - YYYY-MM-DD**
-
-| Deadline Countdown | Date Range          | Observation | Notes |
-| :----------------- | :------------------ | :---------- | :---- |
-| [CODENAME]: -[Days] | [Start Date] - [End Date] |             | **Deadline: [Date of Event]** |
