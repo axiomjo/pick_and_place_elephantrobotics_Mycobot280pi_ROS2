@@ -1,4 +1,4 @@
-[LAST EDITED: 4 SEP 2025 01:53]
+[LAST EDITED: 5 SEP 2025 16:21]
 
 current final_version aim?  
 
@@ -27,16 +27,16 @@ current final_version aim?
 
 **Communication:**
 * **Subscribers:** 
-    *`/camera/image_raw` (`sensor_msgs/msg/Image`) from 'lcamera_usb_driver_node`  
+    *`/camera/image_raw` (`sensor_msgs/msg/Image`) from 'vision_usb_cam_node`  
 
 * **Publishers:**
-    * `/camera/image_undistorted` (`sensor_msgs/msg/Image`) to `vision_perspective_transformer_node` and `ui_robot_control_gui_node`  
+    * `/vision/undistorted_image` (`sensor_msgs/msg/Image`) to `vision_perspective_transformer_node` and `ui_robot_control_gui_node`  
     
 
 ---
 
 ### **3. `vision_perspective_transformer_node`** 📐
-**"Ciri Khas":** The Work Area Adjust
+**"Ciri Khas":** The Perspective Aligner
 
 **Role:** Subscriber & Publisher
 
@@ -46,11 +46,11 @@ current final_version aim?
 
 **Communication:**
 * **Subscribers:**
-    * `/camera/image_undistorted` (`sensor_msgs/msg/Image`) from `vision_undistorter_node`
-    * `/perspective/points` (`Custom Message`) from `ui_robot_control_gui_node`  
+    * `/vision/undistorted_image` (`sensor_msgs/msg/Image`) from `vision_undistorter_node`
+    * `/vision/perspective_points` (`Custom Message`) from `ui_robot_control_gui_node`  
     
 * **Publishers:**
-    * `/corrected_image` (`sensor_msgs/msg/Image`) to `vision_object_detector_node` and `ui_robot_control_gui_node`
+    * `/vision/corrected_image` (`sensor_msgs/msg/Image`) to `vision_object_detector_node` and `ui_robot_control_gui_node`
 
 ---
 
@@ -65,10 +65,10 @@ current final_version aim?
 
 **Communication:**
 * **Subscribers:** 
-     *`/corrected_image` (`sensor_msgs/msg/Image`) from `vision_perspective_transformer_node`  
+     *`/vision/corrected_image` (`sensor_msgs/msg/Image`) from `vision_perspective_transformer_node`  
 
 * **Publishers:** 
-    * `/detected_objects` (Custom Message) to `robot_planner_node` and `ui_robot_control_gui_node`
+    * `/vision/detected_objects` (Custom Message) to `robot_planner_node` and `ui_robot_control_gui_node`
 
 ---
 
@@ -80,55 +80,63 @@ current final_version aim?
 **Function:** The user interface for monitoring and controlling the robot. It displays live data, lets users set perspective points, displays the final detection results,  provides manual controls, and initiates complex tasks.
 
 **Expected Task:**
-* Display image streams and detection results
+* Display image streams, final processed image, and object cutouts
 * Allow interactive perspective editing
 * Publish points to trigger a one-time scene processing
-* Display final processed image and object cutouts
-* Display image streams and detection results.
- * Display the robot's current joint angles and Cartesian coordinates.  
+* Display the robot's current joint angles and Cartesian coordinates.  
+* Initiate robot planner and displays real time report
 
 
 **Communication:**
 * **Subscribers:**
-    * `/camera/image_undistorted` (`sensor_msgs/msg/Image`) from `vision_undistorter_node`
-    * `/corrected_image` (`sensor_msgs/msg/Image`) from `vision_perspective_transformer_node`
-    * `/detected_objects` (Custom Message) from `vision_object_detector_node`
+    * `/vision/undistorted_image` (`sensor_msgs/msg/Image`) from `vision_undistorter_node`
+    * `/vision/corrected_image` (`sensor_msgs/msg/Image`) from `vision_perspective_transformer_node`
+    * `/vision/detected_objects` (Custom Message) from `vision_object_detector_node`
     * `/joint_states` (`sensor_msgs/msg/JointState`) from `mycobot_joint_publisher_node`  
     
 * **Publishers:**
-     * `/perspective/points` (`Custom Message`) to `vision_perspective_transformer_node`
-     * `/joint_commands` (`Custom Message`) to `robot_mycobot_executor_node`  
+     * `/vision/perspective_points` (`Custom Message`) to `vision_perspective_transformer_node`
+     * `/robot/simple_commands` (`Custom Message`) to `robot_mycobot_executor_node`  
 
 * **Service Clients:**
-    * `/set_coords` (`mycobot_interfaces/srv/SetCoords`) to `robot_serviceclient_translator_node`  
+    * `/planner/set_coords` (`mycobot_interfaces/srv/SetCoords`) to `robot_serviceclient_translator_node`  
 
 * **Action Clients:**
-    * `/process_workspace` (`Custom Action`) to `robot_planner_node`  
+    * `/planner/process_workspace` (`Custom Action`) to `robot_planner_node`  
     
 * **TF Listeners:**
     * `tf` (`tf2_msgs/msg/TFMessage`) from `mycobot_state_broadcaster_node`
 ---
 
-### **6. `robot_serviceclient_translator_node`** 🤖
-**"Ciri Khas":** The Robot Mover
+### **6. `robot_planner_node`** 🤖
+**"Ciri Khas":** The Robot Planner 
 
-**Role:** Service Server
+**Role:** Action Server, Service Server, Command Dispatcher
 
-**Function:** Receives coordinate requests and translates the service request into a message format understood by the `robot_mycobot_executor_node`.
+**Function:** Plan and execute a sequence of robot actions.
 
-**Expected Task:** Move robot and reply with success/failure.
+Allow both manual movement via service calls and automated planning via actions.
+
+**Expected Task:** Plan and execute a sequence of robot actions and report progress back to the GUI.  
 
 **Communication:**
+* **Subscribers:**
+    *`/vision/detected_objects` (`Custom Message`) from `vision_object_detector_node`
+  
 * **Publishers:**
-    *`/robot/commands` (`std_msgs/msg/String`) to `robot_mycobot_executor_node`  
+    *`/planner/commands` (`std_msgs/msg/String`) to `robot_mycobot_executor_node`  
 
 * **Service Server:** 
-    * `/set_coords` (`mycobot_interfaces/srv/SetCoords`) from `ui_robot_control_gui_node`
+    * `/planner/set_coords` (`mycobot_interfaces/srv/SetCoords`) from `ui_robot_control_gui_node`
+
+* **Action Server:**
+    * `/planner/process_workspace` (`Custom Action`) from `ui_robot_control_gui_node
+
 
 ---
 
 ### **7. `mycobot_joint_publisher_node`** 🦾
-**"Ciri Khas":** The Joint Reporter
+**"Ciri Khas":** The Robot Joint Reporter
 
 **Role:** Publisher
 
@@ -138,13 +146,13 @@ current final_version aim?
 
 **Communication:**
 * **Publishers:** 
-   * `/joint_states` (`sensor_msgs/msg/JointState`) to `mycobot_state_broadcaster_node` and `ui_robot_control_gui_node`
+   * `/robot/joint_states` (`sensor_msgs/msg/JointState`) to `mycobot_state_broadcaster_node` and `ui_robot_control_gui_node`
 
 
 ---
 
 ### **8. `robot_mycobot_executor_node`** 🏃
-**"Ciri Khas":** The Command Executor
+**"Ciri Khas":** The Command Executor inside the actual robot
 
 **Role:** MyCobot pymycobot API Executor
 
@@ -154,13 +162,13 @@ current final_version aim?
 
 **Communication:**
 * **Subscribers:** (various command topics)
-   * `/robot/commands` (`std_msgs/msg/String`) from `robot_planner_node` and `robot_serviceclient_translator_node`
-   * `/joint_commands` (`Custom Message`) from `ui_robot_control_gui_node`
+   * `/planner/commands` (`std_msgs/msg/String`) from `robot_planner_node` and `robot_serviceclient_translator_node`
+   * `/robot/simple_commands` (`Custom Message`) from `ui_robot_control_gui_node`
 
 ---
 
 ### **9. `ui_rviz2_node`** 🖼️
-**"Ciri Khas":** The Visualizer
+**"Ciri Khas":** The Extra Visualizer
 
 **Role:** Visualization Tool
 
@@ -169,9 +177,9 @@ current final_version aim?
 **Expected Task:** Display robot and scene data for monitoring.
 
 **Communication:**
-(AM ACTUALLY CONFUSED ABT THIS coz preexisting pkg)
+
 * **Subscribers:** 
-   * `/tf` (`tf2_msgs/msg/TFMessage`) from `mycobot_state_broadcaster_node`
+   * `/robot/tf` (`tf2_msgs/msg/TFMessage`) from `mycobot_state_broadcaster_node`
 
 ---
 
@@ -185,27 +193,10 @@ current final_version aim?
 **Expected Task:** Broadcast robot state for RViz and other consumers.
 
 **Communication:**
-* **Publishers:** `/robot_description` (parameter), `/tf` (transforms)
+* **Publishers:** 
+   * `/robot/description` (parameter), 
+   * `/robot/tf` (transforms)
 ---
-### **11. `robot_planner_node`** 🧠
-**"Ciri Khas":** The FSM Planner
-
-**Role:** Action Server
-
-**Function:** Serves as the high-level brain for the robot's tasks. It receives a goal from the GUI, uses data from the vision nodes to form a plan, and sends a sequence of low-level commands to the executor.
-
-**Expected Task:** Plan and execute a sequence of robot actions and report progress back to the GUI.
-
-**Communication:**
-* **Subscribers:**
-    *`/detected_objects` (`Custom Message`) from `vision_object_detector_node`
-    
-* **Publishers:**
-     * `/robot/commands` (`std_msgs/msg/String`) to `robot_mycobot_executor_node`
-
-* **Action Server:**
-    * `/process_workspace` (`Custom Action`) from `ui_robot_control_gui_node
-
 
 this branch will be the one with clear patterns.
 
@@ -290,64 +281,6 @@ Project Milestones & Progress
 * **YUDISIUM (YUDISIUM):** November 12, 2025
 
 ---
-
-## Weekly Logs (July - November 2025)
-
-| Deadline Countdown | Date Range          | Observation                                | Notes                                                                   |
-| :----------------- | :------------------ | :----------------------------------------- | :---------------------------------------------------------------------- |
-| **P_DAFTAR: -50** | July 21 - July 27   | 💀 | 💀 |
-| **P_DAFTAR: -43** | July 28 - Aug 03    | 💀 | 💀 |
-| **P_DAFTAR: -36** | Aug 04 - Aug 10     | 💀 | 💀|
-| **P_DAFTAR: -29** | Aug 11 - Aug 17     | 💀 | 💀 |
-| **P_DAFTAR: -22** | Aug 18 - Aug 24     | 💀 | 💀|
-| **P_DAFTAR: -15** | Aug 25 - Aug 31     | 💀 | 💀 |
-| **P_DAFTAR: -8** | Sep 01 - Sep 07     |      💀                                      |                    💀                                                     |
-
-***
-
-## **MILESTONE: PRASEM REGISTRATION (P_DAFTAR)**
-### **Week of September 08 - September 14, 2025**
-
-| Deadline Countdown | Date Range          | Observation | Notes                         |
-| :----------------- | :------------------ | :---------- | :---------------------------- |
-| **P_DAFTAR: -1** | Sep 08 - Sep 14     |             | **Deadline: PRASEM DAFTAR (Sep 9)** |
-
-***
-
-## **MILESTONE: PRASEM (P_SIDANG)**
-### **Week of September 15 - September 21, 2025**
-
-| Deadline Countdown | Date Range          | Observation | Notes                          |
-| :----------------- | :------------------ | :---------- | :----------------------------- |
-| **P_SIDANG: -0** | Sep 15 - Sep 21     | *(PRASEM ACT Week)* | **Event: PRASEM ACTUAL (Starts Sep 15)** |
-
-***
-
-## **MILESTONE: DOSEN ESTETIKA & POSTER (D_ESTETIK)**
-### **Week of September 22 - September 28, 2025**
-
-| Deadline Countdown | Date Range          | Observation | Notes                           |
-| :----------------- | :------------------ | :---------- | :------------------------------ |
-| **D_ESTETIK: -10** | Sep 22 - Sep 28     |             | **Deadline: DOSEN ESTETIK (Sep 25)** |
-
-| Deadline Countdown | Date Range          | Observation | Notes |
-| :----------------- | :------------------ | :---------- | :---- |
-| **S_DAFTAR: -7** | Sep 29 - Oct 05     |             |       |
-
-***
-
-## **MILESTONE: SEMINAR TA REGISTRATION (S_DAFTAR) & PRESENTATION (S_SIDANG)**
-### **Week of October 06 - October 12, 2025**
-
-| Deadline Countdown | Date Range          | Observation | Notes                                              |
-| :----------------- | :------------------ | :---------- | :------------------------------------------------- |
-| **S_DAFTAR: -0** | Oct 06 - Oct 12     | *(SEMINAR Week)* | **Deadline: SEMINAR DAFTAR (Oct 7)**<br>**Event: SEMINAR AKTUAL (Starts Oct 13)** |
-
-***
-
-## **MILESTONE: SEMINAR TA ACTUAL (CONTINUED)**
-### **Week of October 13 - October 19, 2025**
-
 | Deadline Countdown | Date Range          | Observation | Notes |
 | :----------------- | :------------------ | :---------- | :---- |
 | **S_SIDANG: -0** | Oct 13 - Oct 19     | *(SEMINAR AKTUAL Week)* | (Continue with seminar activities) |
