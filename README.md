@@ -1,4 +1,4 @@
-[LAST EDITED: 6 SEP 2025 03:25]
+[LAST EDITED: 6 SEP 2025 04:41]
 
 # Implementasi_MyCobot280pi_ROS2
 
@@ -289,7 +289,7 @@ mycobot_ws/
 3. `/vision/detected_objects`
    * **Interface Type:** `mycobot280pi_interfaces/msg/ManyDetectedObjects`
    * **Details:** Receives from `vision_object_detector_node`.
-4. `/joint_states`
+4. `/robot/joint_states`
    * **Interface Type:** `sensor_msgs/msg/JointState`
    * **Details:** Receives from `mycobot_joint_publisher_node`.
 5. `tf`
@@ -309,7 +309,7 @@ mycobot_ws/
 
 1. `/planner/set_coords`
    * **Interface Type:** `mycobot280pi_interfaces/srv/SetCoords`
-   * **Details:** Sends requests to `robot_serviceclient_translator_node`.
+   * **Details:** Sends requests to `robot_planner_node`.
 
 #### Action Clients
 
@@ -342,7 +342,7 @@ Allow both manual movement via service calls and automated planning via actions.
 #### Publishers
 
 1. `/planner/commands`
-   * **Interface Type:** `std_msgs/msg/String`
+   * **Interface Type:** `mycobot280pi_interfaces/msg/SimpleCommands`
    * **Details:** Publishes to `robot_mycobot_executor_node`.
 
 #### Service Server
@@ -385,7 +385,7 @@ Allow both manual movement via service calls and automated planning via actions.
 
 **Role:** MyCobot pymycobot API Executor
 
-**Function:** Translates commands received from either the `robot_planner_node` or the `robot_serviceclient_translator_node` into physical actions for the MyCobot robot. This node directly controls the robot's motors and end-effector.
+**Function:** Translates commands received from either the `robot_planner_node` or the  into physical actions for the MyCobot robot. This node directly controls the robot's motors and end-effector.
 
 **Expected Task:** Perform robot actions as commanded.
 
@@ -395,7 +395,7 @@ Allow both manual movement via service calls and automated planning via actions.
 
 1. `/planner/commands`
    * **Interface Type:** `mycobot280pi_interfaces/msg/SimpleCommands`
-   * **Details:** Receives from `robot_planner_node` and `robot_serviceclient_translator_node`.
+   * **Details:** Receives from `robot_planner_node`.
 2. `/robot/simple_commands`
    * **Interface Type:** `mycobot280pi_interfaces/msg/SimpleCommands`
    * **Details:** Receives from `ui_robot_control_gui_node`.
