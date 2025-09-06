@@ -396,7 +396,7 @@ Allow both manual movement via service calls and automated planning via actions.
 
 # ===== INTERFACES FOR MESSAGES, SERVICES, ACTIONS ====
 
-[last editede: 6 Sep 2025 15:41]
+[last editede: 6 Sep 2025 16:48]
 
 `/camera` Namespace
 This namespace is used for raw image data from the camera.
@@ -440,11 +440,11 @@ This namespace contains topics related to the physical robot's state and general
            **Interface Type:** `mycobot280pi_interfaces/msg/SimpleCommands`
            **Publisher:** `ui_robot_control_gui_node`💻
            **Subscriber:** `robot_mycobot_executor_node`🏃
-      2. **`/robot/joint_states`**
+2. **`/robot/joint_states`**
            **Interface Type:** `sensor_msgs/msg/JointState`
            **Publisher:** `mycobot_joint_publisher_node`📝
            **Subscriber:** `ui_robot_control_gui_node`💻
-2. **`/robot/tf`**
+3. **`/robot/tf`**
            **Interface Type:** `tf2_msgs/msg/TFMessage`
            **Publisher:** `mycobot_state_broadcaster_node`📝
            **Subscriber:** `ui_rviz2_node`🖼️
@@ -467,17 +467,6 @@ This namespace is used for all communication with the robot's planning node.
            **Interface Type:** `mycobot280pi_interfaces/action/ProcessWorkspace`        
            **Client:** `ui_robot_control_gui_node`💻
            **Server:** `robot_planner_node`🤖
-
----
-
-### Global Namespace
-
-This standard topic is often found in the global namespace.
-
-1. **`/robot/joint_states`**
-           **Interface Type:** `sensor_msgs/msg/JointState`
-           **Publisher:** `mycobot_joint_publisher_node`🦾
-           **Subscriber:** `ui_robot_control_gui_node`💻
 
 ---
 
@@ -698,22 +687,19 @@ These are standard packages from the ROS 2 ecosystem for common data types and f
 
 1. `cv_bridge` : The package to interface with OpenCV.  
 
-
 ##### Standard ROS 2 Interfaces
 
-    1.`sensor_msgs`: builtin interface
-
-        - **`sensor_msgs/msg/Image`**: To subscribe to raw images from the camera  
-       
+1. `sensor_msgs`: builtin interface
+   
+   - **`sensor_msgs/msg/Image`**: To subscribe to raw images from the camera  
 
 ##### Custom Interfaces
 
-    1.`mycobot280pi_interfaces`: custom interface
+1. `mycobot280pi_interfaces`: custom interface
+   
+   - **`mycobot280pi_interfaces/msg/Point2DArray`**: To receive perspective points from the GUI
+   - **`mycobot280pi_interfaces/msg/ManyDetectedObjects`**: To publish the results of the object detection    
 
-        - **`mycobot280pi_interfaces/msg/Point2DArray`**: To receive perspective points from the GUI
-        - **`mycobot280pi_interfaces/msg/ManyDetectedObjects`**: To publish the results of the object detection    
-        
-        
 ##### Third-Party Libraries
 
 This is an external library that provides the core algorithms for your vision nodes.
@@ -746,19 +732,19 @@ These are fundamental to any ROS 2 Python node.
 
 ##### Standard ROS 2 Interfaces
 
-    1. `sensor_msgs`: builtin interface
+1. `sensor_msgs`: builtin interface
+   
+   - **`sensor_msgs/msg/JointState`**: To publish the robot's joint states for monitoring (`mycobot_joint_publisher_node`).
 
-        - **`sensor_msgs/msg/JointState`**: To publish the robot's joint states for monitoring (`mycobot_joint_publisher_node`).
-
-    2. `tf2_msgs`: builtin interface
-
-       - **`tf2_msgs/msg/TFMessage`**: To broadcast the robot's state transforms (`mycobot_state_broadcaster_node`).
+2. `tf2_msgs`: builtin interface
+   
+   - **`tf2_msgs/msg/TFMessage`**: To broadcast the robot's state transforms (`mycobot_state_broadcaster_node`).
 
 ##### Custom Interfaces
 
-    1. `mycobot280pi_interfaces`: custom interface
-
-       - **`mycobot280pi_interfaces/msg/SimpleCommands`**: To receive commands from the planner and GUI (`robot_mycobot_executor_node`).
+1. `mycobot280pi_interfaces`: custom interface
+   
+   - **`mycobot280pi_interfaces/msg/SimpleCommands`**: To receive commands from the planner and GUI (`robot_mycobot_executor_node`).
 
 ##### Third-Party Libraries
 
@@ -784,12 +770,12 @@ These are fundamental to any ROS 2 Python node.
 
 ##### Custom Interfaces
 
-    1. `mycobot280pi_interfaces`: custom interface
-
-        - **`mycobot280pi_interfaces/msg/ManyDetectedObjects`**: To receive detected object data from the vision pipeline 
-        - **`mycobot280pi_interfaces/msg/SimpleCommands`**: To send high-level commands to the robot executor node 
-        - **`mycobot280pi_interfaces/srv/SetCoords`**: To receive requests for manual coordinate control from the GUI 
-        - **`mycobot280pi_interfaces/action/ProcessWorkspace`**: To receive requests from the GUI to process the entire workspace
+1. `mycobot280pi_interfaces`: custom interface
+   
+   - **`mycobot280pi_interfaces/msg/ManyDetectedObjects`**: To receive detected object data from the vision pipeline 
+   - **`mycobot280pi_interfaces/msg/SimpleCommands`**: To send high-level commands to the robot executor node 
+   - **`mycobot280pi_interfaces/srv/SetCoords`**: To receive requests for manual coordinate control from the GUI 
+   - **`mycobot280pi_interfaces/action/ProcessWorkspace`**: To receive requests from the GUI to process the entire workspace
 
 ---
 
@@ -815,27 +801,28 @@ These are fundamental to any ROS 2 Python node.
 
 ##### Standard ROS 2 Interfaces
 
-    1.`sensor_msgs`: builtin interface
+1. `sensor_msgs`: builtin interface
+   
+   - **`sensor_msgs/msg/Image`**: To display the different image streams, such as the undistorted and corrected images.
+   - **`sensor_msgs/msg/JointState`**: To display the robot's current joint angles.
 
-        - **`sensor_msgs/msg/Image`**: To display the different image streams, such as the undistorted and corrected images.
-        - **`sensor_msgs/msg/JointState`**: To display the robot's current joint angles.
-
-     2. `tf2_msgs`: builtin interface
-
-        - **`tf2_msgs/msg/TFMessage`**: To receive robot state data from the state broadcaster.
+2. `tf2_msgs`: builtin interface
+   
+   - **`tf2_msgs/msg/TFMessage`**: To receive robot state data from the state broadcaster.
 
 ##### Custom Interfaces
 
-    1. `mycobot280pi_interfaces`: custom interface
+1. `mycobot280pi_interfaces`: custom interface
+   
+   - **`mycobot280pi_interfaces/msg/Point2DArray`**: To publish user-defined perspective points to the vision pipeline
+   - **`mycobot280pi_interfaces/msg/ManyDetectedObjects`**: To display the final object detection results.
+   - **`mycobot280pi_interfaces/msg/SimpleCommands`**: To send manual commands to the robot executor node
+   - **`mycobot280pi_interfaces/srv/SetCoords`**: To send manual coordinate requests to the planner.
+   - **`mycobot280pi_interfaces/action/ProcessWorkspace`**: To initiate an automated pick and place cycle.
+     
+     ##### Third-Party Libraries
 
-        - **`mycobot280pi_interfaces/msg/Point2DArray`**: To publish user-defined perspective points to the vision pipeline
-        - **`mycobot280pi_interfaces/msg/ManyDetectedObjects`**: To display the final object detection results.
-        - **`mycobot280pi_interfaces/msg/SimpleCommands`**: To send manual commands to the robot executor node
-        - **`mycobot280pi_interfaces/srv/SetCoords`**: To send manual coordinate requests to the planner.
-        - **`mycobot280pi_interfaces/action/ProcessWorkspace`**: To initiate an automated pick and place cycle.
-##### Third-Party Libraries
-
-    1.`PyQt5`: need to install this separately: `pip install PyQt5`
+2. `PyQt5`: need to install this separately: `pip install PyQt5`
 
 ##### ---
 
