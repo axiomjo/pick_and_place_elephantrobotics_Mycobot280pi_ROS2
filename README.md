@@ -662,15 +662,14 @@ ros2 pkg create mycobot280pi_interfaces --build-type ament_cmake --dependencies 
 ##### Standard ROS 2 Interfaces Dependencies
 
 - `std_msgs`:  builtin interface
+  
   - **`std_msgs/Header`**: for`ManyDetectedObjects.msg` timestamps and frame information.
-    
-    
+
 - `action_msgs`: 
+  
   - **`std_msgs/Header`** for `ProcessWorkspace.action` ROS 2 action system
-
-
-
- ---
+  
+  ---
 
 ### 2. `mycobot280pi_vision` 🛠️ 📐 🎯
 
@@ -833,6 +832,265 @@ These are fundamental to any ROS 2 Python node.
 
 2. `PyQt5`: need to install this separately: `pip install PyQt5`
 
-##### ---
+---
 
 ### 6. Standard ROS 2 Tool 📸 🖼️
+
+It's pre-existen ROS2 packages.
+
+---
+
+# ====== EMPTY FILES AND FOLDER =====
+
+### 1\. `mycobot280pi_interfaces` 📦
+
+This package contains no nodes. It holds the custom message, service, and action definitions that all the other packages will use for communication.
+
+### Package Source File Creation
+
+```bash
+# Create necessary folders
+mkdir -p mycobot280pi_interfaces/msg
+mkdir -p mycobot280pi_interfaces/action
+mkdir -p mycobot280pi_interfaces/srv
+```
+
+```bash
+# Create .msg files
+touch mycobot280pi_interfaces/msg/ManyDetectedObjects.msg
+touch mycobot280pi_interfaces/msg/Mycobot280PiAngles.msg
+touch mycobot280pi_interfaces/msg/Mycobot280PiCoords.msg
+touch mycobot280pi_interfaces/msg/Mycobot280PiSetCoords.msg
+touch mycobot280pi_interfaces/msg/OneDetectedObject.msg
+touch mycobot280pi_interfaces/msg/Point2DArray.msg
+touch mycobot280pi_interfaces/msg/Point2D.msg
+touch mycobot280pi_interfaces/msg/SimpleCommands.msg
+# Create .srv files
+touch mycobot280pi_interfaces/srv/Mycobot280PiSetCoordsMadeSure.srv
+touch mycobot280pi_interfaces/srv/VacuumPumpV2SetPins.srv
+# Create .action file
+touch mycobot280pi_interfaces/action/ProcessWorkspace.action
+```
+
+### 2. `mycobot280pi_vision` 🛠️📐🎯
+
+#### `vision_undistorter_node` 🛠️
+
+- **Separation of Concerns:**
+  - `mycobot280pi_vision/vun_main_ros_node.py` (The main ROS node file).
+
+#### `vision_perspective_transformer_node` 📐
+
+- **Separation of Concerns:**
+  - `mycobot280pi_vision/vptn_main_ros_node.py` (The main ROS node file).
+  - `mycobot280pi_vision/vptn_perspective_transform.py` (The module with the core OpenCV transformation algorithm).
+
+#### `vision_object_detector_node` 🎯
+
+- **Separation of Concerns:**
+  - `mycobot280pi_vision/vodn_main_ros_node.py` (The main ROS node file).
+  - `mycobot280pi_vision/vodn_object_detection.py` (The module with the vision algorithm).
+  - `mycobot280pi_vision/vodn_message_converter.py` (The module to convert data types to ROS messages).
+
+### Package Source File Creation
+
+This bash script will create the necessary empty files for the `mycobot280pi_vision` package.
+
+```bash
+# This script should be run from the 'src' directory of your ROS 2 workspace
+
+# Files for vision_undistorter_node (vun_)
+touch mycobot280pi_vision/mycobot280pi_vision/vun_main_ros_node.py
+
+# Files for vision_perspective_transformer_node (vptn_)
+touch mycobot280pi_vision/mycobot280pi_vision/vptn_main_ros_node.py
+touch mycobot280pi_vision/mycobot280pi_vision/vptn_perspective_transform.py
+
+# Files for vision_object_detector_node (vodn_)
+touch mycobot280pi_vision/mycobot280pi_vision/vodn_main_ros_node.py
+touch mycobot280pi_vision/mycobot280pi_vision/vodn_object_detection.py
+touch mycobot280pi_vision/mycobot280pi_vision/vodn_message_converter.py
+```
+
+---
+
+### 3. `mycobot280pi_robot` 🦾📝🏃
+
+#### `mycobot_joint_publisher_node` 🦾
+
+- **Separation of Concerns:**
+  - `mycobot280pi_robot/mjpn_main_ros_node.py` (The main ROS node file that performs a simple API read and publishes a single topic).
+
+#### `mycobot_state_broadcaster_node` 📝
+
+- **Separation of Concerns:**
+  - `mycobot280pi_robot/msbn_main_ros_node.py` (The main ROS node file that reports the robot's FSM state).
+
+#### `robot_mycobot_executor_node` 🏃
+
+- **Separation of Concerns:**
+  - `mycobot280pi_robot/rmen_main_ros_node.py` (The main ROS node file).
+  - `mycobot280pi_robot/rmen_mycobot_interface.py` (A module that encapsulates the pymycobot API calls).
+  - `mycobot280pi_robot/rmen_robot_state_manager.py` (A module for handling the robot's current FSM state and errors).
+
+### Package Source File Creation
+
+This bash script will create the necessary empty files for the `mycobot280pi_robot` package.
+
+```bash
+# This script should be run from the 'src' directory of your ROS 2 workspace
+
+# Files for mycobot_joint_publisher_node (mjpn_)
+touch mycobot280pi_robot/mycobot280pi_robot/mjpn_main_ros_node.py
+
+# Files for mycobot_state_broadcaster_node (msbn_)
+touch mycobot280pi_robot/mycobot280pi_robot/msbn_main_ros_node.py
+
+# Files for robot_mycobot_executor_node (rmen_)
+touch mycobot280pi_robot/mycobot280pi_robot/rmen_main_ros_node.py
+touch mycobot280pi_robot/mycobot280pi_robot/rmen_mycobot_interface.py
+touch mycobot280pi_robot/mycobot280pi_robot/rmen_robot_state_manager.py
+```
+
+---
+
+### 4. `mycobot280pi_planner` 🤖
+
+#### `robot_planner_node` 🤖
+
+- **Separation of Concerns:**
+  - `mycobot280pi_planner/rpn_main_ros_node.py` (The main ROS node file).
+  - `mycobot280pi_planner/rpn_planning_logic.py` (The core Finite-State-Machine implementation for planning and decision-making logic).
+  - `mycobot280pi_planner/rpn_action_server.py` (A class to handle the action server).
+  - `mycobot280pi_planner/rpn_service_server.py` (A class to handle the service server).
+
+### Package Source File Creation
+
+This bash script will create the necessary empty files for the `mycobot280pi_planner` package.
+
+```bash
+# This script should be run from the 'src' directory of your ROS 2 workspace
+
+# Files for robot_planner_node (rpn_)
+touch mycobot280pi_planner/mycobot280pi_planner/rpn_main_ros_node.py
+touch mycobot280pi_planner/mycobot280pi_planner/rpn_planning_logic.py
+touch mycobot280pi_planner/mycobot280pi_planner/rpn_action_server.py
+touch mycobot280pi_planner/mycobot280pi_planner/rpn_service_server.py
+```
+
+---
+
+### 5. `mycobot280pi_gui` 💻
+
+#### `ui_robot_control_gui_node` 💻
+
+- **Separation of Concerns:**
+  - `mycobot280pi_gui/urcgn_main.py` (The main entry point).
+  - `mycobot280pi_gui/urcgn_pyqt_gui_app.py` (The main GUI window and layout with PyQt).
+  - `mycobot280pi_gui/urcgn_ros_communication.py` (The ROS communication class).
+  - `mycobot280pi_gui/urcgn_pyqt_widget.py` (A custom PyQt widget for the image display).
+
+### Package Source File Creation
+
+This bash script will create the necessary empty files for the `mycobot280pi_gui` package.
+
+```bash
+# This script should be run from the 'src' directory of your ROS 2 workspace
+
+# Files for ui_robot_control_gui_node (urcgn_)
+touch mycobot280pi_gui/mycobot280pi_gui/urcgn_main.py
+touch mycobot280pi_gui/mycobot280pi_gui/urcgn_pyqt_gui_app.py
+touch mycobot280pi_gui/mycobot280pi_gui/urcgn_ros_communication.py
+touch mycobot280pi_gui/mycobot280pi_gui/urcgn_pyqt_widget.py
+```
+
+---
+
+### 6. Standard ROS 2 Tool 📸 🖼️
+
+It's pre-existen ROS2 packages. no need to build anything
+
+---
+
+# ====== IMPORTANT FILES AND FOLDERS =====
+
+```bash
+.
+└── src
+    ├── mycobot280pi_interfaces
+    │   ├── msg
+    │   │   ├── Mycobot280PiAngles.msg
+    │   │   ├── Mycobot280PiCoords.msg
+    │   │   ├── Mycobot280PiSetCoords.msg
+    │   │   ├── OneDetectedObject.msg
+    │   │   ├── ManyDetectedObjects.msg
+    │   │   ├── Point2D.msg
+    │   │   ├── Point2DArray.msg
+    │   │   └── SimpleCommands.msg
+    │   │       
+    │   ├── srv
+    │   │   ├── Mycobot280PiSetCoordsMadeSure.srv
+    │   │   └── VacuumPumpV2SetPins.srv
+    │   │    
+    │   ├── action    
+    │   │   └── ProcessWorkspace.action
+    │   │
+    │   ├── package.xml
+    │   ├── CMakeLists.txt
+    │   └── ...
+    │ 
+    ├── mycobot280pi_vision
+    │   │    
+    │   ├── mycobot280pi_vision
+    │   │   ├── vodn_main_ros_node.py
+    │   │   ├── vodn_message_converter.py
+    │   │   ├── vodn_object_detection.py
+    │   │   ├── vptn_main_ros_node.py
+    │   │   ├── vptn_perspective_transform.py
+    │   │   ├── vun_main_ros_node.py
+    │   │   └── __init__.py
+    │   │
+    │   ├── package.xml
+    │   ├── setup.py    
+    │   └── ...
+    │   
+    ├── mycobot280pi_robot
+    │   │
+    │   ├── mycobot280pi_robot
+    │   │   ├── mjpn_main_ros_node.py
+    │   │   ├── msbn_main_ros_node.py
+    │   │   ├── rmen_main_ros_node.py
+    │   │   ├── rmen_mycobot_interface.py
+    │   │   ├── rmen_robot_state_manager.py
+    │   │   └── __init__.py
+    │   │
+    │   ├── package.xml
+    │   ├── setup.py    
+    │   └── ...
+    │
+    ├── mycobot280pi_planner
+    │   │
+    │   ├── mycobot280pi_planner
+    │   │   ├── rpn_action_server.py
+    │   │   ├── rpn_main_ros_node.py
+    │   │   ├── rpn_planning_logic.py
+    │   │   ├── rpn_service_server.py
+    │   │   └── __init__.py
+    │   │
+    │   ├── package.xml
+    │   ├── setup.py    
+    │   └── ...
+    │
+    └── mycobot280pi_gui
+        │
+        ├── mycobot280pi_gui
+        │   ├── urcgn_main.py
+        │   ├── urcgn_pyqt_gui_app.py
+        │   ├── urcgn_pyqt_widget.py
+        │   ├── urcgn_ros_communication.py
+        │   └── __init__.py
+        │
+        ├── package.xml
+        ├── setup.py
+        └── ...
+```
