@@ -264,7 +264,7 @@ Project Milestones & Progress
 
 8. `/planner/set_coords`
    
-   * **Interface Type:** `mycobot280pi_interfaces/srv/SetCoords`
+   * **Interface Type:** `mycobot280pi_interfaces/srv/Mycobot280PiSetCoordsMadeSure`
    
    * **Details:** Sends requests to `robot_planner_node`.
      
@@ -307,7 +307,7 @@ Allow both manual movement via service calls and automated planning via actions.
 
 3. `/planner/set_coords`
    
-   * **Interface Type:** `mycobot280pi_interfaces/srv/SetCoords`
+   * **Interface Type:** `mycobot280pi_interfaces/srv/Mycobot280PiSetCoordsMadeSure`
    
    * **Details:** Receives requests from `ui_robot_control_gui_node`.
      
@@ -645,6 +645,8 @@ This is the dedicated package for your user interface.
 
 # ===== PACKAGE DEPENDENCIES =======
 
+[last edit: 6 Sep 2025 17:29]
+
 ### **1. `mycobot280pi_interfaces`** 📦
 
 This package contains no nodes. It holds the custom message, service, and action definitions that all the other packages will use for communication.
@@ -657,7 +659,18 @@ From `src` directory:
 ros2 pkg create mycobot280pi_interfaces --build-type ament_cmake --dependencies std_msgs action_msgs
 ```
 
----
+##### Standard ROS 2 Interfaces Dependencies
+
+- `std_msgs`:  builtin interface
+  - **`std_msgs/Header`**: for`ManyDetectedObjects.msg` timestamps and frame information.
+    
+    
+- `action_msgs`: 
+  - **`std_msgs/Header`** for `ProcessWorkspace.action` ROS 2 action system
+
+
+
+ ---
 
 ### 2. `mycobot280pi_vision` 🛠️ 📐 🎯
 
@@ -671,36 +684,32 @@ From `src` directory:
 ros2 pkg create mycobot280pi_vision --build-type ament_python --dependencies rclpy sensor_msgs mycobot280pi_interfaces cv_bridge
 ```
 
-### Dependencies
-
-These are the possible dependencies for this package, categorized and sorted.
-
 ##### Core ROS 2 Dependencies
 
 These are fundamental to any ROS 2 Python node.
 
 1. `rclpy`: The core client library for Python.
 
-##### Standard ROS  Tools
+##### Standard ROS2 Tools Dependencies
 
 These are standard packages from the ROS 2 ecosystem for common data types and functionalities.
 
 1. `cv_bridge` : The package to interface with OpenCV.  
 
-##### Standard ROS 2 Interfaces
+##### Standard ROS2 Interfaces Dependencies
 
 1. `sensor_msgs`: builtin interface
    
    - **`sensor_msgs/msg/Image`**: To subscribe to raw images from the camera  
 
-##### Custom Interfaces
+##### Custom Interfaces Dependencies
 
 1. `mycobot280pi_interfaces`: custom interface
    
    - **`mycobot280pi_interfaces/msg/Point2DArray`**: To receive perspective points from the GUI
    - **`mycobot280pi_interfaces/msg/ManyDetectedObjects`**: To publish the results of the object detection    
 
-##### Third-Party Libraries
+##### Third-Party Libraries Dependencies
 
 This is an external library that provides the core algorithms for your vision nodes.
 
@@ -720,17 +729,13 @@ From `src` directory:
 ros2 pkg create mycobot280pi_robot --build-type ament_python --dependencies rclpy sensor_msgs tf2_ros tf2_msgs mycobot280pi_interfaces
 ```
 
-### Dependencies
-
-These are the possible dependencies for this package, categorized and sorted.
-
-##### Core ROS 2 Dependencies
+##### Core ROS2 Dependencies
 
 These are fundamental to any ROS 2 Python node.
 
 1. `rclpy`: The core client library for Python.
 
-##### Standard ROS 2 Interfaces
+##### Standard ROS2 Interfaces Dependencies
 
 1. `sensor_msgs`: builtin interface
    
@@ -740,13 +745,13 @@ These are fundamental to any ROS 2 Python node.
    
    - **`tf2_msgs/msg/TFMessage`**: To broadcast the robot's state transforms (`mycobot_state_broadcaster_node`).
 
-##### Custom Interfaces
+##### Custom Interfaces Dependencies
 
 1. `mycobot280pi_interfaces`: custom interface
    
    - **`mycobot280pi_interfaces/msg/SimpleCommands`**: To receive commands from the planner and GUI (`robot_mycobot_executor_node`).
 
-##### Third-Party Libraries
+##### Third-Party Libraries Dependencies
 
 1. `pymycobot`: The Python API used to interface with the MyCobot robot hardware.
 
@@ -762,19 +767,19 @@ From `src` directory:
 ros2 pkg create mycobot280pi_planner --build-type ament_python --dependencies rclpy mycobot280pi_interfaces sensor_msgs action_msgs
 ```
 
-##### Core ROS 2 Dependencies
+##### Core ROS2 Dependencies
 
 These are fundamental to any ROS 2 Python node.
 
 1. `rclpy`: The core client library for Python.
 
-##### Custom Interfaces
+##### Custom Interfaces Dependencies
 
 1. `mycobot280pi_interfaces`: custom interface
    
    - **`mycobot280pi_interfaces/msg/ManyDetectedObjects`**: To receive detected object data from the vision pipeline 
    - **`mycobot280pi_interfaces/msg/SimpleCommands`**: To send high-level commands to the robot executor node 
-   - **`mycobot280pi_interfaces/srv/SetCoords`**: To receive requests for manual coordinate control from the GUI 
+   - **`mycobot280pi_interfaces/srv/Mycobot280PiSetCoordsMadeSure`**: To receive requests for manual coordinate control from the GUI 
    - **`mycobot280pi_interfaces/action/ProcessWorkspace`**: To receive requests from the GUI to process the entire workspace
 
 ---
@@ -793,13 +798,13 @@ ros2 pkg create mycobot280pi_gui --build-type ament_python --dependencies rclpy 
 
 These are the possible dependencies for this package, categorized and sorted.
 
-##### Core ROS 2 Dependencies
+##### Core ROS2 Dependencies
 
 These are fundamental to any ROS 2 Python node.
 
 1. `rclpy`: The core client library for Python.
 
-##### Standard ROS 2 Interfaces
+##### Standard ROS2 Interfaces Dependencies
 
 1. `sensor_msgs`: builtin interface
    
@@ -810,17 +815,21 @@ These are fundamental to any ROS 2 Python node.
    
    - **`tf2_msgs/msg/TFMessage`**: To receive robot state data from the state broadcaster.
 
-##### Custom Interfaces
+##### Custom Interfaces Dependencies
 
 1. `mycobot280pi_interfaces`: custom interface
    
    - **`mycobot280pi_interfaces/msg/Point2DArray`**: To publish user-defined perspective points to the vision pipeline
+   
    - **`mycobot280pi_interfaces/msg/ManyDetectedObjects`**: To display the final object detection results.
+   
    - **`mycobot280pi_interfaces/msg/SimpleCommands`**: To send manual commands to the robot executor node
-   - **`mycobot280pi_interfaces/srv/SetCoords`**: To send manual coordinate requests to the planner.
+   
+   - **`mycobot280pi_interfaces/srv/Mycobot280PiSetCoordsMadeSure`**: To send manual coordinate requests to the planner.
+   
    - **`mycobot280pi_interfaces/action/ProcessWorkspace`**: To initiate an automated pick and place cycle.
      
-     ##### Third-Party Libraries
+     ##### Third-Party Libraries Dependencies
 
 2. `PyQt5`: need to install this separately: `pip install PyQt5`
 
