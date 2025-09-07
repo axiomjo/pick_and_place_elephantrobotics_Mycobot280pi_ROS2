@@ -1,4 +1,4 @@
-[LAST EDITED: 7 SEP 2025 04:09]
+[LAST EDITED: 7 SEP 2025 05:52]
 
 # Implementasi_MyCobot280pi_ROS2
 
@@ -160,15 +160,12 @@ buat tau param -p video_device:="/dev/APAAAAAINII"  kadang sering ganti2 soalnya
 ##### Subscribers
 
 1. `/camera/image_raw` Topic
-   
    * **Interface Type:** `sensor_msgs/msg/Image`
-   
    * **Details:** Receives from `vision_usb_cam_node`.
      
 ##### Publishers
 
 1. `/vision/undistorted_image` Topic
-   
    * **Interface Type:** `sensor_msgs/msg/Image`
    * **Details:** Publishes to `vision_perspective_transformer_node` and `gui_robot_control_node`.
 
@@ -186,20 +183,16 @@ buat tau param -p video_device:="/dev/APAAAAAINII"  kadang sering ganti2 soalnya
 ##### Subscribers
 
 1. `/vision/undistorted_image` Topic
-   
    * **Interface Type:** `sensor_msgs/msg/Image`
    * **Details:** Receives from `vision_undistorter_node`.
 
 2. `/vision/perspective_points` Topic
-   
    * **Interface Type:** `mycobot280pi_interfaces/msg/Point2DArray`
-   
    * **Details:** Receives from `gui_robot_control_node`.
      
 ##### Publishers
 
 1. `/vision/corrected_image` Topic
-   
    * **Interface Type:** `sensor_msgs/msg/Image`
    * **Details:** Publishes to `vision_object_detector_node` and `gui_robot_control_node`.
 
@@ -217,15 +210,12 @@ buat tau param -p video_device:="/dev/APAAAAAINII"  kadang sering ganti2 soalnya
 ##### Subscribers
 
 1. `/vision/corrected_image` Topic
-   
    * **Interface Type:** `sensor_msgs/msg/Image`
-   
    * **Details:** Receives from `vision_perspective_transformer_node`.
      
 ##### Publishers
 
 2. `/vision/detected_objects` Topic
-   
    * **Interface Type:** `mycobot280pi_interfaces/msg/ManyDetectedObjects`
    * **Details:** Publishes to `planner_robot_node` and `gui_robot_control_node`.
 
@@ -252,22 +242,18 @@ buat tau param -p video_device:="/dev/APAAAAAINII"  kadang sering ganti2 soalnya
   
 ##### Subscribers
 1. `/vision/undistorted_image` Topic
-   
    * **Interface Type:** `sensor_msgs/msg/Image`
    * **Details:** Receives from `vision_undistorter_node`.
 
 2. `/vision/corrected_image` Topic
-   
    * **Interface Type:** `sensor_msgs/msg/Image`
    * **Details:** Receives from `vision_perspective_transformer_node`.
 
 3. `/vision/detected_objects` Topic
-   
    * **Interface Type:** `mycobot280pi_interfaces/msg/ManyDetectedObjects`
    * **Details:** Receives from `vision_object_detector_node`.
 
 4. `/robot/joint_states` Topic
-   
    * **Interface Type:** `sensor_msgs/msg/JointState`
    * **Details:** Receives from `robot_mycobot_joint_publisher_node`.
 
@@ -275,28 +261,22 @@ buat tau param -p video_device:="/dev/APAAAAAINII"  kadang sering ganti2 soalnya
 ##### Publishers
 
 1. `/vision/perspective_points` Topic
-   
    * **Interface Type:** `mycobot280pi_interfaces/msg/Point2DArray`
    * **Details:** Publishes to `vision_perspective_transformer_node`.
 
 2. `/planner/manual_commands` Topic
-   
    * **Interface Type:** `mycobot280pi_interfaces/msg/SimpleCommands`
-   
    * **Details:** Publishes to `planner_robot_node`.
      
 ##### Service Clients
 
 1. `/planner/set_coords` Service
-   
    * **Interface Type:** `mycobot280pi_interfaces/srv/Mycobot280PiSetCoordsMadeSure`
-   
    * **Details:** Sends requests to `planner_robot_node`.
      
 ##### Action Clients
 
 1. `/planner/process_workspace` Action
-   
    * **Interface Type:** `mycobot280pi_interfaces/action/ProcessWorkspace`
    * **Details:** Sends requests to `planner_robot_node`.
 
@@ -315,34 +295,24 @@ Allow both manual movement via service calls and automated planning via actions.
 ##### Subscribers
 
 1. `/vision/detected_objects` Topic
-   
    * **Interface Type:** `mycobot280pi_interfaces/msg/ManyDetectedObjects`
-   
-   * **Details:** Receives from `vision_object_detector_node`.
-   
-   
-1. `/planner/manual_commands` Topic
-   
-   * **Interface Type:** `mycobot280pi_interfaces/msg/ManyDetectedObjects`
-   
-   * **Details:** Receives from `vision_object_detector_node`.
-   
+   * **Details:** Receives from `vision_object_detector_node`.  
 
      
+2. `/planner/manual_commands` Topic
+   * **Interface Type:** `mycobot280pi_interfaces/msg/SimpleCommands`
+   * **Details:** Receives from `gui_robot_control_node`.
+    
 ##### Publishers
 
 1. `/planner/commands` Topic
-   
    * **Interface Type:** `mycobot280pi_interfaces/msg/SimpleCommands`
-   
    * **Details:** Publishes to `robot_mycobot_executor_node`.
      
 ##### Service Server
 
 1. `/planner/set_coords` Service
-   
    * **Interface Type:** `mycobot280pi_interfaces/srv/Mycobot280PiSetCoordsMadeSure`
-   
    * **Details:** Receives requests from `gui_robot_control_node`.
      
 ##### Action Server
@@ -522,13 +492,14 @@ This namespace is used for all communication with the robot's planning node.
 This namespace is used for all the extra 3d visualization using rviz2.
 
 1. **`/rviz2/tf_static`** (Topic)
-   * **Interface Type:** `tf2_msgs/msg/TFMessage`
-   * **Details:** Publishes the static transforms for the robot. These are the fixed relationships between a robot's links and are defined by the URDF. 
-   
+            **Interface Type:** `tf2_msgs/msg/TFMessage`
+            **Publisher:** `mycobot_state_publisher_node`📝
+            **Subscriber:** `ui_rviz2_node`🖼️
+
 2. **`/rviz2/tf`** (Topic)
-           **Interface Type:** `tf2_msgs/msg/TFMessage`
-           **Publisher:** `mycobot_state_publisher_node`📝
-           **Subscriber:** `ui_rviz2_node`🖼️
+            **Interface Type:** `tf2_msgs/msg/TFMessage`
+            **Publisher:** `mycobot_state_publisher_node`📝
+            **Subscriber:** `ui_rviz2_node`🖼️
 
 
 # ===== PACKAGEs TO BE BUILT =======
@@ -672,7 +643,7 @@ This is the dedicated package for your user interface.
 
 - **Separation of Concerns:**
   
-  - `mycobot280pi_robot/mjpn_main_ros_node.py` (The main ROS node file that performs a simple API read and publishes a single topic)
+  - `mycobot280pi_robot/rmjpn_main_ros_node.py` (The main ROS node file that performs a simple API read and publishes a single topic)
 
 ---
 
@@ -975,7 +946,7 @@ touch mycobot280pi_vision/mycobot280pi_vision/vodn_message_converter.py
 ##### `robot_mycobot_joint_publisher_node` 🦾
 
 - **Separation of Concerns:**
-  - `mycobot280pi_robot/mjpn_main_ros_node.py` (The main ROS node file that performs a simple API read and publishes a single topic).
+  - `mycobot280pi_robot/rmjpn_main_ros_node.py` (The main ROS node file that performs a simple API read and publishes a single topic).
 
 ##### `robot_mycobot_executor_node` 🏃
 
@@ -1057,10 +1028,10 @@ This bash script will create the necessary empty files for the `mycobot280pi_gui
 # This script should be run from the 'src' directory of your ROS 2 workspace
 
 # Files for gui_robot_control_node (grcn_)
-touch mycobot280pi_gui/mycobot280pi_gui/grcn_ain.py
-touch mycobot280pi_gui/mycobot280pi_gui/grcn_qt_gui_app.py
-touch mycobot280pi_gui/mycobot280pi_gui/grcn_communication.py
-touch mycobot280pi_gui/mycobot280pi_gui/grcn_widget.py
+touch mycobot280pi_gui/mycobot280pi_gui/grcn_main.py
+touch mycobot280pi_gui/mycobot280pi_gui/grcn_pyqt_gui_app.py
+touch mycobot280pi_gui/mycobot280pi_gui/grcn_ros_communication.py
+touch mycobot280pi_gui/mycobot280pi_gui/grcn_pyqt_widget.py
 ```
 
 ---
@@ -1116,8 +1087,7 @@ It's pre-existen ROS2 packages. no need to build anything
     ├── mycobot280pi_robot
     │   │
     │   ├── mycobot280pi_robot
-    │   │   ├── mjpn_main_ros_node.py
-    │   │   ├── msbn_main_ros_node.py
+    │   │   ├── rmjpn_main_ros_node.py
     │   │   ├── rmen_main_ros_node.py
     │   │   ├── rmen_mycobot_interface.py
     │   │   ├── rmen_robot_state_manager.py
@@ -1146,14 +1116,15 @@ It's pre-existen ROS2 packages. no need to build anything
         │   ├── grcn_main.py
         │   ├── grcn_pyqt_gui_app.py
         │   ├── grcn_pyqt_widget.py
-        │   ├── grcn_communication.py
+        │   ├── grcn_ros_communication.py
         │   └── __init__.py
         │
         ├── package.xml
         ├── setup.py
-        └── ...
-```
+        └── ...bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 
 # LAUNCH FILES CREATION
 
 we'r using 
+
+```
