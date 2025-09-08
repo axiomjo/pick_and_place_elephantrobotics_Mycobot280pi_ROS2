@@ -67,6 +67,13 @@ class VisionPerspectiveTransformNode(Node):
             10
         )
 
+        # Publisher for status messages
+        self.status_pub = self.create_publisher(
+            String,
+            'vision/perspective_transform_status',
+            10
+        )
+
 
         # Store the latest perspective points from GUI
         self.latest_points = None

@@ -13,6 +13,8 @@
     These allow different parts of the robot system to communicate using
     structured data types.
   -->
+  
+  <member_of_group>rosidl_interface_packages</member_of_group>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 

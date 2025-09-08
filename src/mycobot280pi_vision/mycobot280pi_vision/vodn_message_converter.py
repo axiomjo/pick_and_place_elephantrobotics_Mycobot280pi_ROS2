@@ -29,4 +29,4 @@ def objects_to_rosmsg(detected_objects, header: Header):
         center.y = float(obj['y'] + obj['h'] // 2)
         one.center_point = center
         one.width = obj['w']
-        one.height =
+        one.height = obj['h']

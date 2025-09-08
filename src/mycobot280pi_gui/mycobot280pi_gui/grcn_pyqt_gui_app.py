@@ -15,6 +15,9 @@ from .grcn_ros_communication import ROSCommunication  # Your ROS2 communication 
 from .grcn_pyqt_widget import DraggableObjectItem
 
 class MainWindow(QMainWindow):
+    def periodic_update(self):
+        # This method is called periodically by the GUI timer. Add GUI refresh logic if needed.
+        pass
     def __init__(self):
         super().__init__()
         self.setWindowTitle("MyCobot Robot Control GUI")
@@ -22,24 +25,34 @@ class MainWindow(QMainWindow):
 
         # --- ROS Communication ---
         self.ros_comm = ROSCommunication(self)
+        self.ros_comm.raw_image_received.connect(self.update_raw_camera_feed)
         self.ros_comm.image_received.connect(self.update_camera_feed)
         self.ros_comm.corrected_image_received.connect(self.update_corrected_feed)
         self.ros_comm.detected_objects_received.connect(self.update_detected_objects)
         self.ros_comm.joint_state_received.connect(self.update_joint_state)
-        # ...connect other signals as needed...
+            # ...connect other signals as needed...
 
         # --- Main Layout ---
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QHBoxLayout(central_widget)
 
-        # --- Left Panel: Camera Feed ---
+        # --- Left Panel: Camera Feeds ---
         left_panel = QVBoxLayout()
-        self.camera_label = QLabel("Camera Feed")
+        self.raw_camera_label = QLabel("Raw Camera Feed")
+        self.camera_label = QLabel("Undistorted Feed")
         self.corrected_label = QLabel("Corrected Feed")
+        left_panel.addWidget(self.raw_camera_label)
         left_panel.addWidget(self.camera_label)
         left_panel.addWidget(self.corrected_label)
         main_layout.addLayout(left_panel, 1)
+   
+    def update_raw_camera_feed(self, cv_image):
+        rgb_image = cv_image[..., ::-1]
+        h, w, ch = rgb_image.shape
+        qt_image = QImage(rgb_image.data, w, h, ch * w, QImage.Format_RGB888)
+        self.raw_camera_label.setPixmap(QPixmap.fromImage(qt_image).scaled(
+            self.raw_camera_label.width(), self.raw_camera_label.height(), Qt.KeepAspectRatio))
 
         # --- Right Panel: Working Plane, Controls, Detected Objects ---
         right_panel = QVBoxLayout()
@@ -72,6 +85,7 @@ class MainWindow(QMainWindow):
 
         # Example: Perspective editor button
         self.perspective_btn = QPushButton("Edit Perspective Points")
+        self.perspective_btn.setEnabled(False)  # Disabled until image is available
         self.perspective_btn.clicked.connect(self.open_perspective_editor)
         right_panel.addWidget(self.perspective_btn)
 
@@ -111,6 +125,8 @@ class MainWindow(QMainWindow):
         self.camera_label.setPixmap(QPixmap.fromImage(qt_image).scaled(
             self.camera_label.width(), self.camera_label.height(), Qt.KeepAspectRatio))
         self._last_undistorted_image = qt_image
+        # Enable perspective button now that we have an image
+        self.perspective_btn.setEnabled(True)
 
     def update_corrected_feed(self, cv_image):
         rgb_image = cv_image[..., ::-1]

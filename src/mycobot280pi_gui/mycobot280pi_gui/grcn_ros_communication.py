@@ -23,6 +23,7 @@ import numpy as np
 
 class ROSCommunication(QObject):
     # PyQt signals for GUI updates
+    raw_image_received = pyqtSignal(np.ndarray)
     image_received = pyqtSignal(np.ndarray)
     corrected_image_received = pyqtSignal(np.ndarray)
     detected_objects_received = pyqtSignal(ManyDetectedObjects)
@@ -33,8 +34,7 @@ class ROSCommunication(QObject):
         self.bridge = CvBridge()
         self._ros_thread = QThread()
         self._ros_node = _ROSNode(self)
-        self._ros_node.moveToThread(self._ros_thread)
-        self._ros_thread.started.connect(self._ros_node.run)
+        self._ros_thread.started.connect(lambda: self._ros_node.run())
         self._ros_thread.start()
 
     def send_manual_command(self, command_type="move", coords=None, speed=50):
@@ -66,6 +66,7 @@ class ROSCommunication(QObject):
         self._ros_thread.quit()
         self._ros_thread.wait()
 
+
 class _ROSNode(Node):
     def __init__(self, gui_comm):
         super().__init__('gui_robot_control_node')
@@ -73,10 +74,15 @@ class _ROSNode(Node):
         self.bridge = CvBridge()
 
         # Subscribers
+        self.create_subscription(Image, '/camera/image_raw', self.raw_image_cb, 10)
         self.create_subscription(Image, '/vision/undistorted_image', self.image_cb, 10)
         self.create_subscription(Image, '/vision/corrected_image', self.corrected_image_cb, 10)
         self.create_subscription(ManyDetectedObjects, '/vision/detected_objects', self.detected_objects_cb, 10)
         self.create_subscription(JointState, '/robot/joint_states', self.joint_state_cb, 10)
+    
+    def raw_image_cb(self, msg):
+        cv_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+        self.gui_comm.raw_image_received.emit(cv_img)
 
         # Publishers
         self.manual_cmd_pub = self.create_publisher(SimpleCommands, '/planner/manual_commands', 10)
@@ -89,10 +95,12 @@ class _ROSNode(Node):
         from rclpy.action import ActionClient
         self.process_workspace_ac = ActionClient(self, ProcessWorkspace, '/planner/process_workspace')
 
-        self.executor = SingleThreadedExecutor()
-        self.executor.add_node(self)
+        self.executor = None  # Will be set in run()
 
     def run(self):
+        from rclpy.executors import SingleThreadedExecutor
+        self.executor = SingleThreadedExecutor()
+        self.executor.add_node(self)
         rclpy.spin(self, executor=self.executor)
 
     # --- Subscriber Callbacks ---

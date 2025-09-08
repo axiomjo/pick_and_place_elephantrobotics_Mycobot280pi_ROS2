@@ -28,10 +28,12 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
+
+   
   # List your custom message, service, and action files here
   set(msg_files
-    "msg/ManyDetectedObjects.msg"
     "msg/OneDetectedObject.msg"
+    "msg/ManyDetectedObjects.msg"
     "msg/Point2D.msg"
     "msg/Point2DArray.msg"
     "msg/SimpleCommands.msg"

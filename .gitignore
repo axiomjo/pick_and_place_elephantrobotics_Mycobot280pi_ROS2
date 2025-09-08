@@ -1,0 +1,20 @@
+`
+# Build directories and logs
+/build/
+/install/
+/log/
+
+# Python artifacts
+*.pyc
+__pycache__/
+
+# Dependencies and IDE files
+.vscode/
+.idea/
+
+# Editor and system temporary files
+*.swp
+*.bak
+*~
+.DS_Store
+
