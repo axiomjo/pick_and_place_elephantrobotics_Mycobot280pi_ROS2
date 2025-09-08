@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'vision_object_detector_node = mycobot280pi_vision.vodn_main_ros_node:main',
         ],
     },
 )
