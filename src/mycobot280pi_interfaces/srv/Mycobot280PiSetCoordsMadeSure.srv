@@ -1,3 +1,5 @@
+# Interface type: mycobot280pi_interfaces/srv/Mycobot280PiSetCoordsMadeSure
+# Filepath: src/mycobot280pi_interfaces/srv/Mycobot280PiSetCoordsMadeSure.srv
 # Request
 float32[] coords    # [x, y, z, rx, ry, rz]
 int32 speed

@@ -1,3 +1,5 @@
+# Interface type: mycobot280pi_interfaces/msg/SimpleCommands
+# Filepath: src/mycobot280pi_interfaces/msg/SimpleCommands.msg
 # SimpleCommands.msg
 # A flexible message for atomic robot commands from planner to executor
 

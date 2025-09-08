@@ -1,3 +1,5 @@
+# Interface type: mycobot280pi_interfaces/action/ProcessWorkspace
+# Filepath: src/mycobot280pi_interfaces/action/ProcessWorkspace.action
 # GOAL
 # all should match in order
 ManyDetectedObjects objects_to_move
