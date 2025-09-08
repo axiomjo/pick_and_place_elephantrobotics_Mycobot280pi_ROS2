@@ -51,7 +51,7 @@ class VacuumPumpV2Controller:
     def cleanup(self):
         GPIO.cleanup([self.pin_pump, self.pin_vent])
 
-class MyCobotAPI:
+class MyCobotInterface:
     def __init__(self, logger, pin_pump=21, pin_vent=20):
         self.logger = logger
         try:
