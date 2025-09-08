@@ -1,0 +1,14 @@
+# GOAL
+# all should match in order
+ManyDetectedObjects objects_to_move
+Point2DArray objects_target_position
+int32[] objects_target_orientation
+---
+# Result
+bool success
+string message
+
+---
+# Feedback
+string current_state
+OneDetectedObject current_object
