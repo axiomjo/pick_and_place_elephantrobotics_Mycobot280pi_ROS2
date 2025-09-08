@@ -15,6 +15,149 @@ from .grcn_ros_communication import ROSCommunication  # Your ROS2 communication 
 from .grcn_pyqt_widget import DraggableObjectItem
 
 class MainWindow(QMainWindow):
+
+        # --- Instruction Text ---
+        self.instruction_text = QTextEdit(
+            "Welcome!\n\nCamera feeds on the left. Draggable working area on the right.\n"
+            "Use the 'Import Objects' button to create new objects on the working plane from the detected objects.\n\n"
+            "Select an object on the working plane to see its attributes and send its pose to the robot."
+        )
+        self.instruction_text.setReadOnly(True)
+        left_panel.insertWidget(0, self.instruction_text)
+
+        # --- Right Panel: Working Plane, Controls, Detected Objects ---
+        right_panel = QVBoxLayout()
+        self.working_plane_view = QGraphicsView()
+        self.working_plane_scene = QGraphicsScene(self)
+        # Set scene rect and center
+        self.working_plane_scene.setSceneRect(-300, -300, 600, 600)
+        self.working_plane_view.setScene(self.working_plane_scene)
+        # Flip y-axis for robot convention
+        from PyQt5.QtGui import QTransform
+        transform = QTransform()
+        transform.scale(1, -1)
+        self.working_plane_view.setTransform(transform)
+        # Draw working plane cosmetics
+        self.draw_mycobot280pi_working_plane()
+        self.draw_axes_with_ticks()
+        right_panel.addWidget(self.working_plane_view, 2)
+
+        # --- Control buttons for the working plane ---
+        controls_h_layout = QHBoxLayout()
+        self.reset_btn = QPushButton("Reset Plane")
+        self.reset_btn.clicked.connect(self.reset_plane)
+        controls_h_layout.addWidget(self.reset_btn)
+        controls_h_layout.addWidget(self.manual_cmd_btn)
+        controls_h_layout.addWidget(self.import_objects_btn)
+        right_panel.addLayout(controls_h_layout)
+
+        main_layout.addLayout(right_panel, 2)
+
+        # --- Dock Widget for Cutouts and Rotation Controls ---
+        self.dock_panel = QDockWidget("Object Cutouts & Controls", self)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.dock_panel)
+        dock_widget_content = QWidget()
+        dock_v_layout = QVBoxLayout(dock_widget_content)
+        # Cutout View (placeholder, can be filled in future)
+        self.cutout_scene = QGraphicsScene()
+        self.cutout_view = QGraphicsView(self.cutout_scene)
+        self.cutout_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.cutout_view.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        dock_v_layout.addWidget(QLabel("Detected Object Cutouts:"))
+        dock_v_layout.addWidget(self.cutout_view)
+        # Rotation Controls
+        from PyQt5.QtWidgets import QSlider, QDoubleSpinBox
+        self.rotation_slider = QSlider(Qt.Horizontal)
+        self.rotation_slider.setRange(-180, 180)
+        self.rotation_slider.setValue(0)
+        self.rotation_spinbox = QDoubleSpinBox()
+        self.rotation_spinbox.setRange(-180, 180)
+        self.rotation_spinbox.setSingleStep(0.1)
+        self.rotation_spinbox.setDecimals(1)
+        self.rotation_slider.valueChanged.connect(self.rotation_spinbox.setValue)
+        self.rotation_spinbox.valueChanged.connect(self.rotation_slider.setValue)
+        self.rotation_spinbox.valueChanged.connect(self.set_selected_item_rotation)
+        dock_v_layout.addWidget(QLabel("Rotation (Selected Object):"))
+        dock_v_layout.addWidget(self.rotation_slider)
+        dock_v_layout.addWidget(self.rotation_spinbox)
+        self.rotation_slider.setDisabled(True)
+        self.rotation_spinbox.setDisabled(True)
+        dock_widget_content.setLayout(dock_v_layout)
+        self.dock_panel.setWidget(dock_widget_content)
+
+        # Connect selection change to update rotation controls
+        self.working_plane_scene.selectionChanged.connect(self.update_rotation_widgets)
+
+    def reset_plane(self):
+        self.working_plane_scene.clear()
+        self.draw_mycobot280pi_working_plane()
+        self.draw_axes_with_ticks()
+
+    def set_selected_item_rotation(self, angle):
+        selected_items = self.working_plane_scene.selectedItems()
+        if selected_items:
+            item = selected_items[0]
+            item.setRotation(angle)
+
+    def update_rotation_widgets(self):
+        selected_items = self.working_plane_scene.selectedItems()
+        if selected_items:
+            item = selected_items[0]
+            self.rotation_slider.setDisabled(False)
+            self.rotation_spinbox.setDisabled(False)
+            self.rotation_spinbox.setValue(item.rotation())
+        else:
+            self.rotation_slider.setDisabled(True)
+            self.rotation_spinbox.setDisabled(True)
+
+    def draw_axes_with_ticks(self):
+        from PyQt5.QtGui import QPen, QColor
+        pen_axis = QPen(Qt.black, 2)
+        pen_ticks = QPen(Qt.black, 1)
+        grid_pen = QPen(QColor(200, 200, 200), 1)
+        scene_rect = self.working_plane_scene.sceneRect()
+        min_x, max_x = scene_rect.left(), scene_rect.right()
+        min_y, max_y = scene_rect.bottom(), scene_rect.top()
+        # Draw vertical grid lines
+        for x in range(int(min_x), int(max_x) + 1, 5):
+            self.working_plane_scene.addLine(x, min_y, x, max_y, grid_pen)
+        # Draw horizontal grid lines
+        for y in range(int(min_y), int(max_y) + 1, 5):
+            self.working_plane_scene.addLine(min_x, y, max_x, y, grid_pen)
+        # Draw the main axes
+        self.working_plane_scene.addLine(-280, 0, 280, 0, pen_axis)
+        self.working_plane_scene.addLine(0, -280, 0, 280, pen_axis)
+        # Draw ticks every 50mm
+        for x in range(-280, 281, 50):
+            if x == 0:
+                continue
+            length = 12
+            self.working_plane_scene.addLine(x, -length / 2, x, length / 2, pen_ticks)
+        for y in range(-280, 281, 50):
+            if y == 0:
+                continue
+            length = 12
+            self.working_plane_scene.addLine(-length / 2, y, length / 2, y, pen_ticks)
+
+    def draw_mycobot280pi_working_plane(self):
+        from PyQt5.QtGui import QPen, QBrush, QColor, QPainterPath
+        from PyQt5.QtCore import QRectF
+        circle_radius = 280.0
+        circle_item = self.working_plane_scene.addEllipse(-circle_radius, -circle_radius, 2 * circle_radius, 2 * circle_radius,
+                                          pen=QPen(Qt.NoPen), brush=QBrush(QColor(173, 216, 230, 50)))
+        circle_item.setZValue(-1)
+        rect_width, rect_height, corner_radius = 110, 150, 7.5
+        path = QPainterPath()
+        path.addRoundedRect(QRectF(-rect_width/2, -rect_height/2, rect_width, rect_height), corner_radius, corner_radius)
+        self.working_plane_scene.addPath(path, pen=QPen(Qt.NoPen), brush=QBrush(QColor("#DFDFDF"))).setZValue(0)
+        robotbase_radius = 45
+        self.working_plane_scene.addEllipse(-robotbase_radius, -robotbase_radius, 2*robotbase_radius, 2*robotbase_radius,
+                                       pen=QPen(Qt.NoPen), brush=QBrush(QColor("#C3C3C3"))).setZValue(1)
+        face_width, face_height = 20, 60
+        face_item = self.working_plane_scene.addRect(-face_width / 2 - 45, -face_height / 2, face_width, face_height)
+        face_item.setPen(QPen(Qt.NoPen))
+        face_item.setBrush(QBrush(QColor("#C3C3C3")))
+        face_item.setZValue(1)
     def periodic_update(self):
         # This method is called periodically by the GUI timer. Add GUI refresh logic if needed.
         pass
@@ -28,9 +171,12 @@ class MainWindow(QMainWindow):
         self.ros_comm.raw_image_received.connect(self.update_raw_camera_feed)
         self.ros_comm.image_received.connect(self.update_camera_feed)
         self.ros_comm.corrected_image_received.connect(self.update_corrected_feed)
-        self.ros_comm.detected_objects_received.connect(self.update_detected_objects)
+        self.ros_comm.detected_objects_received.connect(self.store_detected_objects)
         self.ros_comm.joint_state_received.connect(self.update_joint_state)
-            # ...connect other signals as needed...
+        # ...connect other signals as needed...
+
+        # Store the latest detected objects message for import
+        self._latest_detected_objects_msg = None
 
         # --- Main Layout ---
         central_widget = QWidget()
@@ -73,21 +219,26 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(right_panel, 2)
 
-        # --- Controls (add buttons, sliders, etc. as needed) ---
-        # Example: Manual command button
-        self.manual_cmd_btn = QPushButton("Send Manual Command")
-        self.manual_cmd_btn.clicked.connect(self.send_manual_command)
-        right_panel.addWidget(self.manual_cmd_btn)
-        
-        self.plan_execute_btn = QPushButton("MAKE THE SCENE!")
-        self.plan_execute_btn.clicked.connect(self.on_send_to_planner_clicked)
-        main_layout.addWidget(self.plan_execute_btn)
+    # --- Controls (add buttons, sliders, etc. as needed) ---
+    # Example: Manual command button
+    self.manual_cmd_btn = QPushButton("Send Manual Command")
+    self.manual_cmd_btn.clicked.connect(self.send_manual_command)
+    right_panel.addWidget(self.manual_cmd_btn)
 
-        # Example: Perspective editor button
-        self.perspective_btn = QPushButton("Edit Perspective Points")
-        self.perspective_btn.setEnabled(False)  # Disabled until image is available
-        self.perspective_btn.clicked.connect(self.open_perspective_editor)
-        right_panel.addWidget(self.perspective_btn)
+    # Import Objects button
+    self.import_objects_btn = QPushButton("Import Objects")
+    self.import_objects_btn.clicked.connect(self.import_detected_objects)
+    right_panel.addWidget(self.import_objects_btn)
+
+    self.plan_execute_btn = QPushButton("MAKE THE SCENE!")
+    self.plan_execute_btn.clicked.connect(self.on_send_to_planner_clicked)
+    main_layout.addWidget(self.plan_execute_btn)
+
+    # Example: Perspective editor button
+    self.perspective_btn = QPushButton("Edit Perspective Points")
+    self.perspective_btn.setEnabled(False)  # Disabled until image is available
+    self.perspective_btn.clicked.connect(self.open_perspective_editor)
+    right_panel.addWidget(self.perspective_btn)
 
         # --- Status/Instruction Text ---
         self.status_text = QTextEdit("Welcome to MyCobot Control GUI!")
@@ -136,7 +287,17 @@ class MainWindow(QMainWindow):
             self.corrected_label.width(), self.corrected_label.height(), Qt.KeepAspectRatio))
 
 
-    def update_detected_objects(self, objects_msg):
+    def store_detected_objects(self, objects_msg):
+        """Store the latest detected objects message for import."""
+        self._latest_detected_objects_msg = objects_msg
+        self.detected_objects_label.setText(f"Detected {len(objects_msg.objects)} objects ready to import.")
+
+    def import_detected_objects(self):
+        """Spawn draggable items from the last detected objects message when button is clicked."""
+        objects_msg = self._latest_detected_objects_msg
+        if objects_msg is None or not hasattr(objects_msg, 'objects') or not objects_msg.objects:
+            self.status_text.append("[INFO] No detected objects to import.")
+            return
         self.working_plane_scene.clear()
         for obj in objects_msg.objects:
             x = obj.center_point.x - obj.width / 2
@@ -145,7 +306,7 @@ class MainWindow(QMainWindow):
             h = obj.height
             item = DraggableObjectItem(x, y, w, h, object_id=obj.id)
             self.working_plane_scene.addItem(item)
-        self.detected_objects_label.setText(f"Detected {len(objects_msg.objects)} objects.")
+        self.detected_objects_label.setText(f"Imported {len(objects_msg.objects)} objects.")
         
     def on_send_to_planner_clicked(self):
         arranged = self.collect_arranged_objects()

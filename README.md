@@ -9,6 +9,72 @@ this branch will be the one with clear patterns.
 
 # === HOW TO RUN THIS SYSTEM ===
 
+
+```
+
+
+ ros2 run mycobot280pi_gui gui_robot_control_node
+ 
+ 
+v4l2-ctl --list-devices
+
+
+
+ros2 run usb_cam usb_cam_node_exe --ros-args --remap /image_raw:=/camera/image_raw -p camera_info_url:="file:///home/axiomjo/lab_robotik/eksperimental/ws_ROS2_mycobot280pi/src/CAM_object_detect/my_camera_capture/hardware_specifics/camera_calibration.yaml" -p camera_name:="my_camera" -p video_device:="/dev/video3"
+
+ros2 run mycobot280pi_vision vision_undistorter_node --ros-args -p camera_info_file:="/home/axiomjo/lab_robotik/eksperimental/ws_ROS2_mycobot280pi/src/CAM_object_detect/my_camera_capture/hardware_specifics/camera_calibration.yaml"
+
+
+ros2 run mycobot280pi_vision vision_perspective_transform_node
+
+ros2 run mycobot280pi_vision vision_object_detector_node
+
+
+
+
+
+ros2 run mycobot280pi_planner planner_robot_node
+
+ros2 run mycobot280pi_robot robot_mycobot_joint_publisher_node
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 part not written yet
 ---
 
