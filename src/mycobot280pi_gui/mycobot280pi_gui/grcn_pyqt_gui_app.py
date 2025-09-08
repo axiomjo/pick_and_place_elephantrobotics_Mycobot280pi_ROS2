@@ -110,6 +110,7 @@ class MainWindow(QMainWindow):
         qt_image = QImage(rgb_image.data, w, h, ch * w, QImage.Format_RGB888)
         self.camera_label.setPixmap(QPixmap.fromImage(qt_image).scaled(
             self.camera_label.width(), self.camera_label.height(), Qt.KeepAspectRatio))
+        self._last_undistorted_image = qt_image
 
     def update_corrected_feed(self, cv_image):
         rgb_image = cv_image[..., ::-1]
@@ -132,10 +133,78 @@ class MainWindow(QMainWindow):
         
     def on_send_to_planner_clicked(self):
         arranged = self.collect_arranged_objects()
-        # Convert to ROS messages (e.g., OneDetectedObject/ManyDetectedObjects/Point2DArray)
-        # and send to the planner/action server
         print("Arranged objects:", arranged)
-        # ...build and send your action goal her
+        # Convert arranged objects to ROS messages
+        try:
+            from mycobot280pi_interfaces.msg import OneDetectedObject, ManyDetectedObjects, Point2D, Point2DArray
+        except ImportError:
+            self.status_text.append("[ERROR] ROS message imports failed. Is the interface package built?")
+            return
+
+        objects_to_move = []
+        target_positions = []
+        target_orientations = []
+
+        for obj in arranged:
+            # Create OneDetectedObject for each arranged object
+            one_obj = OneDetectedObject()
+            one_obj.id = str(obj["id"])
+            center = Point2D()
+            center.x = float(obj["center_x"])
+            center.y = float(obj["center_y"])
+            one_obj.center_point = center
+            one_obj.width = float(obj["width"])
+            one_obj.height = float(obj["height"])
+            # Optionally set orientation if available
+            # one_obj.orientation = ...
+            objects_to_move.append(one_obj)
+            # For this example, set target positions to current positions (user can edit this logic)
+            target_positions.append(center)
+            # Optionally set target orientation
+            target_orientations.append(0.0)
+
+        # Prepare ManyDetectedObjects message for objects_to_move
+        many_objs = ManyDetectedObjects()
+        many_objs.objects = objects_to_move
+
+        # Prepare Point2DArray for target positions
+        pos_array = Point2DArray()
+        pos_array.points = target_positions
+
+        # Prepare orientation list
+        orientation_list = target_orientations
+
+        # --- Real-time report: clear status area and show start ---
+        self.status_text.clear()
+        self.status_text.append("[INFO] Sent arranged objects to planner. Waiting for feedback...")
+
+        def feedback_cb(feedback):
+            # Try to extract useful info from feedback (assume feedback has a 'current_step' and 'total_steps' field, adapt as needed)
+            msg = "[Planner Feedback] "
+            if hasattr(feedback, 'current_step') and hasattr(feedback, 'total_steps'):
+                msg += f"Step {feedback.current_step}/{feedback.total_steps}"
+            else:
+                msg += str(feedback)
+            self.status_text.append(msg)
+
+        def result_cb(result):
+            # Try to extract useful info from result (assume result has a 'success' and 'message' field, adapt as needed)
+            msg = "[Planner Result] "
+            if hasattr(result, 'success'):
+                msg += f"Success: {result.success}. "
+            if hasattr(result, 'message'):
+                msg += f"Message: {result.message}"
+            else:
+                msg += str(result)
+            self.status_text.append(msg)
+
+        self.ros_comm.send_process_workspace_goal(
+            objects_to_move=objects_to_move,
+            target_positions=target_positions,
+            target_orientation=orientation_list,
+            feedback_cb=feedback_cb,
+            result_cb=result_cb
+        )
         
     def update_joint_state(self, joint_state_msg):
         # Display joint angles or update a visualization
@@ -146,8 +215,20 @@ class MainWindow(QMainWindow):
         self.ros_comm.send_manual_command()
 
     def open_perspective_editor(self):
-        # Open a perspective editor dialog (to be implemented)
-        pass
+        # Open a perspective editor dialog for user to select 4 points
+        from .grcn_pyqt_widget import PerspectiveEditorDialog
+        # Use the latest undistorted image if available
+        image = getattr(self, '_last_undistorted_image', None)
+        if image is None:
+            self.status_text.append("[ERROR] No undistorted image available for perspective editing.")
+            return
+        dlg = PerspectiveEditorDialog(self, image=image)
+        if dlg.exec_() == dlg.Accepted:
+            points = dlg.get_points()
+            self.ros_comm.send_perspective_points(points)
+            self.status_text.append(f"[INFO] Sent perspective points: {points}")
+        else:
+            self.status_text.append("[INFO] Perspective editing cancelled.")
 
 
     def closeEvent(self, event):

@@ -1,3 +1,91 @@
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QMessageBox
+from PyQt5.QtGui import QPainter, QPen, QPixmap, QImage
+from PyQt5.QtCore import Qt, QPoint
+
+# --- Perspective Editor Dialog ---
+class PerspectiveEditorDialog(QDialog):
+    def __init__(self, parent=None, image=None):
+        super().__init__(parent)
+        self.setWindowTitle("Edit Perspective Points")
+        self.setModal(True)
+        self.image = image  # QImage or QPixmap
+        self.points = []  # List of QPoint
+        self.resize(640, 480)
+
+        layout = QVBoxLayout(self)
+        self.image_label = QLabel()
+        self.image_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.image_label)
+
+        self.instruction_label = QLabel("Click 4 points (in order: top-left, top-right, bottom-right, bottom-left)")
+        layout.addWidget(self.instruction_label)
+
+        self.confirm_btn = QPushButton("Confirm & Send")
+        self.confirm_btn.clicked.connect(self.on_confirm)
+        self.confirm_btn.setEnabled(False)
+        layout.addWidget(self.confirm_btn)
+
+        self.update_image()
+        self.image_label.mousePressEvent = self.on_image_click
+
+    def update_image(self):
+        if self.image is None:
+            self.image_label.setText("No image available.")
+            return
+        # Draw points on a copy of the image
+        if isinstance(self.image, QPixmap):
+            pixmap = self.image.copy()
+        else:
+            pixmap = QPixmap.fromImage(self.image)
+        painter = QPainter(pixmap)
+        pen = QPen(Qt.red, 8)
+        painter.setPen(pen)
+        for idx, pt in enumerate(self.points):
+            painter.drawPoint(pt)
+            painter.drawText(pt + QPoint(5, -5), str(idx+1))
+        painter.end()
+        self.image_label.setPixmap(pixmap.scaled(self.image_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+
+    def on_image_click(self, event):
+        if self.image is None or len(self.points) >= 4:
+            return
+        label_size = self.image_label.size()
+        pixmap = self.image_label.pixmap()
+        if pixmap is None:
+            return
+        # Map click position to image coordinates
+        x = event.pos().x()
+        y = event.pos().y()
+        pixmap_w = pixmap.width()
+        pixmap_h = pixmap.height()
+        label_w = label_size.width()
+        label_h = label_size.height()
+        # Centered scaling
+        x_offset = (label_w - pixmap_w) // 2
+        y_offset = (label_h - pixmap_h) // 2
+        img_x = x - x_offset
+        img_y = y - y_offset
+        if 0 <= img_x < pixmap_w and 0 <= img_y < pixmap_h:
+            # Map to original image size
+            orig_w = self.image.width() if isinstance(self.image, QImage) else self.image.size().width()
+            orig_h = self.image.height() if isinstance(self.image, QImage) else self.image.size().height()
+            scale_x = orig_w / pixmap_w
+            scale_y = orig_h / pixmap_h
+            pt = QPoint(int(img_x * scale_x), int(img_y * scale_y))
+            self.points.append(pt)
+            self.update_image()
+            if len(self.points) == 4:
+                self.confirm_btn.setEnabled(True)
+
+    def on_confirm(self):
+        if len(self.points) != 4:
+            QMessageBox.warning(self, "Not enough points", "Please select 4 points.")
+            return
+        self.accept()
+
+    def get_points(self):
+        # Return as list of (x, y)
+        return [(pt.x(), pt.y()) for pt in self.points]
 """
 grcn_pyqt_widget.py
 
@@ -74,3 +162,5 @@ class ImageDisplayWidget(QWidget):
                     int(y * y_ratio),
                     int(w * x_ratio),
                     int(h * y_ratio)
+                )
+                painter.drawRect(rect)

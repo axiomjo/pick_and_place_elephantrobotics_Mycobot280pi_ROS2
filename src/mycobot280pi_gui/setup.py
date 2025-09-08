@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'gui_robot_control_node = mycobot280pi_gui.grcn_main:main',
         ],
     },
 )
