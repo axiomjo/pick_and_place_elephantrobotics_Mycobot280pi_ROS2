@@ -7,16 +7,36 @@
   <maintainer email="jojo.josephined@gmail.com">axiomjo</maintainer>
   <license>TODO: License declaration</license>
 
+  <!--
+    The following dependencies and instructions are required for ROS2 to build
+    custom message (.msg), service (.srv), and action (.action) interface files.
+    These allow different parts of the robot system to communicate using
+    structured data types.
+  -->
+
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <depend>std_msgs</depend>
-  <depend>geometry_msgs</depend>
-  <depend>sensor_msgs</depend>
+  <!-- Core dependencies for building and using custom interfaces -->
+  <build_depend>rosidl_default_generators</build_depend>
+  <exec_depend>rosidl_default_runtime</exec_depend>
+
+  <!-- Standard message types used in our custom interfaces (e.g., Header) -->
+  <build_depend>std_msgs</build_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <exec_depend>sensor_msgs</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
+    <!--
+      This tag ensures that the generated interfaces are available
+      to other ROS2 packages that depend on this one.
+    -->
+    <rosidl_generate_interfaces/>
   </export>
 </package>
