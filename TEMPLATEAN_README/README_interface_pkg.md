@@ -3,6 +3,7 @@
 
 [Only from README.md , blom detail]
 
+if i only look at the README.md , this is what exists:
 ```
 mycobot280pi_interfaces/
 ├── action/
@@ -29,9 +30,73 @@ touch srv/Mycobot280PiSetCoordsMadeSure.srv
 touch action/ProcessWorkspace.action
 ```
 
+
+but this feels insufficient, bcoz the interfaces i can collect from reusing old packages are:
+```
+mycobot280pi_interfaces/
+    │   ├── msg/
+    │   │   ├── Mycobot280PiAngles.msg
+    │   │   ├── Mycobot280PiCoords.msg
+    │   │   ├── Mycobot280PiSetCoords.msg
+    │   │   ├── OneDetectedObject.msg
+    │   │   ├── ManyDetectedObjects.msg
+    │   │   ├── Point2D.msg
+    │   │   ├── Point2DArray.msg
+    │   │   └── SimpleCommands.msg
+    │   │       
+    │   ├── srv/
+    │   │   ├── Mycobot280PiSetCoordsMadeSure.srv
+    │   │   └── VacuumPumpV2SetPins.srv
+    │   │    
+    │   ├── action/  
+    │   │   └── ProcessWorkspace.action
+    │   │
+    │   ├── package.xml
+    │   ├── CMakeLists.txt
+    │   └── ...
+
+```
+
+THUS, I NEED TO UPDATE the MAIN README.md , OR just scrap those.
+### "To Be Added" to the `README.md`
+
+---
+
+#### Missing Interfaces from this project
+
+  * **Message (`.msg`) Files:**
+
+      * `Mycobot280PiAngles.msg`
+      * `Mycobot280PiCoords.msg`
+      * `Mycobot280PiSetCoords.msg`
+      * `OneDetectedObject.msg`
+      * `Point2D.msg`
+
+  * **Service (`.srv`) Files:**
+
+      * `VacuumPumpV2SetPins.srv`
+
+#### Corresponding `touch` Commands
+
+These commands create the files for the missing interfaces.
+
+```bash
+# Missing .msg files
+touch mycobot280pi_interfaces/msg/Mycobot280PiAngles.msg
+touch mycobot280pi_interfaces/msg/Mycobot280PiCoords.msg
+touch mycobot280pi_interfaces/msg/Mycobot280PiSetCoords.msg
+touch mycobot280pi_interfaces/msg/OneDetectedObject.msg
+touch mycobot280pi_interfaces/msg/Point2D.msg
+
+# Missing .srv files
+touch mycobot280pi_interfaces/srv/VacuumPumpV2SetPins.srv
+```
+---
+## PACKAGE DESCRIPTION:
+
 **Role**: This package is an interface definition package. It contains no executable code or nodes. Its sole purpose is to define the custom messages, services, and actions used by the other packages in the `mycobot280pi_interfaces` workspace. This allows all nodes to communicate using a common, consistent set of data types.
 
-## Topics
+## Currently Existing Topics, Services, Actions
 
 ### `ManyDetectedObjects.msg`
 
