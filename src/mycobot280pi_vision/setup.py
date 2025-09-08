@@ -22,6 +22,7 @@ setup(
         'console_scripts': [
             'vision_object_detector_node = mycobot280pi_vision.vodn_main_ros_node:main',
             'vision_perspective_transform_node = mycobot280pi_vision.vptn_main_ros_node:main',
+            'vision_undistorter_node = mycobot280pi_vision.vun_main_ros_node:main',
         ],
     },
 )
