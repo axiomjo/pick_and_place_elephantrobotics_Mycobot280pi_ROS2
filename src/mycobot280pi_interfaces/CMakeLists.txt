@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.8)
 project(mycobot280pi_interfaces)
 
+# This CMake file tells ROS2 how to build and install your custom interface files (messages, services, actions).
+# Non-technical readers: You usually don't need to change this unless you add new interface files or dependencies.
+
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
@@ -10,6 +13,9 @@ find_package(ament_cmake REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+
+# Find the ROS2 interface generation tools
+find_package(rosidl_default_generators REQUIRED)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -21,5 +27,30 @@ if(BUILD_TESTING)
   #set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
+
+  # List your custom message, service, and action files here
+  set(msg_files
+    "msg/ManyDetectedObjects.msg"
+    "msg/OneDetectedObject.msg"
+    "msg/Point2D.msg"
+    "msg/Point2DArray.msg"
+    "msg/SimpleCommands.msg"
+  )
+
+  set(srv_files
+    "srv/Mycobot280PiSetCoordsMadeSure.srv"
+  )
+
+  set(action_files
+    "action/ProcessWorkspace.action"
+  )
+
+  # Generate code for the listed interfaces
+  rosidl_generate_interfaces(${PROJECT_NAME}
+    ${msg_files}
+    ${srv_files}
+    ${action_files}
+    DEPENDENCIES std_msgs geometry_msgs sensor_msgs
+  )
 
 ament_package()
