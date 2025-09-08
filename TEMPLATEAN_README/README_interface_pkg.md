@@ -13,6 +13,7 @@ mycobot280pi_interfaces/
 │   ├── ManyDetectedObjects.msg
 │   ├── SimpleCommands.msg
 │   │
+│   ├── OneDetectedObject.msg
 │   └── Point2D.msg
 ├ 
 ├── srv/
@@ -37,6 +38,7 @@ touch action/ProcessWorkspace.action
 
 
 touch mycobot280pi_interfaces/msg/Point2D.msg
+touch mycobot280pi_interfaces/msg/OneDetectedObject.msg
 ```
 
 
@@ -93,7 +95,7 @@ These commands create the files for the missing interfaces.
 touch mycobot280pi_interfaces/msg/Mycobot280PiAngles.msg
 touch mycobot280pi_interfaces/msg/Mycobot280PiCoords.msg
 touch mycobot280pi_interfaces/msg/Mycobot280PiSetCoords.msg
-touch mycobot280pi_interfaces/msg/OneDetectedObject.msg
+
 
 
 # Missing .srv files
@@ -109,7 +111,12 @@ touch mycobot280pi_interfaces/srv/VacuumPumpV2SetPins.srv
 ### `ManyDetectedObjects.msg`
 
 * **Used by:** `vision_object_detector_node` (publishes) and `planner_robot_node`, `gui_robot_control_node` (subscribes).
-* **Description:** This message is used to publish the data for all objects detected by the vision pipeline.
+* **Description:** This compount interface message is used to publish the data for all objects detected by the vision pipeline.
+
+### `OneDetectedObject.msg`
+
+* **Used by:** `vision_object_detector_node` (publishes) and `planner_robot_node`, `gui_robot_control_node` (subscribes).
+* **Description:** This message is used to hold data for an objects detected by the vision pipeline.
 
 ### `Point2DArray.msg`
 
