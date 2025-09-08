@@ -1,6 +1,34 @@
 
 # `mycobot280pi_interfaces` Package Breakdown
 
+[Only from README.md , blom detail]
+
+```
+mycobot280pi_interfaces/
+├── action/
+│   └── ProcessWorkspace.action
+├── msg/
+│   ├── Point2DArray.msg
+│   ├── ManyDetectedObjects.msg
+│   └── SimpleCommands.msg
+├── srv/
+│   └── Mycobot280PiSetCoordsMadeSure.srv
+├── CMakeLists.txt
+└── package.xml
+
+
+```
+
+```
+touch msg/Point2DArray.msg
+touch msg/ManyDetectedObjects.msg
+touch msg/SimpleCommands.msg
+
+touch srv/Mycobot280PiSetCoordsMadeSure.srv
+
+touch action/ProcessWorkspace.action
+```
+
 **Role**: This package is an interface definition package. It contains no executable code or nodes. Its sole purpose is to define the custom messages, services, and actions used by the other packages in the `mycobot280pi_interfaces` workspace. This allows all nodes to communicate using a common, consistent set of data types.
 
 ## Topics
