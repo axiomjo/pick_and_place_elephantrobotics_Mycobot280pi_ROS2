@@ -11,7 +11,10 @@ mycobot280pi_interfaces/
 ├── msg/
 │   ├── Point2DArray.msg
 │   ├── ManyDetectedObjects.msg
-│   └── SimpleCommands.msg
+│   ├── SimpleCommands.msg
+│   │
+│   └── Point2D.msg
+├ 
 ├── srv/
 │   └── Mycobot280PiSetCoordsMadeSure.srv
 ├── CMakeLists.txt
@@ -28,6 +31,12 @@ touch msg/SimpleCommands.msg
 touch srv/Mycobot280PiSetCoordsMadeSure.srv
 
 touch action/ProcessWorkspace.action
+
+
+
+
+
+touch mycobot280pi_interfaces/msg/Point2D.msg
 ```
 
 
@@ -70,7 +79,6 @@ THUS, I NEED TO UPDATE the MAIN README.md , OR just scrap those.
       * `Mycobot280PiCoords.msg`
       * `Mycobot280PiSetCoords.msg`
       * `OneDetectedObject.msg`
-      * `Point2D.msg`
 
   * **Service (`.srv`) Files:**
 
@@ -86,7 +94,7 @@ touch mycobot280pi_interfaces/msg/Mycobot280PiAngles.msg
 touch mycobot280pi_interfaces/msg/Mycobot280PiCoords.msg
 touch mycobot280pi_interfaces/msg/Mycobot280PiSetCoords.msg
 touch mycobot280pi_interfaces/msg/OneDetectedObject.msg
-touch mycobot280pi_interfaces/msg/Point2D.msg
+
 
 # Missing .srv files
 touch mycobot280pi_interfaces/srv/VacuumPumpV2SetPins.srv
@@ -106,7 +114,14 @@ touch mycobot280pi_interfaces/srv/VacuumPumpV2SetPins.srv
 ### `Point2DArray.msg`
 
 * **Used by:** `gui_robot_control_node` (publishes) and `vision_perspective_transformer_node` (subscribes).
-* **Description:** This message holds an array of 2D points, representing the coordinates for the perspective transform.
+* **Description:** This compound interface message holds an array of 2D points, from `Point2DArray.msg`, representing the coordinates for the perspective transform.
+
+### `Point2D.msg`
+
+* **Used by:** `gui_robot_control_node` (publishes) and `vision_perspective_transformer_node` (subscribes).
+* **Description:** This message holds one  2D points.
+
+
 
 ### `SimpleCommands.msg`
 
