@@ -16,77 +16,77 @@ from .grcn_pyqt_widget import DraggableObjectItem
 
 class MainWindow(QMainWindow):
 
-        # --- Instruction Text ---
-        self.instruction_text = QTextEdit(
-            "Welcome!\n\nCamera feeds on the left. Draggable working area on the right.\n"
-            "Use the 'Import Objects' button to create new objects on the working plane from the detected objects.\n\n"
-            "Select an object on the working plane to see its attributes and send its pose to the robot."
-        )
-        self.instruction_text.setReadOnly(True)
-        left_panel.insertWidget(0, self.instruction_text)
+    # --- Instruction Text ---
+    self.instruction_text = QTextEdit(
+        "Welcome!\n\nCamera feeds on the left. Draggable working area on the right.\n"
+        "Use the 'Import Objects' button to create new objects on the working plane from the detected objects.\n\n"
+        "Select an object on the working plane to see its attributes and send its pose to the robot."
+    )
+    self.instruction_text.setReadOnly(True)
+    left_panel.insertWidget(0, self.instruction_text)
 
-        # --- Right Panel: Working Plane, Controls, Detected Objects ---
-        right_panel = QVBoxLayout()
-        self.working_plane_view = QGraphicsView()
-        self.working_plane_scene = QGraphicsScene(self)
-        # Set scene rect and center
-        self.working_plane_scene.setSceneRect(-300, -300, 600, 600)
-        self.working_plane_view.setScene(self.working_plane_scene)
-        # Flip y-axis for robot convention
-        from PyQt5.QtGui import QTransform
-        transform = QTransform()
-        transform.scale(1, -1)
-        self.working_plane_view.setTransform(transform)
-        # Draw working plane cosmetics
-        self.draw_mycobot280pi_working_plane()
-        self.draw_axes_with_ticks()
-        right_panel.addWidget(self.working_plane_view, 2)
+    # --- Right Panel: Working Plane, Controls, Detected Objects ---
+    right_panel = QVBoxLayout()
+    self.working_plane_view = QGraphicsView()
+    self.working_plane_scene = QGraphicsScene(self)
+    # Set scene rect and center
+    self.working_plane_scene.setSceneRect(-300, -300, 600, 600)
+    self.working_plane_view.setScene(self.working_plane_scene)
+    # Flip y-axis for robot convention
+    from PyQt5.QtGui import QTransform
+    transform = QTransform()
+    transform.scale(1, -1)
+    self.working_plane_view.setTransform(transform)
+    # Draw working plane cosmetics
+    self.draw_mycobot280pi_working_plane()
+    self.draw_axes_with_ticks()
+    right_panel.addWidget(self.working_plane_view, 2)
 
-        # --- Control buttons for the working plane ---
-        controls_h_layout = QHBoxLayout()
-        self.reset_btn = QPushButton("Reset Plane")
-        self.reset_btn.clicked.connect(self.reset_plane)
-        controls_h_layout.addWidget(self.reset_btn)
-        controls_h_layout.addWidget(self.manual_cmd_btn)
-        controls_h_layout.addWidget(self.import_objects_btn)
-        right_panel.addLayout(controls_h_layout)
+    # --- Control buttons for the working plane ---
+    controls_h_layout = QHBoxLayout()
+    self.reset_btn = QPushButton("Reset Plane")
+    self.reset_btn.clicked.connect(self.reset_plane)
+    controls_h_layout.addWidget(self.reset_btn)
+    controls_h_layout.addWidget(self.manual_cmd_btn)
+    controls_h_layout.addWidget(self.import_objects_btn)
+    right_panel.addLayout(controls_h_layout)
 
-        main_layout.addLayout(right_panel, 2)
+    main_layout.addLayout(right_panel, 2)
 
-        # --- Dock Widget for Cutouts and Rotation Controls ---
-        self.dock_panel = QDockWidget("Object Cutouts & Controls", self)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.dock_panel)
-        dock_widget_content = QWidget()
-        dock_v_layout = QVBoxLayout(dock_widget_content)
-        # Cutout View (placeholder, can be filled in future)
-        self.cutout_scene = QGraphicsScene()
-        self.cutout_view = QGraphicsView(self.cutout_scene)
-        self.cutout_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.cutout_view.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        dock_v_layout.addWidget(QLabel("Detected Object Cutouts:"))
-        dock_v_layout.addWidget(self.cutout_view)
-        # Rotation Controls
-        from PyQt5.QtWidgets import QSlider, QDoubleSpinBox
-        self.rotation_slider = QSlider(Qt.Horizontal)
-        self.rotation_slider.setRange(-180, 180)
-        self.rotation_slider.setValue(0)
-        self.rotation_spinbox = QDoubleSpinBox()
-        self.rotation_spinbox.setRange(-180, 180)
-        self.rotation_spinbox.setSingleStep(0.1)
-        self.rotation_spinbox.setDecimals(1)
-        self.rotation_slider.valueChanged.connect(self.rotation_spinbox.setValue)
-        self.rotation_spinbox.valueChanged.connect(self.rotation_slider.setValue)
-        self.rotation_spinbox.valueChanged.connect(self.set_selected_item_rotation)
-        dock_v_layout.addWidget(QLabel("Rotation (Selected Object):"))
-        dock_v_layout.addWidget(self.rotation_slider)
-        dock_v_layout.addWidget(self.rotation_spinbox)
-        self.rotation_slider.setDisabled(True)
-        self.rotation_spinbox.setDisabled(True)
-        dock_widget_content.setLayout(dock_v_layout)
-        self.dock_panel.setWidget(dock_widget_content)
+    # --- Dock Widget for Cutouts and Rotation Controls ---
+    self.dock_panel = QDockWidget("Object Cutouts & Controls", self)
+    self.addDockWidget(Qt.RightDockWidgetArea, self.dock_panel)
+    dock_widget_content = QWidget()
+    dock_v_layout = QVBoxLayout(dock_widget_content)
+    # Cutout View (placeholder, can be filled in future)
+    self.cutout_scene = QGraphicsScene()
+    self.cutout_view = QGraphicsView(self.cutout_scene)
+    self.cutout_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+    self.cutout_view.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+    dock_v_layout.addWidget(QLabel("Detected Object Cutouts:"))
+    dock_v_layout.addWidget(self.cutout_view)
+    # Rotation Controls
+    from PyQt5.QtWidgets import QSlider, QDoubleSpinBox
+    self.rotation_slider = QSlider(Qt.Horizontal)
+    self.rotation_slider.setRange(-180, 180)
+    self.rotation_slider.setValue(0)
+    self.rotation_spinbox = QDoubleSpinBox()
+    self.rotation_spinbox.setRange(-180, 180)
+    self.rotation_spinbox.setSingleStep(0.1)
+    self.rotation_spinbox.setDecimals(1)
+    self.rotation_slider.valueChanged.connect(self.rotation_spinbox.setValue)
+    self.rotation_spinbox.valueChanged.connect(self.rotation_slider.setValue)
+    self.rotation_spinbox.valueChanged.connect(self.set_selected_item_rotation)
+    dock_v_layout.addWidget(QLabel("Rotation (Selected Object):"))
+    dock_v_layout.addWidget(self.rotation_slider)
+    dock_v_layout.addWidget(self.rotation_spinbox)
+    self.rotation_slider.setDisabled(True)
+    self.rotation_spinbox.setDisabled(True)
+    dock_widget_content.setLayout(dock_v_layout)
+    self.dock_panel.setWidget(dock_widget_content)
 
-        # Connect selection change to update rotation controls
-        self.working_plane_scene.selectionChanged.connect(self.update_rotation_widgets)
+    # Connect selection change to update rotation controls
+    self.working_plane_scene.selectionChanged.connect(self.update_rotation_widgets)
 
     def reset_plane(self):
         self.working_plane_scene.clear()
@@ -240,15 +240,15 @@ class MainWindow(QMainWindow):
     self.perspective_btn.clicked.connect(self.open_perspective_editor)
     right_panel.addWidget(self.perspective_btn)
 
-        # --- Status/Instruction Text ---
-        self.status_text = QTextEdit("Welcome to MyCobot Control GUI!")
-        self.status_text.setReadOnly(True)
-        right_panel.addWidget(self.status_text)
+    # --- Status/Instruction Text ---
+    self.status_text = QTextEdit("Welcome to MyCobot Control GUI!")
+    self.status_text.setReadOnly(True)
+    right_panel.addWidget(self.status_text)
 
-        # --- Timer for periodic GUI updates (if needed) ---
-        self.gui_timer = QTimer(self)
-        self.gui_timer.timeout.connect(self.periodic_update)
-        self.gui_timer.start(100)  # 10 Hz
+    # --- Timer for periodic GUI updates (if needed) ---
+    self.gui_timer = QTimer(self)
+    self.gui_timer.timeout.connect(self.periodic_update)
+    self.gui_timer.start(100)  # 10 Hz
 
     # --- GUI Update Methods (slots for ROS signals) ---
     def collect_arranged_objects(self):
