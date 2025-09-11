@@ -673,14 +673,21 @@ This is the dedicated package for your user interface.
 
 - **Separation of Concerns:**
   
-  1. `mycobot280pi_gui/grcn_main.py`(The main entry point)
+  1. `grcn_main.py` (The main entry point). 
   
-  2. `mycobot280pi_gui/grcn_pyqt_gui_app.py` (The main GUI window and layout with PyQt)
+  2. `grcn_gui_main_window.py` (The main GUI window and layout). 
   
-  3. `mycobot280pi_gui/grcn_ros_communication.py`(The ROS communication class)
+  3. `grcn_gui_camera_panel.py` (The camera feed panel). 
   
-  4. `mycobot280pi_gui/grcn_pyqt_widget.py`(A custom PyQt widget for the image display)
-
+  4. `grcn_gui_working_plane.py` (The working plane visualization).
+  
+  5. `grcn_gui_dock_panel.py` (The object cutout and rotation panel).
+  
+  6. `grcn_gui_control_panel.py` (The button and control panel).
+  
+  7. `grcn_pyqt_widget.py` (Custom PyQt widgets).
+  
+  8. `grcn_ros_communication.py` (The ROS communication class). 
 ---
 
 ### `planner_robot_node` Node Breakdown 🤖
@@ -1109,7 +1116,7 @@ It's pre-existen ROS2 packages. no need to build anything
 ---
 
 # ====== IMPORTANT FILES AND FOLDERS =====
-
+WAIT INI KOK BLOM MATCHING Y
 ```bash
 .
 └── src
@@ -1141,19 +1148,22 @@ It's pre-existen ROS2 packages. no need to build anything
     │   │   ├── vodn_main_ros_node.py
     │   │   ├── vodn_message_converter.py
     │   │   ├── vodn_object_detection.py
+    │   │   │    
     │   │   ├── vptn_main_ros_node.py
     │   │   ├── vptn_perspective_transform.py
+    │   │   │     
     │   │   ├── vun_main_ros_node.py
+    │   │   │ 
     │   │   └── __init__.py
     │   │
     │   ├── package.xml
     │   ├── setup.py    
     │   └── ...
     │   
-    ├── mycobot280pi_robot
+    ├── mycobot280pi_gui
     │   │
-    │   ├── mycobot280pi_robot
-    │   │   ├── rmjpn_main_ros_node.py
+    │   ├── mycobot280pi_gui
+    │   │   ├── grcn_main.py
     │   │   ├── rmen_main_ros_node.py
     │   │   ├── rmen_mycobot_interface.py
     │   │   ├── rmen_robot_state_manager.py
@@ -1162,6 +1172,21 @@ It's pre-existen ROS2 packages. no need to build anything
     │   ├── package.xml
     │   ├── setup.py    
     │   └── ...
+    │   
+    
+    
+    │   │   ├── grcn_gui_camera_panel.py
+    │   │   ├── grcn_gui_control_panel.py
+    │   │   ├── grcn_gui_dock_panel.py
+    │   │   ├── grcn_gui_main_window.py
+    │   │   ├── grcn_gui_working_plane.py
+    │   │   ├── grcn_main.py
+    │   │   ├── grcn_pyqt_widget.py
+    │   │   ├── grcn_ros_communication.py
+
+    
+    
+    
     │
     ├── mycobot280pi_planner
     │   │
@@ -1176,19 +1201,19 @@ It's pre-existen ROS2 packages. no need to build anything
     │   ├── setup.py    
     │   └── ...
     │
-    └── mycobot280pi_gui
+    └── mycobot280pi_robot
         │
-        ├── mycobot280pi_gui
-        │   ├── grcn_main.py
-        │   ├── grcn_pyqt_gui_app.py
-        │   ├── grcn_pyqt_widget.py
-        │   ├── grcn_ros_communication.py
+        ├── mycobot280pi_robot
+        │   ├── rmjpn_main_ros_node.py
+        │   │   
+        │   ├── rmen_main_ros_node.py
+        │   ├── rmen_mycobot_interface.py
+        │   ├── rmen_robot_state_manager.py
         │   └── __init__.py
         │
         ├── package.xml
-        ├── setup.py
-        └── ...bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-
+        ├── setup.py    
+        └── ...
 # LAUNCH FILES CREATION
 
 we'r using 
