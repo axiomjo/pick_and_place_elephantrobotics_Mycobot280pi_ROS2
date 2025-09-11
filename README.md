@@ -1,17 +1,61 @@
-[LAST EDITED: 8 SEP 2025 16:49]
+[LAST EDITED: 11 SEP 2025 17:21]
 
 # Implementasi_MyCobot280pi_ROS2
 
 branch `FINAL_VERSION`
-this branch will be the one with clear patterns.    
+this branch will be the one with clear patterns and naming conventions.    
+
+# === SYSTEM OVERVIEW ===
+![](ASSET_README/PLCHLDR_overview_graph.jpg)
+
+Sistem robot + antarmuka visual untuk mempermudah pengoperasian Mycobot 280 pi, dalam menjalankan tugas vacuum-and-place.
+Dilengkapi computer vision, sehingga bisa ngerti konteks objek di lingkungannya.
 
 --- 
+
+dibuat untuk Tugas Akhir  
+Josephine Dermawan   
+Institut Sains dan Teknologi Terpadu Surabaya  
+2025  
+
+yg berjudul :  
+"Implementasi Lengan Robot MyCobot 280 Pi untuk Memindahkan Koleksi Tanaman Kering di antara Lembaran Buku"
+
+# === Author's Note ===
+Hi buat siapapun yg baca repo ini.  
+
+tbh, aku gmw lanjutin proyek ini klo dah lulus. 
+tapi semoga repo ini bisa jadi pintu masuk buat anak2 elektro (atau infor) di ISTTS
+yg mo nyentuh ROS2 .
+
+Selama development, aku pake:  
+- Linux Ubuntu 20.04 *  
+- ROS2 Galactic Geochelone *  
+- pymycobot 3.4.7 **  
+- OpenCV (opencv-contrib-python 4.12.0.88)  
+
+* Linux sana ROS2 nya kudu sepasang, krn tiap distro ROS2 punya distro linux yg direkomendasiin. why? i dunno, its what their devs said. 
+* aku kekeuh pake ini krn tahun 2025, elephantrobotics blom ngeluarin image buat upgrade rasppi robotnya, jadi stuck sama ubuntu 20.04 :[ . kyknya merek lebih pingin ngelanjutin mycobot yg jetson nano daripada pi. mboh ya.
+** pymycobot ada versi terbaru, tapi krn aku gaberani ngutak-ngatik sistem robotnya, aku putusin laptopnya ngikut robotnya.
+*** kampus punya lengan robot, ada 2. di jurusan teknik industri.
+
+mungkin ini bakal jadi repo mati.  
+tapi moga ada manfaatnya dikit lah.  
+
+klo mau liat buku TA ku, bisa diakses di github repo yg ini (klo udh kubikin public LOL):
+https://github.com/axiomjo/konten_TA# 
+
+mulai dari sini ke bawah, bahasanya nyampur2 inggris indo ya. soalnya aku capek mikir.
+jadi.... uhmmm... i'll choose whichever is easier for me anyways.
+have fun exploring. u'll definitely find little notes here and there.
 
 # === HOW TO RUN THIS SYSTEM ===
 
 
 ```
+# TO-DO: LAUNCH FILE.
 
+# SEMENTARA: NODE SATU-SATU.
 
  ros2 run mycobot280pi_gui gui_robot_control_node
  
@@ -39,131 +83,16 @@ ros2 run mycobot280pi_robot robot_mycobot_joint_publisher_node
 
 ```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-part not written yet
 ---
 
-# 📌 What to Code First (MVP Plan)
-
-* **Step 1: Get the Robot Moving Manually.**
-  
-  * Goal: Be able to send basic movement commands to the robot and see its state.
-  * Tasks:
-    * ✅ **Complete:** Install ROS 2 Galactic and test MyCobot's movement.
-    * ✅ **Complete:** Verify LAN communication with the MyCobot 280 Pi.
-    * Build the robot description file and put it in `urdf` directory inside the robot package.
-    * Build the `robot_mycobot_executor_node` to receive simple commands and control the robot via the `pymycobot` API.
-    * Test manual commands by publishing to `/planner/manual_commands`.
-
-* **Step 2: Get the Camera Feed Working.**
-  
-  * Goal: Display the camera feed in the GUI.
-  * Tasks:
-    * Use `usb_cam` to capture and display a video feed.
-    * Generate the necessary camera calibration file for `vision_undistorter_node` using charuco and a python file. just do it once, and put it inside `hardware_specifics` inside the vision package.
-    * Build the `vision_undistorter_node` to correct lens distortion.
-    * Build the `gui_robot_control_node` with a basic video display widget to subscribe to `/vision/undistorted_image`.
-
-* **Step 3: Implement Object Detection and Perspective Transform.**
-  
-  * Goal: Accurately identify an object's location and publish it to the planner.
-  * Tasks:
-    * Build the `vision_perspective_transformer_node` to perform the perspective transform.
-    * Build the `vision_object_detector_node` to run a blob detection algorithm.
-    * Ensure the GUI can publish perspective points to `/vision/perspective_points`.
-    * Verify that `/vision/detected_objects` is correctly publishing the object data.
-
-* **Step 4: Create the Planner & Executor Loop.**
-  
-  * Goal: Make the robot move to a detected object and perform a simple pick action.
-  * Tasks:
-    * Build the core `planner_robot_node`.
-    * Have the `planner_robot_node` subscribe to `/vision/detected_objects`.
-    * Implement the planning logic to receive object coordinates and publish commands to `/planner/commands`.
-    * Write the logic in `robot_mycobot_executor_node` to handle simple vacuum pump on/off commands.
-
-* **Step 5: Full Automated Pick-and-Place Cycle.**
-  
-  * Goal: Automate the entire process from detection to dropping the object.
-  * Tasks:
-    * Add the necessary logic to `planner_robot_node` to handle the full sequence:
-      1. Move arm to object.
-      2. Activate vacuum pump.
-      3. Lift and move object to a drop zone.
-      4. Release object.
-    * Integrate the `ProcessWorkspace` action server and client so the GUI can initiate a full cycle.
-    * Test the end-to-end functionality to ensure the robot can reliably pick up and place an object.
-
----
-
-trus:
-
-- gdocs & pdf buku TA,
-- slides presentasi,
-- poster,
-- artikel ilmiah
-  (ini apalagi yg kurang? mumet gw baca panduan BAA)
-
----
-
-Project Milestones & Progress
-
-## Important Deadlines:
-
-* **PRASEM DAFTAR (P_DAFTAR):** September 9, 2025
-* **PRASEM ACT (P_AKTUAL):** September 15-19, 2025 (Actual date will be updated :>)
-* **DOSEN ESTETIK (D_ESTETIK):** September 25, 2025
-* **SEMINAR DAFTAR (S_DAFTAR):** October 7, 2025
-* **SEMINAR AKTUAL (S_AKTUAL):** October 13-17, 2025
-* **BUKU BAA (BUKU_BAA):** November 7, 2025
-* **SYARAT YUDIS (SYAR_YUDI):** November 10, 2025
-* **YUDISIUM (YUDISIUM):** November 12, 2025
-
----
 
 # ==== NODE COMMUNICATION =======
 
 ### **1. `vision_usb_cam_node`** Node 📸  (ROS2 PRE-BUILT PKG)
 
-**"Ciri Khas":** The Raw Image Publisher
-**Role:** Publisher
-**Function:** Captures raw, barrel-distorted images from the webcam using the ROS2's preexisting `usb_cam` package. It's the main image source for the pipeline.
-**Expected Task:** Continuously stream raw images from the webcam.
+**"Ciri Khas":** The Streamer.  
+**Function:** Captures raw, barrel-distorted images from the webcam using the ROS2's preexisting `usb_cam` package. It's the main image source for the pipeline. serius ini gunanya cuma ngasih image stream aja wkwkwkwkwk.  
+**Expected Task:** Continuously stream raw images from the webcam.  
 
 #### Node Parameter Configuration
 
@@ -191,11 +120,11 @@ buat tau param -p video_device:="/dev/APAAAAAINII"  kadang sering ganti2 soalnya
 
    
 ```
-#### Node Communication
+#### Node Communication Role
 
 ##### Publishers
 
-1. `/camera/image_raw` Topic
+1. `/camera/msg_image_raw` Topic
    * **Interface Type:** `sensor_msgs/msg/Image`
    * **Details:** Publishes to `vision_undistorter_node`.
 
@@ -203,10 +132,9 @@ buat tau param -p video_device:="/dev/APAAAAAINII"  kadang sering ganti2 soalnya
 
 ### **2. `vision_undistorter_node`**  Node 🛠️
 
-**"Ciri Khas":** The Barrel Distortion Fixer
-**Role:** Subscriber & Publisher
-**Function:** Subscribes to `/camera/image_raw`, applies lens correction, and publishes a cleaner, undistorted image stream.
-**Expected Task:** Provide undistorted images for downstream nodes.
+**"Ciri Khas":** The Barrel Distortion Fixer  
+**Function:** Subscribes to the topic `/camera/image_raw`, applies lens correction, and publishes a cleaner, undistorted image stream. btw, dapet data buat ngoreksi distortionnya pake ChArUCo 10x10. trus aku pake python script buat generate .yaml file untuk nyimpen data-data cameranya.  
+**Expected Task:** Provide undistorted images for downstream nodes.  
 
 #### Node Parameter Configuration
 
@@ -221,17 +149,17 @@ buat tau param -p video_device:="/dev/APAAAAAINII"  kadang sering ganti2 soalnya
    
 ```
 
-#### Node Communication
+#### Node Communication Role
 
 ##### Subscribers
 
-1. `/camera/image_raw` Topic
+1. `/camera/msg_image_raw` Topic
    * **Interface Type:** `sensor_msgs/msg/Image`
    * **Details:** Receives from `vision_usb_cam_node`.
      
 ##### Publishers
 
-1. `/vision/undistorted_image` Topic
+1. `/vision/msg_undistorted_image` Topic
    * **Interface Type:** `sensor_msgs/msg/Image`
    * **Details:** Publishes to `vision_perspective_transformer_node` and `gui_robot_control_node`.
 
@@ -239,26 +167,25 @@ buat tau param -p video_device:="/dev/APAAAAAINII"  kadang sering ganti2 soalnya
 
 ### **3. `vision_perspective_transformer_node`** Node 📐
 
-**"Ciri Khas":** The Perspective Aligner
-**Role:** Subscriber & Publisher
-**Function:** Listens for perspective points from the GUI and the latest undistorted image, performs a perspective transform, and publishes the corrected image.
-**Expected Task:** Transform the image based on user-selected points and publish the result.
+**"Ciri Khas":** The Alligner  
+**Function:** Subscribes to image stream`/camera/msg_image_raw` from the node before, and also subscribes to `/vision/msg_four_perspective_points` that was provided by the GUI.it then performs a perspective transform, and publishes the corrected image at the topic `/vision/msg_top_down_image` . yk, kyk fitur cam scanner yg geser2 titik buat nge-crop dokumen, kyk fitur ibispaint X yg bisa perspective warp sebuah image :D. mereka inspirasiku wkwkwkwk.  
+**Expected Task:** Transform the image based on user-selected points and publish the result.  
 
-#### Node Communication
+#### Node Communication Role
 
 ##### Subscribers
 
-1. `/vision/undistorted_image` Topic
+1. `/vision/msg_undistorted_image` Topic
    * **Interface Type:** `sensor_msgs/msg/Image`
    * **Details:** Receives from `vision_undistorter_node`.
 
-2. `/vision/perspective_points` Topic
+2. `/vision/msg_four_perspective_points` Topic
    * **Interface Type:** `mycobot280pi_interfaces/msg/Point2DArray`
    * **Details:** Receives from `gui_robot_control_node`.
      
 ##### Publishers
 
-1. `/vision/corrected_image` Topic
+1. `/vision/msg_top_down_image` Topic
    * **Interface Type:** `sensor_msgs/msg/Image`
    * **Details:** Publishes to `vision_object_detector_node` and `gui_robot_control_node`.
 
@@ -266,80 +193,97 @@ buat tau param -p video_device:="/dev/APAAAAAINII"  kadang sering ganti2 soalnya
 
 ### **4. `vision_object_detector_node`** Node 🎯
 
-**"Ciri Khas":** The Finder
-**Role:** Subscriber & Publisher
-**Function:** Subscribes to the perspective-corrected image, runs blob detection algorithm, and publishes detected object data and the image for the GUI.
-**Expected Task:** Detect objects in the corrected image and publish results.
+**"Ciri Khas":** The Finder  
+**Function:** constantly detects blob in the `/vision/msg_top_down_image` image stream from the node before, runs blob detection algorithm, gets their center points, draw bounding boxes, and publishes detected object data `/vision/detected_objects`  and the image `/vision/msg_annotated_image`  for the GUI.  
+**Expected Task:** Detect objects in the corrected image and publish results.  
 
-#### Node Communication
+#### Node Communication Role
 
 ##### Subscribers
 
-1. `/vision/corrected_image` Topic
+1. `/vision/msg_top_down_image` Topic
    * **Interface Type:** `sensor_msgs/msg/Image`
    * **Details:** Receives from `vision_perspective_transformer_node`.
      
 ##### Publishers
 
-2. `/vision/detected_objects` Topic
+1. `/vision/msg_detected_objects` Topic
    * **Interface Type:** `mycobot280pi_interfaces/msg/ManyDetectedObjects`
    * **Details:** Publishes to `planner_robot_node` and `gui_robot_control_node`.
 
+2. `/vision/msg_annotated_image` Topic
+   * **Interface Type:** `sensor_msgs/msg/Image`
+   * **Details:** Publishes to `planner_robot_node` and `gui_robot_control_node`.
+  
 ---
 
 ### **5. `gui_robot_control_node`** Node 💻
 
-**"Ciri Khas":** The Commander
-**Role:** User Interface
-**Function:** The user interface for monitoring and controlling the robot. It displays live data, lets users set perspective points, displays the final detection results, provides manual controls, and initiates complex tasks.
-**Expected Task:**
+**"Ciri Khas":** The Commander  
+**Function:** take a deep breath... this one got a LOT of responsibilities as the gui. basically, it gives the user an easy way to control the visual correction, monitor the robot, and control the robot using simple and complex commands. and coz its so big, this node will be divided up into python modules.   
 
-* Display image streams, final processed image, and object cutouts
+to control the visual correction, this node displays a smaller version of `/vision/msg_undistorted_image` and then overlaying that image with four draggable connected points. this gui node then publishes the mapped position of those points into an array in `/vision/msg_four_perspective_points`, so that `vision_perspective_transformer_node` can do its transformation. the resulting perspective transformed image`/vision/msg_top_down_image` is displayed in the gui. thus, users can keep adjusting the fours points until the whole 300mmx300mm workspace area is detected. 
+
+btw, how does the system provide the objects that user can interact with in the workspace? well, the detected object information `/vision/msg_detected_objects` is used as the anchor to crop object images in the bounding box `/vision/msg_annotated_image` ! theen, through a series of geometric mathematical calculation to finally know where to put these cutouts in the user's workspace, u can see a simplified but correct-ish representation of the real world from top down view! fyi, from this project, i just learned that computer graphics coordinate system ISN'T EXACTLY THE SAME as a typical cartesian coordinate system... it's y axis is flipped... AND THE CENTER POINT of computer graphics coordinate system isn't in the center of the screen, its on the top left(?) corner of the screen. like, whyyyyyyy? i spent more than a day trying to give transforms so in the end it can mimic a conventional coordinate system :''''''''''''''''']  
+
+then, to let the user tell the robot what things to move where A.K.A complex command, the gui have a workspace area where users can drag, drop, and edit the orientation of the detected image, before finally calling an action `/planner/process_workspace` ! btw, this part stumped me coz thinking about a gui like this is NOT SMTHG i learned in any of my college classes :\ . i take inspiration from games hahahaha. this gui node then saves a list of "moved objects" and their "before-after" and shove it all to the `planner_robot_node`. good luck planner node, ur the one who has to think hard to complete this action hahahaha. along the progress that the planner node does, the gui will get feedback that will be displayed to the user. this way, u can know how much items left the robot needs to move around.  
+
+to control the robot with simple commands, the gui provides buttons. A LOT OF BUTTONS. from a panel with a button to add a square, which can be used as a visual marker to move the robot to it's center point, and a button to tell the robot to go there, an EMERGENCY button to STOP AND GO TO HOME POSITION if anything bad happens, and even buttons to manually set the vacuum pump. the gui basically trriggers a publish for `/planner/manual_commands` so the  `planner_robot_node` can know what user wants to do simple stuff. btw, klo tadi habis nyuruh robotnya complex command, buttons ini semua, kecuali yg EMERGENCY, bakal ke-disable, kecuali kita rela cancel actionnya di tengah jalan...  
+
+if the user want to refresh the scene since they felt that the current worksapce no longer reflect the real-world condition, they can always press the "refresh scene" button, and the gui's memory will be reset-ed into a fresh new clean slate, importing the objects that is detected in `/vision/msg_annotated_image`.   
+
+btw, in the workspace, theres a small portion reserved for book fipping. user can flip the book pages and put items there to place stuff inside the book. honestly, i regret promising this feature in the proposal because it makes MY PROJECT HARDER THAN IT COULD'VE BEEN :c . but i guess it adds a cool memorable feature? idk. semoga ga sia2 mikir buat ini.  
+
+lastly, to see the way this robot joints move in real-time, user can see the displayed `/robot/msg_joint_angles` that is presented in bars. i take inspiration from gazebo11's interface that lets user move the robot's end effector. fyi, mycobot has limits for their joints :[ klo kamu paksa dia muter lebih dari yg dia bisa... shell robotnya bisa retak... kan ga lucu ya... :c partnya bujubuneng mahalnya weh, jgn dah.  
+
+**Rangkuman Tugas:**
+
+* Display image streams & final processed image
 
 * Allow interactive perspective editing
 
-* Publish points to trigger a one-time scene processing
+* Allow interactive workspace editing
 
-* Display the robot's current joint angles and Cartesian coordinates.
+* Reports the robot's current joint angles from J1 to J6 
+
+* Initiate simple commands
 
 * Initiate robot planner and displays real time report
   
-#### Node Communication
+#### Node Communication Role
   
 ##### Subscribers
-1. `/vision/undistorted_image` Topic
+1. `/vision/msg_undistorted_image` Topic
    * **Interface Type:** `sensor_msgs/msg/Image`
    * **Details:** Receives from `vision_undistorter_node`.
 
-2. `/vision/corrected_image` Topic
-   * **Interface Type:** `sensor_msgs/msg/Image`
-   * **Details:** Receives from `vision_perspective_transformer_node`.
-
-3. `/vision/detected_objects` Topic
+2. `/vision/msg_detected_objects` Topic
    * **Interface Type:** `mycobot280pi_interfaces/msg/ManyDetectedObjects`
    * **Details:** Receives from `vision_object_detector_node`.
 
-4. `/robot/joint_states` Topic
+3. `/vision/msg_annotated_image` Topic
+   * **Interface Type:** `sensor_msgs/msg/Image`
+   * **Details:** Receives from `vision_object_detector_node`.
+
+4. `/robot/msg_joint_angles` Topic
    * **Interface Type:** `sensor_msgs/msg/JointState`
-   * **Details:** Receives from `robot_mycobot_joint_publisher_node`.
+   * **Details:** Receives from `robot_joint_publisher_node`.
 
    
 ##### Publishers
 
-1. `/vision/perspective_points` Topic
+1. `/vision/msg_four_perspective_points` Topic
    * **Interface Type:** `mycobot280pi_interfaces/msg/Point2DArray`
    * **Details:** Publishes to `vision_perspective_transformer_node`.
+ 
+======================================================== 11 sept 2025 19:33 INI BARU SAMPE SINI NGEDITNYA =================================================== 
+    
+##### Service Client
 
-2. `/planner/manual_commands` Topic
-   * **Interface Type:** `mycobot280pi_interfaces/msg/SimpleCommands`
-   * **Details:** Publishes to `planner_robot_node`.
-     
-##### Service Clients
-
-1. `/planner/set_coords` Service
-   * **Interface Type:** `mycobot280pi_interfaces/srv/Mycobot280PiSetCoordsMadeSure`
-   * **Details:** Sends requests to `planner_robot_node`.
-     
+1. `/planner/srv_simple_command` Service
+   * **Interface Type:** `mycobot280pi_interfaces/srv/Mycobot280PiSimpleCommandsMadeSure`
+   * **Details:** Sends requests to `gui_robot_control_node`.
+   
 ##### Action Clients
 
 1. `/planner/process_workspace` Action
@@ -351,12 +295,11 @@ buat tau param -p video_device:="/dev/APAAAAAINII"  kadang sering ganti2 soalnya
 ### **6. `planner_robot_node`** Node 🤖
 
 **"Ciri Khas":** The Robot Planner
-**Role:** Action Server, Service Server, Command Dispatcher
-**Function:** Plan and execute a sequence of robot actions.
-Allow both manual movement via service calls and automated planning via actions.
+**Function:** Plan and execute a sequence of robot actions. btw, node planner ini kan dapet 2 jenis perintah ya, yg complex sama yg simpel2. trus, gmn cara dia mikir? well, di dalem node ini, ada switch case yg panjang buat mecah perintah complex ke perintah simpel wkwkwkwkwkwk. trus si planner node ini bakal ngepublish 
+
 **Expected Task:** Plan and execute a sequence of robot actions and report progress back to the GUI.
 
-#### Node Communication
+#### Node Communication Role
 
 ##### Subscribers
 
@@ -397,7 +340,7 @@ Allow both manual movement via service calls and automated planning via actions.
 **Function:** Publishes the robot’s joint states for GUI visualization and monitoring.
 **Expected Task:** Continuously report joint state.
 
-#### Node Communication
+#### Node Communication Role
 
 ##### Publishers
 
@@ -414,7 +357,7 @@ Allow both manual movement via service calls and automated planning via actions.
 **Function:** Translates commands to ElephantRobotics'  pymycobot API calls in the robot.
 **Expected Task:** Perform robot actions as commanded.
 
-#### Node Communication
+#### Node Communication Role
 
 ##### Subscribers
 
@@ -431,7 +374,7 @@ Allow both manual movement via service calls and automated planning via actions.
 **Function:** Subscribes to a variety of topics to display a complete 3D visualization of the robot using the ROS2's preexisting `rviz2` package
 **Expected Task:** Display robot and scene data for monitoring.
 
-#### Node Communication
+#### Node Communication Role
 
 ##### Subscribers
 
@@ -466,7 +409,7 @@ ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_descrip
 ```
  
 
-#### Node Communication
+#### Node Communication Role
 
 ##### Publishers
 
