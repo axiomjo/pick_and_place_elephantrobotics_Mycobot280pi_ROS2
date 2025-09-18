@@ -85,7 +85,7 @@ ros2 run mycobot280pi_robot robot_mycobot_joint_publisher_node
 
 ---
 
-
+[PENAMAAN INI UDH FIX, GA GANTI2 LAGI.]
 # ==== NODE COMMUNICATION =======
 
 ### **1. `vision_usb_cam_node`** Node 📸  (ROS2 PRE-BUILT PKG)
@@ -143,7 +143,7 @@ buat tau param -p video_device:="/dev/APAAAAAINII"  kadang sering ganti2 soalnya
    * **Details:** This parameter should be filled with the absolute path to a YAML file containing the camera's intrinsic calibration data from `camera_calibration.yaml`, which was generated from running the python script `charuco_calibration_file.py` inside `hardware_specifics`directory inside the vision package.  This file is used by the node to correct lens distortion in the image stream.
 
 ```
-   INI JUGA PAKE ACARA KUDU ABSOLUTE FILE PATH, GIMANA ATUH KLO AKU PINDAH ALAT. LAUNCHFILENYA GMN COBA
+   INI NTAR FILEPATHNYA KUDU DIURUS SM LAUNCHFILES. use FindPackageShare in the Python launch file. SO IT CAN dynamically finds the path to the package at runtime. tapi sementara, absolute dulu y.
    
    --ros-args -p camera_info_file:="/home/axiomjo/lab_robotik/eksperimental/ws_ROS2_mycobot280pi/src/CAM_object_detect/my_camera_capture/hardware_specifics/camera_calibration.yaml"
    
@@ -168,7 +168,7 @@ buat tau param -p video_device:="/dev/APAAAAAINII"  kadang sering ganti2 soalnya
 ### **3. `vision_perspective_transformer_node`** Node 📐
 
 **"Ciri Khas":** The Alligner  
-**Function:** Subscribes to image stream`/camera/msg_image_raw` from the node before, and also subscribes to `/vision/msg_four_perspective_points` that was provided by the GUI.it then performs a perspective transform, and publishes the corrected image at the topic `/vision/msg_top_down_image` . yk, kyk fitur cam scanner yg geser2 titik buat nge-crop dokumen, kyk fitur ibispaint X yg bisa perspective warp sebuah image :D. mereka inspirasiku wkwkwkwk.  
+**Function:** Subscribes to image stream`/vision/msg_undistorted_image` from the node before, and also subscribes to `/vision/msg_four_perspective_points` that was provided by the GUI.it then performs a perspective transform, and publishes the corrected image at the topic `/vision/msg_top_down_image` . yk, kyk fitur cam scanner yg geser2 titik buat nge-crop dokumen, kyk fitur ibispaint X yg bisa perspective warp sebuah image :D. mereka inspirasiku wkwkwkwk.  
 **Expected Task:** Transform the image based on user-selected points and publish the result.  
 
 #### Node Communication Role
@@ -179,7 +179,7 @@ buat tau param -p video_device:="/dev/APAAAAAINII"  kadang sering ganti2 soalnya
    * **Interface Type:** `sensor_msgs/msg/Image`
    * **Details:** Receives from `vision_undistorter_node`.
 
-2. `/vision/msg_four_perspective_points` Topic
+2. `/gui/msg_four_perspective_points` Topic
    * **Interface Type:** `mycobot280pi_interfaces/msg/Point2DArray`
    * **Details:** Receives from `gui_robot_control_node`.
      
@@ -209,11 +209,11 @@ buat tau param -p video_device:="/dev/APAAAAAINII"  kadang sering ganti2 soalnya
 
 1. `/vision/msg_detected_objects` Topic
    * **Interface Type:** `mycobot280pi_interfaces/msg/ManyDetectedObjects`
-   * **Details:** Publishes to `planner_robot_node` and `gui_robot_control_node`.
+   * **Details:** Publishes to `gui_robot_control_node`.
 
 2. `/vision/msg_annotated_image` Topic
    * **Interface Type:** `sensor_msgs/msg/Image`
-   * **Details:** Publishes to `planner_robot_node` and `gui_robot_control_node`.
+   * **Details:** Publishes to `gui_robot_control_node`.
   
 ---
 
@@ -228,7 +228,7 @@ btw, how does the system provide the objects that user can interact with in the 
 
 then, to let the user tell the robot what things to move where A.K.A complex command, the gui have a workspace area where users can drag, drop, and edit the orientation of the detected image, before finally calling an action `/planner/process_workspace` ! btw, this part stumped me coz thinking about a gui like this is NOT SMTHG i learned in any of my college classes :\ . i take inspiration from games hahahaha. this gui node then saves a list of "moved objects" and their "before-after" and shove it all to the `planner_robot_node`. good luck planner node, ur the one who has to think hard to complete this action hahahaha. along the progress that the planner node does, the gui will get feedback that will be displayed to the user. this way, u can know how much items left the robot needs to move around.  
 
-to control the robot with simple commands, the gui provides buttons. A LOT OF BUTTONS. from a panel with a button to add a square, which can be used as a visual marker to move the robot to it's center point, and a button to tell the robot to go there, an EMERGENCY button to STOP AND GO TO HOME POSITION if anything bad happens, and even buttons to manually set the vacuum pump. the gui basically trriggers a publish for `/planner/manual_commands` so the  `planner_robot_node` can know what user wants to do simple stuff. btw, klo tadi habis nyuruh robotnya complex command, buttons ini semua, kecuali yg EMERGENCY, bakal ke-disable, kecuali kita rela cancel actionnya di tengah jalan...  
+to control the robot with simple commands, the gui provides buttons. A LOT OF BUTTONS. from a panel with a button to add a square, which can be used as a visual marker to move the robot to it's center point, and a button to tell the robot to go there, an EMERGENCY button to STOP AND GO TO HOME POSITION if anything bad happens, and even buttons to manually set the vacuum pump. the gui basically trriggers a service call for `/planner/srv_simple_command` so the  `planner_robot_node` can know when user wants to do simple stuff. btw, klo tadi habis nyuruh robotnya complex command, buttons ini semua, kecuali yg EMERGENCY, bakal ke-disable, kecuali kita rela cancel actionnya di tengah jalan...  
 
 if the user want to refresh the scene since they felt that the current worksapce no longer reflect the real-world condition, they can always press the "refresh scene" button, and the gui's memory will be reset-ed into a fresh new clean slate, importing the objects that is detected in `/vision/msg_annotated_image`.   
 
@@ -267,90 +267,60 @@ lastly, to see the way this robot joints move in real-time, user can see the dis
 
 4. `/robot/msg_joint_angles` Topic
    * **Interface Type:** `sensor_msgs/msg/JointState`
-   * **Details:** Receives from `robot_joint_publisher_node`.
+   * **Details:** Receives from `mycobot_jointangles_publisher_node`.
 
    
 ##### Publishers
 
-1. `/vision/msg_four_perspective_points` Topic
+1. `/gui/msg_four_perspective_points` Topic
    * **Interface Type:** `mycobot280pi_interfaces/msg/Point2DArray`
    * **Details:** Publishes to `vision_perspective_transformer_node`.
  
-======================================================== 11 sept 2025 19:33 INI BARU SAMPE SINI NGEDITNYA =================================================== 
     
 ##### Service Client
 
 1. `/planner/srv_simple_command` Service
    * **Interface Type:** `mycobot280pi_interfaces/srv/Mycobot280PiSimpleCommandsMadeSure`
-   * **Details:** Sends requests to `gui_robot_control_node`.
+   * **Details:** Sends requests to `robot_planner_node`.
    
 ##### Action Clients
 
-1. `/planner/process_workspace` Action
+1. `/planner/act_complex_command` Action
    * **Interface Type:** `mycobot280pi_interfaces/action/ProcessWorkspace`
-   * **Details:** Sends requests to `planner_robot_node`.
+   * **Details:** Sends requests to `robot_planner_node`.
 
 ---
 
 ### **6. `planner_robot_node`** Node 🤖
 
 **"Ciri Khas":** The Robot Planner
-**Function:** Plan and execute a sequence of robot actions. btw, node planner ini kan dapet 2 jenis perintah ya, yg complex sama yg simpel2. trus, gmn cara dia mikir? well, di dalem node ini, ada switch case yg panjang buat mecah perintah complex ke perintah simpel wkwkwkwkwkwk. trus si planner node ini bakal ngepublish 
+**Function:** Plan and execute a sequence of robot actions. btw, node planner ini kan dapet 2 jenis perintah ya, yg complex sama yg simpel2. klo yg simpel,`/planner/srv_simple_command`, ya cuma dapet trus lakuin. klo yg complex, `/planner/act_complex_command`, ada feedback sepanjang lagi ngerjain. trus, gmn cara dia mikir? well, di dalem node ini, ada switch case yg panjang buat mecah perintah complex ke perintah primitif wkwkwkwkwkwk. trus si planner node ini bakal ngepublish `/planner/msg_primitive_commands` ke `robot_executor_node`. knp ga service? mumet. lebih gampang publish. dan mycobot bisa.
 
-**Expected Task:** Plan and execute a sequence of robot actions and report progress back to the GUI.
+**Expected Task:** Plan and execute the generated sequence of robot commands. 
 
 #### Node Communication Role
+  
+##### Publisher
 
-##### Subscribers
-
-1. `/vision/detected_objects` Topic
-   * **Interface Type:** `mycobot280pi_interfaces/msg/ManyDetectedObjects`
-   * **Details:** Receives from `vision_object_detector_node`.  
-
-     
-2. `/planner/manual_commands` Topic
+1. `/planner/msg_primitive_command` Topic
    * **Interface Type:** `mycobot280pi_interfaces/msg/SimpleCommands`
-   * **Details:** Receives from `gui_robot_control_node`.
-    
-##### Publishers
-
-1. `/planner/commands` Topic
-   * **Interface Type:** `mycobot280pi_interfaces/msg/SimpleCommands`
-   * **Details:** Publishes to `robot_mycobot_executor_node`.
+   * **Details:** Publishes to `mycobot_executor_node`.
      
 ##### Service Server
 
-1. `/planner/set_coords` Service
-   * **Interface Type:** `mycobot280pi_interfaces/srv/Mycobot280PiSetCoordsMadeSure`
-   * **Details:** Receives requests from `gui_robot_control_node`.
-     
+1. `/planner/srv_simple_command` Service
+   * **Interface Type:** `mycobot280pi_interfaces/srv/Mycobot280PiSimpleCommandsMadeSure`
+   * **Details:** Handles service requests from `gui_robot_control_node`.
+   
 ##### Action Server
 
-1. `/planner/process_workspace` Action
-   
+1. `/planner/act_complex_command` Action
    * **Interface Type:** `mycobot280pi_interfaces/action/ProcessWorkspace`
-   * **Details:** Receives requests from `gui_robot_control_node`.
+   * **Details:** Handles action requests and give feedback to `gui_robot_control_node`.
 
 ---
 
-### **7. `robot_mycobot_joint_publisher_node`** Node 🦾
-
-**"Ciri Khas":** The Robot Joint Reporter
-**Role:** Publisher
-**Function:** Publishes the robot’s joint states for GUI visualization and monitoring.
-**Expected Task:** Continuously report joint state.
-
-#### Node Communication Role
-
-##### Publishers
-
-1. `/robot/joint_states` Topic
-   * **Interface Type:** `sensor_msgs/msg/JointState`
-   * **Details:** Publishes to `gui_robot_control_node`.
-
----
-
-### **8. `robot_mycobot_executor_node`** Node🏃
+### **7. `mycobot_executor_node`** Node🏃
 
 **"Ciri Khas":** The Command Executor inside the actual robot
 **Role:** MyCobot pymycobot API Executor
@@ -361,34 +331,30 @@ lastly, to see the way this robot joints move in real-time, user can see the dis
 
 ##### Subscribers
 
-1. `/planner/commands` Topic
+1. `/planner/msg_primitive_command` Topic
    * **Interface Type:** `mycobot280pi_interfaces/msg/SimpleCommands`
    * **Details:** Receives from `planner_robot_node`.
 
 ---
 
-### **9. `ui_rviz2_node`** Node 🖼️ (ROS2 PRE-BUILT PKG)
+### **8. `mycobot_jointangles_publisher_node`** Node 🦾
 
-**"Ciri Khas":** The Extra Visualizer
-**Role:** Visualization Tool
-**Function:** Subscribes to a variety of topics to display a complete 3D visualization of the robot using the ROS2's preexisting `rviz2` package
-**Expected Task:** Display robot and scene data for monitoring.
+**"Ciri Khas":** The Robot Joint Reporter
+**Role:** Publisher
+**Function:** calls the getangles() pymycobot API and publishes the each joint angles to `/robot/msg_joint_angles` for GUI visualization and monitoring.
+**Expected Task:** Continuously report joint state.
 
 #### Node Communication Role
 
-##### Subscribers
+##### Publishers
 
-1. `/rviz2/tf_static` Topic
-   * **Interface Type:** `tf2_msgs/msg/TFMessage`
-   * **Details:** Publishes the static transforms for the robot. These are the fixed relationships between a robot's links and are defined by the URDF. 
-     
-2. `/rviz2/tf` Topic
-   * **Interface Type:** `tf2_msgs/msg/TFMessage`
-   * **Details:** Receives from `mycobot_state_publisher_node`.
+1. `/robot/msg_joint_angles` Topic
+   * **Interface Type:** `sensor_msgs/msg/JointState`
+   * **Details:** Publishes to `gui_robot_control_node`.
 
 ---
 
-### **10. `mycobot_state_publisher_node`** Node 📝 (ROS2 PRE-BUILT PKG)
+### **9. `mycobot_state_publisher_node`** Node 📝 (ROS2 PRE-BUILT PKG)
 
 **"Ciri Khas":** The State Broadcaster
 **Role:** Publisher
@@ -401,28 +367,54 @@ lastly, to see the way this robot joints move in real-time, user can see the dis
    * **Details:** This parameter should be filled with  MyCobot290Pi robot's entire model in the Unified Robot Description Format (URDF). This is an example of it in my machine
    
 ```
-I NEED A LAUNCH FILE BUT DUNNO HOW TO xacro BEFORE PUTTING IT IN PARAM.
+I NEED MY LAUNCH FILE TO IMPORT XACRO AND PROCESS IT INSIDE AND THENNN PASS IT AS A LAUNCH FILE PARAM. ya tapi krn aku blom launch files, jadi di terminal gini dulu y.
 
    XACROED=$(xacro "/home/axiomjo/lab_robotik/eksperimental/ws_ROS2_mycobot280pi/install/mycobot_description/share/mycobot_description/urdf/mycobot_280_pi/mycobot_280_pi_with_pump.urdf" )
 
 ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_description:="${XACROED}"
 ```
- 
-
 #### Node Communication Role
 
 ##### Publishers
 
 1. `/rviz2/tf_static` Topic
    * **Interface Type:** `tf2_msgs/msg/TFMessage`
-   * **Details:** Publishes the static transforms for the robot. These are the fixed relationships between a robot's links and are defined by the URDF. 
+   * **Details:** Publishes the static transforms for the robot. These are the fixed relationships between a robot's links and are defined by the URDF.  Publishes to `ui_rviz2_node`.
    
 2. `/rviz2/tf` Topic
    * **Interface Type:** `tf2_msgs/msg/TFMessage`
-   * **Details:** This topic publishes the dynamic transforms of the robot, which are the transforms that change based on the joint states.
+   * **Details:** This topic publishes the dynamic transforms of the robot, which are the transforms that change based on the joint states. Publishes to `ui_rviz2_node`.
+
+ 
+---
+
+
+
+### **10. `ui_rviz2_node`** Node 🖼️ (ROS2 PRE-BUILT PKG)
+
+**"Ciri Khas":** The Extra Visualizer
+**Role:** Visualization Tool
+**Function:** Subscribes to a variety of topics to display a complete 3D visualization of the robot using the ROS2's preexisting `rviz2` package
+**Expected Task:** Display robot and scene data for monitoring.
+
+#### Node Communication Role
+
+##### Subscribers
+
+1. `/rviz2/tf_static` Topic
+   * **Interface Type:** `tf2_msgs/msg/TFMessage`
+   * **Details:** Receives the static transforms for the robot. These are the fixed relationships between a robot's links and are defined by the URDF. Receives from `mycobot_state_publisher_node`. 
+     
+2. `/rviz2/tf` Topic
+   * **Interface Type:** `tf2_msgs/msg/TFMessage`
+   * **Details:** Receives from `mycobot_state_publisher_node`.
+
+
 
 ---
 
+
+# =========================================== 18 ept DESKRIPSI NODE UDH WARAS. BARU SAMPE SINI================================
 # ===== INTERFACES FOR MESSAGES, SERVICES, ACTIONS ====
 
 [last editede: 6 Sep 2025 16:48]
@@ -988,7 +980,7 @@ mkdir mycobot280pi_robot/mycobot280pi_robot/urdf
 # Files for robot_mycobot_joint_publisher_node (rmjpn_)
 touch mycobot280pi_robot/mycobot280pi_robot/rmjpn_main_ros_node.py
 
-# Files for robot_mycobot_executor_node (rmen_)
+# Files for mycobot_executor_node (rmen_)
 touch mycobot280pi_robot/mycobot280pi_robot/rmen_main_ros_node.py
 touch mycobot280pi_robot/mycobot280pi_robot/rmen_mycobot_interface.py
 touch mycobot280pi_robot/mycobot280pi_robot/rmen_robot_state_manager.py
