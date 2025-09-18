@@ -6,7 +6,7 @@ branch `FINAL_VERSION`
 this branch will be the one with clear patterns and naming conventions.    
 
 # === SYSTEM OVERVIEW ===
-![](ASSET_README/ROS2_NODES_DESIGN.png.jpg)
+![sketsa nodes](ASSET_README/ROS2_NODES_DESIGN.png.jpg)
 
 Sistem robot + antarmuka visual untuk mempermudah pengoperasian Mycobot 280 pi, dalam menjalankan tugas vacuum-and-place.
 Dilengkapi computer vision, sehingga bisa ngerti konteks objek di lingkungannya.
