@@ -3,6 +3,9 @@
 
 This document details the architecture of the MyCobot 280 Pi ROS2 system. The system is composed of several nodes responsible for vision processing, user interface, motion planning, and robot control.
 
+![sketsa nodes](ASSET_README/ROS2_NODES_DESIGN.png)
+
+
 # ==== 01 : NODE COMMUNICATION =======
 
 ## NODE DETAILS
