@@ -40,7 +40,7 @@ endif()
   )
 
   set(srv_files
-    "srv/Mycobot280PiSetCoordsMadeSure.srv"
+    "srv/Mycobot280PiSimpleCommandsMadeSure.srv"
   )
 
   set(action_files

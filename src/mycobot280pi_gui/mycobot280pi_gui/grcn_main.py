@@ -7,7 +7,7 @@ Initializes the PyQt application and main window, and starts the event loop.
 import rclpy
 import sys
 from PyQt5.QtWidgets import QApplication
-from .grcn_pyqt_gui_app import MainWindow
+from .grcn_gui_main_window import MainWindow
 
 def main():
     
@@ -15,7 +15,9 @@ def main():
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
-    sys.exit(app.exec_())
+    exit_code = app.exec_()
+    rclpy.shutdown()
+    sys.exit(exit_code)
 
 if __name__ == "__main__":
     main()

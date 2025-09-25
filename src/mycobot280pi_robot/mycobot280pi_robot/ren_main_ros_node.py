@@ -1,5 +1,5 @@
 """
-rmen_main_ros_node.py
+ren_main_ros_node.py
 
 Main ROS2 node for robot_mycobot_executor_node.
 Listens for atomic robot commands from the planner and executes them using pymycobot.
@@ -8,8 +8,8 @@ Listens for atomic robot commands from the planner and executes them using pymyc
 import rclpy
 from rclpy.node import Node
 from mycobot280pi_interfaces.msg import SimpleCommands
-from .rmen_mycobot_interface import MyCobotInterface
-from .rmen_robot_state_manager import RobotStateManager
+from .ren_mycobot_interface import MyCobotInterface
+from .ren_robot_state_manager import RobotStateManager
 
 class RobotMycobotExecutorNode(Node):
     def __init__(self):

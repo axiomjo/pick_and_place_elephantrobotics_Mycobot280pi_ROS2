@@ -7,7 +7,7 @@ This document details the architecture of the MyCobot 280 Pi ROS2 system. The sy
 
 
 # ==== 01 : NODE COMMUNICATION =======
-
+s
 ## NODE DETAILS
 
 ### **1. `vision_usb_cam_node` (Pre-built Package) 📸**
@@ -418,7 +418,7 @@ This document details the architecture of the MyCobot 280 Pi ROS2 system. The sy
       * **Subscriber 4:**
           * **Topic:** `/robot/msg_joint_angles`
           * **Type:** `sensor_msgs/msg/JointState` \[BUILTIN ROS2 INTERFACE]
-          * **Description:** Receives real-time joint angles from `mycobot_jointangles_publisher_node` for monitoring.
+          * **Description:** Receives real-time joint angles from `robot_jointangles_publisher_node` for monitoring.
           * **ros2 interface show sensor\_msgs/msg/JointState**
             ```plaintext
             # This is a message that holds data to describe the state of a set of torque controlled joints.
@@ -548,7 +548,7 @@ This document details the architecture of the MyCobot 280 Pi ROS2 system. The sy
       * **Publisher:**
           * **Topic:** `/planner/msg_primitive_command`
           * **Type:** `mycobot280pi_interfaces/msg/SimpleCommands`
-          * **Description:** Publishes the sequence of low-level commands (e.g., "move to coordinates") to `mycobot_executor_node`.
+          * **Description:** Publishes the sequence of low-level commands (e.g., "move to coordinates") to `robot_executor_node`.
           * **ros2 interface show mycobot280pi\_interfaces/msg/SimpleCommands:**
             ```plaintext
             # Filepath: src/mycobot280pi_interfaces/msg/SimpleCommands.msg
@@ -571,7 +571,7 @@ This document details the architecture of the MyCobot 280 Pi ROS2 system. The sy
 
 -----
 
-### **7. `mycobot_executor_node` 🏃**
+### **7. `robot_executor_node` 🏃**
 
   * **Functionality:** The direct interface to the robot hardware. This node subscribes to primitive commands and translates them into the specific `pymycobot` API calls required to make the physical robot move.
   * **Communication Interfaces:**
@@ -601,7 +601,7 @@ This document details the architecture of the MyCobot 280 Pi ROS2 system. The sy
 
 -----
 
-### **8. `mycobot_jointangles_publisher_node` 🦾**
+### **8. `robot_jointangles_publisher_node` 🦾**
 
   * **Functionality:** Continuously queries the robot's hardware for the current angle of each of its six joints and publishes this information for use by other nodes.
   * **Communication Interfaces:**
@@ -644,7 +644,7 @@ This document details the architecture of the MyCobot 280 Pi ROS2 system. The sy
 
 -----
 
-### **9. `mycobot_state_publisher_node` (Pre-built Package) 📝**
+### **9. `robot_state_publisher_node` (Pre-built Package) 📝**
 
   * **Functionality:** Publishes the robot's static and dynamic state as TF (Transform) messages. It uses the robot's URDF model and joint states to compute the position and orientation of each link, primarily for visualization in RViz2.
   * **Parameters:**
@@ -654,10 +654,56 @@ This document details the architecture of the MyCobot 280 Pi ROS2 system. The sy
           * **Topic:** `/rviz2/tf_static`
           * **Type:** `tf2_msgs/msg/TFMessage` \[BUILTIN ROS2 INTERFACE]
           * **Description:** Publishes the static transforms (fixed relationships between robot links) to `ui_rviz2_node`.
+          * **ros2 interface show tf2_msgs/msg/TFMessage**
+            ```plaintext
+            geometry_msgs/TransformStamped[] transforms
+                    #
+                    #
+                    std_msgs/Header header
+	                    builtin_interfaces/Time stamp
+		                    int32 sec
+		                    uint32 nanosec
+	                    string frame_id
+                    string child_frame_id
+                    Transform transform
+	                    Vector3 translation
+		                    float64 x
+		                    float64 y
+		                    float64 z
+	                    Quaternion rotation
+		                    float64 x 0
+		                    float64 y 0
+		                    float64 z 0
+		                    float64 w 1
+
+            ```
       * **Publisher 2:**
           * **Topic:** `/rviz2/tf`
           * **Type:** `tf2_msgs/msg/TFMessage` \[BUILTIN ROS2 INTERFACE]
           * **Description:** Publishes the dynamic transforms (changing relationships based on joint angles) to `ui_rviz2_node`.
+          * **ros2 interface show tf2_msgs/msg/TFMessage**
+            ```plaintext
+            geometry_msgs/TransformStamped[] transforms
+                    #
+                    #
+                    std_msgs/Header header
+	                    builtin_interfaces/Time stamp
+		                    int32 sec
+		                    uint32 nanosec
+	                    string frame_id
+                    string child_frame_id
+                    Transform transform
+	                    Vector3 translation
+		                    float64 x
+		                    float64 y
+		                    float64 z
+	                    Quaternion rotation
+		                    float64 x 0
+		                    float64 y 0
+		                    float64 z 0
+		                    float64 w 1
+
+            ```
 
 -----
 
@@ -668,11 +714,57 @@ This document details the architecture of the MyCobot 280 Pi ROS2 system. The sy
       * **Subscriber 1:**
           * **Topic:** `/rviz2/tf_static`
           * **Type:** `tf2_msgs/msg/TFMessage` \[BUILTIN ROS2 INTERFACE]
-          * **Description:** Receives static transforms from `mycobot_state_publisher_node`.
+          * **Description:** Receives static transforms from `robot_state_publisher_node`.
+          * **ros2 interface show tf2_msgs/msg/TFMessage**
+            ```plaintext
+            geometry_msgs/TransformStamped[] transforms
+                    #
+                    #
+                    std_msgs/Header header
+	                    builtin_interfaces/Time stamp
+		                    int32 sec
+		                    uint32 nanosec
+	                    string frame_id
+                    string child_frame_id
+                    Transform transform
+	                    Vector3 translation
+		                    float64 x
+		                    float64 y
+		                    float64 z
+	                    Quaternion rotation
+		                    float64 x 0
+		                    float64 y 0
+		                    float64 z 0
+		                    float64 w 1
+
+            ```
       * **Subscriber 2:**
           * **Topic:** `/rviz2/tf`
           * **Type:** `tf2_msgs/msg/TFMessage`\[BUILTIN ROS2 INTERFACE]
-          * **Description:** Receives dynamic transforms from `mycobot_state_publisher_node`.
+          * **Description:** Receives dynamic transforms from `robot_state_publisher_node`.
+          * **ros2 interface show tf2_msgs/msg/TFMessage**
+            ```plaintext
+            geometry_msgs/TransformStamped[] transforms
+                    #
+                    #
+                    std_msgs/Header header
+	                    builtin_interfaces/Time stamp
+		                    int32 sec
+		                    uint32 nanosec
+	                    string frame_id
+                    string child_frame_id
+                    Transform transform
+	                    Vector3 translation
+		                    float64 x
+		                    float64 y
+		                    float64 z
+	                    Quaternion rotation
+		                    float64 x 0
+		                    float64 y 0
+		                    float64 z 0
+		                    float64 w 1
+
+            ```
 
 -----
 

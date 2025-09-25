@@ -1,4 +1,4 @@
-# ==== 02 : INTERFACES =======
+# ==== 02 : INTERFACES POV =======
 
 
 This document outlines the architecture of the ROS2 Galactic system designed to control a MyCobot 280 Pi robot. The system integrates computer vision for object detection with motion planning and execution, managed through a graphical user interface.
@@ -10,7 +10,7 @@ This document outlines the architecture of the ROS2 Galactic system designed to 
 
 This namespace handles the initial, raw input from the physical camera.
 
-* ### Topic: `/camera/msg_image_raw`
+### Topic: `/camera/msg_image_raw`
     * **Interface Type**: `sensor_msgs/msg/Image`
     * **Content**: A raw, unprocessed image frame with barrel distortion from the webcam.
     * **Communicating Nodes**:
@@ -23,28 +23,28 @@ This namespace handles the initial, raw input from the physical camera.
 
 This namespace is dedicated to the computer vision pipeline, from image correction to object detection.
 
-* ### Topic: `/vision/msg_undistorted_image`
+### Topic: `/vision/msg_undistorted_image`
     * **Interface Type**: `sensor_msgs/msg/Image`
     * **Content**: An image frame corrected for lens distortion.
     * **Communicating Nodes**:
         * **Publisher**: `vision_undistorter_node`
         * **Subscribers**: `vision_perspective_transformer_node`, `gui_robot_control_node`
 
-* ### Topic: `/vision/msg_top_down_image`
+### Topic: `/vision/msg_top_down_image`
     * **Interface Type**: `sensor_msgs/msg/Image`
     * **Content**: A "bird's-eye view" image of the workspace after perspective correction.
     * **Communicating Nodes**:
         * **Publisher**: `vision_perspective_transformer_node`
         * **Subscribers**: `vision_object_detector_node`, `gui_robot_control_node`
 
-* ### Topic: `/vision/msg_detected_objects`
+### Topic: `/vision/msg_detected_objects`
     * **Interface Type**: `mycobot280pi_interfaces/msg/ManyDetectedObjects`
     * **Content**: An array of data structures, each representing a detected object with details like its ID, center point, and bounding box coordinates.
     * **Communicating Nodes**:
         * **Publisher**: `vision_object_detector_node`
         * **Subscriber**: `gui_robot_control_node`
 
-* ### Topic: `/vision/msg_annotated_image`
+### Topic: `/vision/msg_annotated_image`
     * **Interface Type**: `sensor_msgs/msg/Image`
     * **Content**: The top-down image with visual overlays (like bounding boxes) drawn on detected objects.
     * **Communicating Nodes**:
@@ -57,7 +57,7 @@ This namespace is dedicated to the computer vision pipeline, from image correcti
 
 This namespace handles data flowing from the user interface to other nodes.
 
-* ### Topic: `/gui/msg_four_perspective_points`
+### Topic: `/gui/msg_four_perspective_points`
     * **Interface Type**: `mycobot280pi_interfaces/msg/Point2DArray`
     * **Content**: An array of four 2D coordinates representing the corners selected by the user for the perspective transformation.
     * **Communicating Nodes**:
@@ -70,11 +70,11 @@ This namespace handles data flowing from the user interface to other nodes.
 
 This namespace is for publishing the robot's physical state.
 
-* ### Topic: `/robot/msg_joint_angles`
+### Topic: `/robot/msg_joint_angles`
     * **Interface Type**: `sensor_msgs/msg/JointState`
     * **Content**: An array of float values representing the current angle of each of the robot's joints in real-time.
     * **Communicating Nodes**:
-        * **Publisher**: `mycobot_jointangles_publisher_node`
+        * **Publisher**: `robots_jointangles_publisher_node`
         * **Subscriber**: `gui_robot_control_node`
 
 ---
@@ -83,21 +83,21 @@ This namespace is for publishing the robot's physical state.
 
 This namespace manages the logic for motion planning and task execution.
 
-* ### Topic: `/planner/msg_primitive_command`
+### Topic: `/planner/msg_primitive_command`
     * **Interface Type**: `mycobot280pi_interfaces/msg/SimpleCommands`
     * **Content**: A single, low-level command (e.g., move to a specific coordinate, set the vacuum pump state) for the robot to execute immediately.
     * **Communicating Nodes**:
         * **Publisher**: `planner_robot_node`
-        * **Subscriber**: `mycobot_executor_node`
+        * **Subscriber**: `robot_executor_node`
 
-* ### Service: `/planner/srv_simple_command`
+### Service: `/planner/srv_simple_command`
     * **Interface Type**: `mycobot280pi_interfaces/srv/Mycobot280PiSimpleCommandsMadeSure`
     * **Content**: A request-response structure for simple, blocking commands. The **request** contains a command string, and the **response** returns a boolean indicating success or failure.
     * **Communicating Nodes**:
         * **Server**: `planner_robot_node`
         * **Client**: `gui_robot_control_node`
 
-* ### Action: `/planner/act_complex_command`
+### Action: `/planner/act_complex_command`
     * **Interface Type**: `mycobot280pi_interfaces/action/ProcessWorkspace`
     * **Content**: A goal-feedback-result structure for complex, long-running tasks. The **goal** defines the desired start and end states of objects in the workspace. The **feedback** provides progress updates (e.g., "3 of 5 objects moved"). The **result** confirms the successful completion of the entire task.
     * **Communicating Nodes**:
@@ -110,16 +110,14 @@ This namespace manages the logic for motion planning and task execution.
 
 This namespace is used specifically for broadcasting robot model data to the RViz2 visualization tool.
 
-* ### Topic: `/rviz2/tf` & `/rviz2/tf_static`
+### Topic: `/rviz2/tf` & `/rviz2/tf_static`
     * **Interface Type**: `tf2_msgs/msg/TFMessage`
     * **Content**: These topics publish the tree of coordinate frame transformations for the robot. `/tf` handles dynamic frames that change with joint movement, while `/tf_static` handles fixed frames.
     * **Communicating Nodes**:
         * **Publisher**: `mycobot_state_publisher_node`
         * **Subscriber**: `ui_rviz2_node`
         
-        
-        
-        
+       
 ## CUSTOM INTERFACE CONTENTS
 -----
 
@@ -228,33 +226,22 @@ string message
 
 This is an **action (.action)** interface, which defines a goal-result-feedback communication sequence.
 
-```
-# Filepath: src/mycobot280pi_interfaces/action/ProcessWorkspace.action
+``` 
+    # Filepath: src/mycobot280pi_interfaces/action/ProcessWorkspace.action
 
-# This part is the goal
-ManyDetectedObjects objects_to_move
-Point2DArray objects_target_position
-int32[] objects_target_orientation
----
-# This part is the result
-bool success
-string message
----
-# This part is the feedback
-string current_state
-OneDetectedObject current_object
-```        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+    # This part is the goal
+    ManyDetectedObjects objects_to_move
+    Point2DArray objects_target_position
+    int32[] objects_target_orientation
+    ---
+    # This part is the result
+    bool success
+    string message
+    ---
+    # This part is the feedback
+    string current_state
+    OneDetectedObject current_object
+```  
+
+
+

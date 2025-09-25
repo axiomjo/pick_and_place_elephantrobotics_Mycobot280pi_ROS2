@@ -1,18 +1,21 @@
 """
-vision_undistorter_node.py
+vision_undistorter_node
 
 This node is responsible for correcting the barrel distortion from a webcam,
 so that straight lines in the real world no longer look curved.
 
+Parameters:
+1. `camera_info_file` (`string`): The absolute path to the `.yaml` file containing the camera's intrinsic calibration matrix and distortion coefficients.
+
 Subscribers
 -----------
-1. `/camera/image_raw`
+1. `/camera/msg_image_raw`
    * Type: sensor_msgs/msg/Image
    * From: vision_usb_cam_node
 
 Publishers
 ----------
-1. `/vision/undistorted_image`
+1. `/vision/msg_undistorted_image`
    * Type: sensor_msgs/msg/Image
    * To: vision_perspective_transformer_node, gui_robot_control_node
 """
@@ -47,7 +50,7 @@ class VisionUndistorterNode(Node):
         # Subscriber
         self.image_sub = self.create_subscription(
             Image,
-            '/camera/image_raw',
+            '/camera/msg_image_raw',
             self.image_callback,
             10
         )
@@ -55,7 +58,7 @@ class VisionUndistorterNode(Node):
         # Publisher
         self.image_pub = self.create_publisher(
             Image,
-            '/vision/undistorted_image',
+            '/vision/msg_undistorted_image',
             10
         )
 
@@ -85,18 +88,18 @@ class VisionUndistorterNode(Node):
             return None, None
 
     def image_callback(self, msg):
-        """Processes each raw image, applies undistortion, and republishes."""
+        """Processes each raw image, applies undistortion, and publishes to `/vision/msg_undistorted_image`."""
         if self.camera_matrix is None or self.dist_coeffs is None:
             self.get_logger().warn("Calibration data not loaded, skipping frame.")
             return
 
-        # Convert ROS → OpenCV
+        # Convert ROS2 to OpenCV
         frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
 
         # Undistort
         undistorted = cv2.undistort(frame, self.camera_matrix, self.dist_coeffs)
 
-        # Convert OpenCV → ROS
+        # Convert OpenCV to ROS2
         undistorted_msg = self.bridge.cv2_to_imgmsg(undistorted, encoding="bgr8")
         undistorted_msg.header = msg.header  # Preserve timestamp and frame ID
 
