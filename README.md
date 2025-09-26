@@ -1,6 +1,6 @@
-[LAST EDITED: 26 SEP 2025 17:21]
+[LAST EDITED: 27 SEP 2025 00:30]
 
-ok mulai ada vision ppeline di gui yh
+ok mulai ada vision ppeline di gui yh.  
 
 ![](ASSET_README/ss_gui_ada perspectivepoints.png)
 
