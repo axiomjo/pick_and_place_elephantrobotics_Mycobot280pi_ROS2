@@ -1,5 +1,10 @@
 [LAST EDITED: 26 SEP 2025 17:21]
 
+ok mulai ada vision ppeline di gui yh
+
+![](ASSET_README/ss_gui_ada perspectivepoints.png)
+
+---
 basically alu mundur ke gui 3 sept.
 
 ![](ASSET_README/ss_gui3sept.png)
