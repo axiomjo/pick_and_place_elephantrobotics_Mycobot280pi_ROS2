@@ -1,12 +1,19 @@
-[LAST EDITED: 11 SEP 2025 17:21]
+[LAST EDITED: 26 SEP 2025 17:21]
 
+basically aku mundur ke branch MVP_3_4_5 krn guinya broken.
+
+![](ASSET_README/ss_draggablerectangles.png)
+
+
+
+----
 # Implementasi_MyCobot280pi_ROS2
 
 branch `FINAL_VERSION`
 this branch will be the one with clear patterns and naming conventions.    
 
 # === SYSTEM OVERVIEW ===
-![](ASSET_README/ROS2_NODES_DESIGN.png.jpg)
+![blom update ke convensiku yg terbaru y.](ASSET_README/ROS2_NODES_DESIGN.png)
 
 Sistem robot + antarmuka visual untuk mempermudah pengoperasian Mycobot 280 pi, dalam menjalankan tugas vacuum-and-place.
 Dilengkapi computer vision, sehingga bisa ngerti konteks objek di lingkungannya.
@@ -24,7 +31,7 @@ yg berjudul :
 # === Author's Note ===
 Hi buat siapapun yg baca repo ini.  
 
-tbh, aku gmw lanjutin proyek ini klo dah lulus. 
+tbh, aku ga berencana lanjutin proyek ini klo dah lulus.
 tapi semoga repo ini bisa jadi pintu masuk buat anak2 elektro (atau infor) di ISTTS
 yg mo nyentuh ROS2 .
 
