@@ -24,7 +24,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'dummy_gui_robot_control_node = mycobot280pi_dummy.dummy_gui_robot_control_node:main'
+            'dummy_gui_robot_control_node = mycobot280pi_dummy.dummy_gui_robot_control_node:main',
+            'd2ummy_gui_robot_control_node = mycobot280pi_dummy.dummy_gui_robot_control_node_2:main',
+            
         ],
     },
 )

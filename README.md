@@ -1,5 +1,10 @@
 [LAST EDITED: 26 SEP 2025 17:21]
 
+basically alu mundur ke gui 3 sept.
+
+![](ASSET_README/ss_gui3sept.png)
+
+---
 basically aku mundur ke branch MVP_3_4_5 krn guinya broken.
 
 ![](ASSET_README/ss_draggablerectangles.png)
