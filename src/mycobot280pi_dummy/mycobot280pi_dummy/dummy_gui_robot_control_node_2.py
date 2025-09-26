@@ -8,7 +8,7 @@ import numpy as np
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QLabel, QVBoxLayout, QTextEdit,
     QHBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsPixmapItem,
-    QPushButton, QMainWindow, QDockWidget, QSlider, QDoubleSpinBox, QGraphicsItem, QDialog, QGraphicsEllipseItem
+    QPushButton, QMainWindow, QDockWidget, QSlider, QDoubleSpinBox, QGraphicsItem, QDialog, QGraphicsEllipseItem, QGraphicsRectItem 
 )
 from PyQt5.QtGui import QPixmap, QImage, QColor, QBrush, QPen, QPainterPath, QTransform
 from PyQt5.QtCore import QTimer, Qt, QRectF, pyqtSignal, QObject, QPointF
@@ -18,13 +18,13 @@ import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
 from rclpy.executors import MultiThreadedExecutor
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image,JointState
 from std_msgs.msg import Int32MultiArray
 from cv_bridge import CvBridge
 
 # Custom ROS 2 Interfaces
 from mycobot280pi_interfaces.action import ProcessWorkspace
-from mycobot280pi_interfaces.msg import Point2DArray, Point2D, ManyDetectedObjects
+from mycobot280pi_interfaces.msg import Point2DArray, Point2D, ManyDetectedObjects 
 from mycobot280pi_interfaces.srv import Mycobot280PiSimpleCommandsMadeSure
 
 
@@ -54,86 +54,86 @@ class PointHandle(QGraphicsEllipseItem):
 
 class DraggableItem(QGraphicsPixmapItem):
     """ A QGraphicsPixmapItem that can be moved and rotated. """
-    def __init__(self, pixmap, original_x, original_y, original_w, original_h):
-        super().__init__(pixmap)
-        
-        self.original_x = original_x
-        self.original_y = original_y
-        self.original_w = original_w
-        self.original_h = original_h
-        
+    def __init__(self, pixmap, parent=None):
+        super().__init__(pixmap, parent)
         self.setFlags(
             QGraphicsItem.ItemIsMovable |
             QGraphicsItem.ItemIsSelectable
         )
-        self.setTransformOriginPoint(self.pixmap().rect().center())
-        
-        # Add a local transformation to flip the item back vertically
-        transform = QTransform()
-        transform.scale(1, -1)
-        self.setTransform(transform)
+        # Set transform origin to the center of the pixmap
+        self.setTransformOriginPoint(self.boundingRect().center())
         
     def mouseReleaseEvent(self, event):
-        # Corrected line to get the center of the pixmap's rectangle
-        final_pos = self.mapToScene(self.pixmap().rect().center())
-        print(f"Item released at: ({final_pos.x():.1f}, {final_pos.y():.1f}), rotation={self.rotation():.1f}")
+        final_local_pos = self.scenePos()
+        print(f"LOCALLY, Item released at: ({final_local_pos.x():.1f}, {final_local_pos.y():.1f}), "
+              f"rotation={self.rotation():.1f}")
+              
+        final_true_pos = self.mapToScene(self.boundingRect().center())
+        print(f"Item released at: ({final_true_pos.x():.1f}, {final_true_pos.y():.1f}), "
+              f"rotation={self.rotation():.1f}")
         super().mouseReleaseEvent(event)
 
+
 #========================================================================
-class PerspectiveEditorWindow(QDialog):
-    def __init__(self, parent, node, frame):
+
+class PerspectiveEditorWidget(QWidget):
+    def __init__(self, node, parent=None):
         super().__init__(parent)
 
-        # ----- Setup UI
-        self.setWindowTitle("Perspective Editor")
-        
         self.node = node
-        self.frame = frame
         self.bridge = CvBridge()
+        self.frame = None
+        self.handles = []
         
         # ----- Layout
-        main_layout = QHBoxLayout()
-        self.setLayout(main_layout)
+        main_layout = QVBoxLayout(self) # Apply layout directly to this widget
         
-        # ----- Left side: graphics scene with originsl image and draggable points
-        self.scene = QGraphicsScene()
-        self.view = QGraphicsView(self.scene)
+        # ----- Top: graphics scene
+        self.preview_label = QLabel("Warped preview")
+        self.perspectivepoints_scene = QGraphicsScene()
+        self.view = QGraphicsView(self.perspectivepoints_scene)
+        self.pixmap_item = QGraphicsPixmapItem() # Create an empty item to hold the image
+        self.perspectivepoints_scene.addItem(self.pixmap_item)
         main_layout.addWidget(self.view)
         
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        h, w, ch = frame.shape
-        qimg = QImage(rgb.data, w, h, ch*w, QImage.Format_RGB888)
-        pixmap = QPixmap.fromImage(qimg)
-        self.pixmap_item = QGraphicsPixmapItem(pixmap)
-        self.scene.addItem(self.pixmap_item)
-        
-        # ----- Default 4 corner points
-        self.handles = [
-            PointHandle(50, 50),
-            PointHandle(w-50, 50),
-            PointHandle(w-50, h-50),
-            PointHandle(50, h-50)
-        ]
-        
-        for hnd in self.handles:
-            self.scene.addItem(hnd)
-            
         # ----- Right side: warped preview + button
-        side_layout = QVBoxLayout()
-        main_layout.addLayout(side_layout)
-        
-        self.preview_label = QLabel("Warped preview will appear here")
-        side_layout.addWidget(self.preview_label)
-        
-        ok_btn = QPushButton("OK (Send to Detector)")
+        ok_btn = QPushButton("Confirm Points")
         ok_btn.clicked.connect(self.on_ok)
-        side_layout.addWidget(ok_btn)
+        main_layout.addWidget(self.preview_label)
+        main_layout.addWidget(ok_btn)
+
         
-        self.timer = QTimer()
+        self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_preview_and_publish)
         self.timer.start(200)  # 5 Hz
 
+    def update_frame(self, new_frame):
+        """Public method for MainWindow to send new frames to this widget."""
+        if new_frame is None:
+            return
+        self.frame = new_frame
+        
+        rgb = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
+        h, w, ch = self.frame.shape
+        qimg = QImage(rgb.data, w, h, ch*w, QImage.Format_RGB888)
+        pixmap = QPixmap.fromImage(qimg)
+        self.pixmap_item.setPixmap(pixmap)
+        
+        # Initialize handles only once
+        if not self.handles:
+            self.handles = [
+                PointHandle(50, 50),
+                PointHandle(w-50, 50),
+                PointHandle(w-50, h-50),
+                PointHandle(50, h-50)
+            ]
+            for hnd in self.handles:
+                self.perspectivepoints_scene.addItem(hnd)
+
     def update_preview_and_publish(self):
+        if self.frame is None or not self.handles:
+            return
+
         pts = np.array([h.get_point() for h in self.handles], dtype=np.float32)
 
         # Publish Point2DArray
@@ -142,246 +142,178 @@ class PerspectiveEditorWindow(QDialog):
             pt = Point2D()
             pt.x, pt.y = int(x), int(y)
             msg.points.append(pt)
-        self.node.pixel_pub.publish(msg)
+            
+        self.node.perspective_points_pub.publish(msg) 
 
-        # Warp preview
-        h, w, _ = self.frame.shape
-        dst = np.array([[0,0],[w,0],[w,h],[0,h]], dtype=np.float32)
-        M = cv2.getPerspectiveTransform(pts, dst)
-        warped = cv2.warpPerspective(self.frame, M, (w,h))
-
-        rgb = cv2.cvtColor(warped, cv2.COLOR_BGR2RGB)
-        qimg = QImage(rgb.data, w, h, 3*w, QImage.Format_RGB888)
-        self.preview_label.setPixmap(QPixmap.fromImage(qimg))
-
-        self.final_warped = warped
         
         
     def on_ok(self):
-        self.node.get_logger().info("Final points confirmed.")
-        img_msg = self.bridge.cv2_to_imgmsg(self.final_warped, encoding="bgr8")
-        self.node.detector_pub.publish(img_msg)
-        self.close()
+        # This method can be adapted, perhaps to just log or finalize points
+        self.node.get_logger().info("Perspective points confirmed by user.")
 
-        
-
-        
-
-
-
+     
 
 #========================================================================
 
-class CombinedROSNode(Node, QObject):   # <-- Node first, then QObject
+class CombinedROSNode(Node, QObject):
+    # --- Signals to safely send data from ROS thread to GUI thread ---
+    new_undistorted_image_signal = pyqtSignal(object) # For perspective editor
+    new_annotated_image_signal = pyqtSignal(object)   # For main camera view
+    new_detected_objects_signal = pyqtSignal(object)  # For cutouts and workspace
+    new_joint_states_signal = pyqtSignal(object)      # For joint monitoring
+    
+    # Signal for the action client result
     refresh_result_signal = pyqtSignal(object)
 
-    def __init__(self, gui_callback, service_callback, node_name='combined_gui_node'):
-        Node.__init__(self, node_name)   # initialize ROS2 Node first
-        QObject.__init__(self)           # then initialize QObject
+    def __init__(self):
+        Node.__init__(self, 'mycobot_gui_controller_node')
+        QObject.__init__(self)
 
-        # -------- Initialization --------
         self.bridge = CvBridge()
-        self.gui_callback = gui_callback
-        self.service_callback = service_callback
-        
-        # -------- Subscribers ----------
-        self.sub_image = self.create_subscription(
-            Image, '/vision/msg_undistorted_image', self.image_callback, 10)
-        self.sub_objects = self.create_subscription(
-            ManyDetectedObjects, 'detected_objects', self.objects_callback, 10)
-
-        # -------- Service client ----------
-        self.client = self.create_client(Mycobot280PiSimpleCommandsMadeSure, 'set_coords')
-        self.send_coords_request = None
         self.is_service_ready = False
+        self.get_logger().info("GUI ROS 2 Node is running.")
 
-        # -------- Publishers used by the GUI editor ----------
-        # GUI will publish Point2DArray points while editing
-        self.pixel_pub = self.create_publisher(Point2DArray, 'perspective/points', 10)
-        # GUI will publish final warped image to detector input
-        self.detector_pub = self.create_publisher(Image, 'detector/input_image', 10)
+        # === SUBSCRIBERS as per your requirements ===
+        self.sub_undistorted_image = self.create_subscription(
+            Image, '/vision/msg_undistorted_image', self.undistorted_image_callback, 10)
+        
+        self.sub_annotated_image = self.create_subscription(
+            Image, '/vision/msg_annotated_image', self.annotated_image_callback, 10)
+            
+        self.sub_objects = self.create_subscription(
+            ManyDetectedObjects, '/vision/msg_detected_objects', self.objects_callback, 10)
 
-        # -------- Action client (ProcessWorkspace) ----------
+        self.sub_joint_angles = self.create_subscription(
+            JointState, '/robot/msg_joint_angles', self.joint_angles_callback, 10)
+
+        # === PUBLISHER as per your requirements ===
+        self.perspective_points_pub = self.create_publisher(
+            Point2DArray, '/gui/msg_four_perspective_points', 10)
+
+        # --- Service and Action Clients ---
+        self.client = self.create_client(Mycobot280PiSimpleCommandsMadeSure, 'set_coords')
         self.refresh_client = ActionClient(self, ProcessWorkspace, 'refresh_scene')
-
-        # -------- Internal state ----------
-        self.latest_frame = None
-        self.latest_boxes = []
-
-        # -------- Periodic checks (runs in ROS thread) ----------
-        # Keep service-ready flag updated
         self._service_check_timer = self.create_timer(1.0, self.check_service_status)
 
-        self.get_logger().info(f"CombinedROSNode '{node_name}' initialized.")
-
-    # ------------------- ROS Callbacks -------------------
-    def image_callback(self, msg: Image):
+    # --- Subscriber Callbacks (ROS Thread) ---
+    def undistorted_image_callback(self, msg: Image):
         try:
             cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-        except Exception as ex:
-            self.get_logger().error(f"Failed to convert incoming image: {ex}")
-            return
-        self.latest_frame = cv_image
-        # gui_callback runs in GUI thread via MainWindow's spin_once QTimer; safe to call
+            self.new_undistorted_image_signal.emit(cv_image)
+        except Exception as e:
+            self.get_logger().error(f"Failed to convert undistorted image: {e}")
+
+    def annotated_image_callback(self, msg: Image):
         try:
-            self.gui_callback(cv_image, self.latest_boxes)
-        except Exception:
-            # swallow GUI errors here (GUI owns display)
-            pass
+            cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+            self.new_annotated_image_signal.emit(cv_image)
+        except Exception as e:
+            self.get_logger().error(f"Failed to convert annotated image: {e}")
 
-    def objects_callback(self, msg: Int32MultiArray):
-        data = msg.data
-        boxes = []
-        for i in range(0, len(data), 4):
-            try:
-                x, y, w, h = data[i:i+4]
-            except Exception:
-                break
-            boxes.append((x, y, w, h))
-        self.latest_boxes = boxes
+    def objects_callback(self, msg: ManyDetectedObjects):
+        # The message is already the correct type, just emit it
+        self.new_detected_objects_signal.emit(msg)
 
+    def joint_angles_callback(self, msg: JointState):
+        self.new_joint_states_signal.emit(msg)
+    
+    # --- Service call helper (called by GUI) ---
+    def call_service(self, req, service_callback):
+        if not self.is_service_ready:
+            self.get_logger().warning("Mycobot service not available.")
+            return
+        future = self.client.call_async(req)
+        future.add_done_callback(service_callback)
+
+    # ... (rest of the Action Client and periodic helper methods remain the same) ...
     # ------------------- Action-related methods -------------------
     def refresh_scene(self):
-        """Called from GUI thread (button). Sends a ProcessWorkspace goal to server."""
         if not self.refresh_client.wait_for_server(timeout_sec=1.0):
             self.get_logger().warning("ProcessWorkspace action server not available.")
             return
-
         goal_msg = ProcessWorkspace.Goal()
-        send_goal_future = self.refresh_client.send_goal_async(
-            goal_msg, feedback_callback=self.refresh_feedback)
+        send_goal_future = self.refresh_client.send_goal_async(goal_msg, feedback_callback=self.refresh_feedback)
         send_goal_future.add_done_callback(self._on_goal_response)
 
     def _on_goal_response(self, fut):
-        """Called in ROS thread when goal has been accepted/rejected."""
         try:
             goal_handle = fut.result()
         except Exception as e:
             self.get_logger().error(f"Send goal failed: {e}")
             return
-
         if not goal_handle.accepted:
             self.get_logger().info("ProcessWorkspace goal rejected by server.")
             return
-
         self.get_logger().info("ProcessWorkspace goal accepted; waiting for result...")
         result_future = goal_handle.get_result_async()
         result_future.add_done_callback(self.refresh_result)
 
     def refresh_feedback(self, feedback_msg):
-        # feedback_msg is wrapper; print or forward small status if needed
-        try:
-            fb = feedback_msg.feedback
-            # keep lightweight to avoid flooding
-            self.get_logger().debug(f"Refresh feedback: {getattr(fb, 'status', '')}")
-        except Exception:
-            pass
+        self.get_logger().debug(f"Refresh feedback: {getattr(feedback_msg.feedback, 'status', '')}")
 
     def refresh_result(self, fut):
-        """Result callback (ROS thread). Emit a Qt signal with the cv2 image."""
         try:
-            result_wrapper = fut.result()
-            result = result_wrapper.result
+            result = fut.result().result
         except Exception as e:
             self.get_logger().error(f"Failed to get refresh result: {e}")
             return
-
         if not hasattr(result, 'warped_image') or result.warped_image is None:
             self.get_logger().warn("Refresh result contained no warped_image.")
             return
-
         try:
             latest_top_down_view = self.bridge.imgmsg_to_cv2(result.warped_image, desired_encoding='bgr8')
+            self.refresh_result_signal.emit(latest_top_down_view)
         except Exception as e:
             self.get_logger().error(f"Failed to convert result image: {e}")
-            return
-
-        # Emit the image to the GUI thread via Qt signal
-        # The connected slot (in MainWindow) will run in the GUI thread.
-        self.refresh_result_signal.emit(latest_top_down_view)
-
-    # ------------------- Service call helper -------------------
-    def call_service(self, req):
-        """Call set_coords service asynchronously; GUI provided the done callback."""
-        if not self.is_service_ready:
-            self.get_logger().warning("Mycobot280PiSimpleCommandsMadeSure service not available.")
-            return
-
-        self.send_coords_request = req
-        future = self.client.call_async(self.send_coords_request)
-        future.add_done_callback(self.service_callback)
 
     # ------------------- Periodic helpers -------------------
     def check_service_status(self):
-        """Toggle is_service_ready based on service availability (runs in ROS thread)."""
         available = self.client.wait_for_service(timeout_sec=0.1)
-        if available and not self.is_service_ready:
-            self.is_service_ready = True
-            self.get_logger().info("Service 'set_coords' is ready.")
-        elif not available and self.is_service_ready:
-            self.is_service_ready = False
-            self.get_logger().info("Service 'set_coords' is not available.")
+        if available != self.is_service_ready:
+            self.is_service_ready = available
+            self.get_logger().info(f"Service 'set_coords' is now {'available' if available else 'unavailable'}.")        
 
-    # ------------------- Utility (ROS thread -> GUI helper) -------------------
-    def update_status_from_ros_thread(self, message):
-        """Generic helper to emit a message to GUI (if desired)."""
-        self.refresh_result_signal.emit(message)
+
+
 
 #========================================================================
 
 # --- Main Application Window ---
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, ros_node):
         super().__init__()
-        self.setWindowTitle("Combined MyCobot GUI")
-        self.resize(1200, 800)
+        self.setWindowTitle("myCobot 280Pi Control GUI")
+        self.resize(1400, 900)
+        self.ros_node = ros_node # Store the passed-in ROS node
 
-        # ------------------- 1. ROS 2 and Data Integration -------------------
-        # Note: A separate CombinedROSNode handles all ROS communication.
-        # This GUI gets a reference to that node and defines callbacks.
-        self.ros_node = CombinedROSNode(
-            gui_callback=self.update_gui,
-            service_callback=self.on_response_received
-        )
-        
-        self.ros_node.refresh_result_signal.connect(self.handle_refresh_result)
-
-
-        # Use a QTimer to spin the ROS 2 node, making it non-blocking
-        # It calls rclpy.spin_once() at a set interval.
-        self.ros_timer = QTimer(self)
-        self.ros_timer.timeout.connect(lambda: rclpy.spin_once(self.ros_node, timeout_sec=0))
-        self.ros_timer.start(10) # 10 ms interval
         
         # ------------------- 2. Main Layout and UI Elements -------------------
-        # Main layout structure (Left, Right, Dock)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_h_layout = QHBoxLayout(central_widget)
-        
-        # ---- 2a. Left Panel: Camera Feed and Controls
-        left_v_layout = QVBoxLayout()
-        
-        # ---------- welcome text
-        self.instruction_text = QTextEdit(
-            "Welcome!\n\nCamera feed on the left. Draggable working area on the right. "
-            "Use the 'Add Object' button to create new objects on the working plane from the "
-            "detected cutouts in the right-side dock panel.\n\n"
-            "Select an object on the working plane to see its attributes and send its "
-            "pose to the robot. "
-        )
-        self.instruction_text.setReadOnly(True)
-        self.camera_label = QLabel()
-        left_v_layout.addWidget(self.instruction_text)
-        left_v_layout.addWidget(self.camera_label, 1) # stretch to fill
-        
-        # ---------- button Refresh Scene
-        self.refresh_btn = QPushButton("Refresh Scene")
-        self.refresh_btn.clicked.connect(self.ros_node.refresh_scene)
-        left_v_layout.addWidget(self.refresh_btn)
 
-        main_h_layout.addLayout(left_v_layout, 1)
-        
+         # ---- 2a. Left Panel: Camera, Perspective Editor, and Joint Info
+        left_v_layout = QVBoxLayout()
+
+        # Annotated camera view
+        self.camera_label = QLabel("Waiting for annotated camera feed...")
+        self.camera_label.setMinimumHeight(300)
+        self.camera_label.setAlignment(Qt.AlignCenter)
+        self.camera_label.setStyleSheet("border: 1px solid black;")
+        left_v_layout.addWidget(self.camera_label)
+
+        # Embedded perspective editor
+        self.perspective_editor = PerspectiveEditorWidget(node=self.ros_node, parent=self)
+        left_v_layout.addWidget(self.perspective_editor)
+
+        # Joint states display
+        self.joint_states_label = QTextEdit("Waiting for joint states...")
+        self.joint_states_label.setReadOnly(True)
+        self.joint_states_label.setMaximumHeight(150)
+        left_v_layout.addWidget(self.joint_states_label)
+
+        main_h_layout.addLayout(left_v_layout, 1) # Left panel takes 1/3 space
+
         
         # ---- 2b. Right Panel: Working Plane and Controls
         right_v_layout = QVBoxLayout()
@@ -391,14 +323,20 @@ class MainWindow(QMainWindow):
         self.working_plane_scene = QGraphicsScene(self)
         self.working_plane_scene.setSceneRect(QRectF(-300, -300, 600, 600))
         self.working_plane_view.setScene(self.working_plane_scene)
+        
         self.working_plane_scene.selectionChanged.connect(self.update_rotation_widgets)
         
         transform = QTransform()
         transform.scale(1, -1)
         self.working_plane_view.setTransform(transform)
         
+        
+        # draw working radius
         self.draw_mycobot280pi_working_plane()
+        
+        # draw axes and ticks
         self.draw_axes_with_ticks()
+
         self.items_on_plane = []
         
         right_v_layout.addWidget(self.working_plane_view, 2)
@@ -416,9 +354,22 @@ class MainWindow(QMainWindow):
         self.reset_btn = QPushButton("Reset Plane")
         self.reset_btn.clicked.connect(self.reset_plane)
         
+        
+        self.current_rotation = 0
+        
+        self.rotate_counter_clockwise_btn = QPushButton("Rotate 90° Counter-Clockwise")
+        self.rotate_counter_clockwise_btn.clicked.connect(self.rotate_counter_clockwise)
+        
+        self.rotate_clockwise_btn = QPushButton("Rotate Clockwise")
+        self.rotate_clockwise_btn.clicked.connect(self.rotate_clockwise)
+
+
+       
         controls_h_layout.addWidget(self.reset_btn)
         controls_h_layout.addWidget(self.send_btn)
         controls_h_layout.addWidget(self.add_object_btn)
+        controls_h_layout.addWidget(self.rotate_counter_clockwise_btn)
+        controls_h_layout.addWidget(self.rotate_clockwise_btn)
         
         right_v_layout.addLayout(controls_h_layout)
 
@@ -461,8 +412,52 @@ class MainWindow(QMainWindow):
         dock_widget_content.setLayout(dock_v_layout)
         self.dock_panel.setWidget(dock_widget_content)
         
-        # ------------------- 3. ROS2 node GUI Update Callbacks -------------------
-        # These methods are triggered by the ROS 2 node to update the UI.
+        
+        # ------------------- 3. Connect ROS Node Signals to GUI Slots -------------------
+        self.ros_node.new_undistorted_image_signal.connect(self.perspective_editor.update_frame)
+        self.ros_node.new_annotated_image_signal.connect(self.update_camera_view)
+        self.ros_node.new_detected_objects_signal.connect(self.update_object_cutouts)
+        self.ros_node.new_joint_states_signal.connect(self.update_joint_display)
+        self.ros_node.refresh_result_signal.connect(self.handle_refresh_result)
+
+
+    # ------------------- 4. GUI Update Slots (called by ROS signals) -------------------
+    def update_camera_view(self, cv_image):
+        """Displays the annotated image."""
+        rgb_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgb_image.shape
+        qt_image = QImage(rgb_image.data, w, h, ch * w, QImage.Format_RGB888)
+        pixmap = QPixmap.fromImage(qt_image)
+        self.camera_label.setPixmap(pixmap.scaled(
+            self.camera_label.width(), self.camera_label.height(), Qt.KeepAspectRatio))
+
+    def update_object_cutouts(self, objects_msg: ManyDetectedObjects):
+        """Clears and repopulates the cutout view from detected objects."""
+        # You will need to implement the logic here based on your ManyDetectedObjects msg
+        # For example, if it contains bounding boxes and an image:
+        # self.cutout_scene.clear()
+        # y_offset = 0
+        # for obj in objects_msg.objects:
+        #   x, y, w, h = obj.box
+        #   # create pixmap and add to cutout_scene...
+        #   y_offset += 110
+        pass # Placeholder for your cutout logic
+
+    def update_joint_display(self, joint_state_msg: JointState):
+        """Displays the latest joint states."""
+        text = "Joint States:\n"
+        for i, name in enumerate(joint_state_msg.name):
+            angle_deg = np.rad2deg(joint_state_msg.position[i])
+            text += f"- {name}: {angle_deg:.2f}°\n"
+        self.joint_states_label.setText(text)
+
+    def on_response_received(self, future):
+        # This is the callback for the service client
+        try:
+            response = future.result()
+            print(f"Service call successful: {response.flag}")
+        except Exception as e:
+            print(f"Service call failed with exception: {e}")
     
     def update_gui(self, image, boxes):
         """Callback from ROS node to update the GUI with image data."""
@@ -500,19 +495,27 @@ class MainWindow(QMainWindow):
             self.cutout_scene.addItem(item)
             y_offset += 110 # Space out cutouts vertically
 
-    def on_response_received(self, future):
-        try:
-            response = future.result()
-            if response.flag:
-                print("Service call successful! Coords accepted.")
-            else:
-                print("Service call failed.")
-        except Exception as e:
-            print(f"Service call failed with exception: {e}")
-            
+       
     # ------------------- 4. Event Handlers & Helper Functions -------------------
     # These methods handle user interaction with the GUI.
-  
+    
+    def open_perspective_editor(self):
+        """Creates and shows the PerspectiveEditorWindow dialog."""
+        # Make sure we have a camera frame to work with
+        if self.ros_node.latest_frame is None:
+            print("Cannot open perspective editor: No camera image received yet.")
+            return
+
+        # Create an instance of the editor window
+        editor_dialog = PerspectiveEditorWindow(
+            parent=self, 
+            node=self.ros_node, 
+            frame=self.ros_node.latest_frame
+        )
+        # Execute the dialog (this will show the window and pause the main window)
+        editor_dialog.exec_()
+
+    
     # --- Working Plane Controls ---  
     def reset_plane(self):
         self.working_plane_scene.clear()
@@ -620,103 +623,170 @@ class MainWindow(QMainWindow):
         self.working_plane_scene.clear()
         self.working_plane_scene.addPixmap(pixmap)
 
-        
-    # ------------------- 5. Window Events and Cosmetics -------------------
-    # Functions for closing the window and drawing visual elements.
+    def rotate_clockwise(self):
+        self.current_rotation -= 90
+        self.set_pov()
 
-    def closeEvent(self, event):
-        # Stop ROS 2 spinning and destroy the node
-        self.ros_node.destroy_node()
-        rclpy.shutdown()
-        event.accept()
-        
-    def draw_axes_with_ticks(self):    
-        # Set up pens for drawing
+    def rotate_counter_clockwise(self):
+        self.current_rotation += 90
+        self.set_pov()
+
+    def set_pov(self):
+        transform = QTransform()
+        transform.scale(1, -1)
+        transform.rotate(self.current_rotation)
+        self.working_plane_view.setTransform(transform)
+        print(f"View rotated to {self.current_rotation % 360}°")
+
+    def analyze_positions(self):
+        print("\n=== Analyzing All Items LOCALLY ===")
+        for i, item in enumerate(self.items_on_plane, start=1):
+            pos = item.scenePos()
+            rot = item.rotation()
+            print(f"Item {i}: x={pos.x():.1f}, y={pos.y():.1f}, rotation={rot:.1f}")
+        print("==========================\n")
+
+        print("=== Object Analysis ===")
+        for i, item in enumerate(self.working_plane_scene.items()):
+            if isinstance(item, DraggableItem):
+                center_in_scene = item.mapToScene(item.rect().center())
+                x = center_in_scene.x()
+                y = center_in_scene.y()
+                rotation = item.rotation()
+                print(f"Rect {i+1}: X={x:.2f}, Y={y:.2f}, Rotation={rotation:.2f}°")
+        print("=======================")
+
+    # Add buttons for analyze and delete
+    def setup_control_buttons(self):
+        # ...existing code...
+        self.analyze_btn = QPushButton("Analyze (Print All)")
+        self.analyze_btn.clicked.connect(self.analyze_positions)
+        self.analyze_btn.setDisabled(True)
+        controls_h_layout.addWidget(self.analyze_btn)
+
+        self.delete_btn = QPushButton("Delete Selected")
+        self.delete_btn.clicked.connect(self.delete_selected)
+        controls_h_layout.addWidget(self.delete_btn)
+
+    def delete_selected(self):
+        selected_items = self.working_plane_scene.selectedItems()
+        for item in selected_items:
+            self.working_plane_scene.removeItem(item)
+            if item in self.items_on_plane:
+                self.items_on_plane.remove(item)
+        print(f"Deleted {len(selected_items)} item(s).")
+    
+    def draw_axes_with_ticks(self):
+        # --- cartesian axes ---
         pen_axis = QPen(Qt.black, 2)
         pen_ticks = QPen(Qt.black, 1)
-    
-        # Grid lines (5mm spacing, assuming 1 pixel = 1mm)
-        grid_pen = QPen(QColor(200, 200, 200), 1)  # Light gray color for the grid
-    
-        # Scene boundaries (adjust to your scene's size)
-        scene_rect = self.working_plane_scene.sceneRect()
-        min_x, max_x = scene_rect.left(), scene_rect.right()
-        min_y, max_y = scene_rect.bottom(), scene_rect.top()
-    
-        # Draw vertical grid lines
-        for x in range(int(min_x), int(max_x) + 1, 5):
-            self.working_plane_scene.addLine(x, min_y, x, max_y, grid_pen)
-        
-        # Draw horizontal grid lines
-        for y in range(int(min_y), int(max_y) + 1, 5):
-            self.working_plane_scene.addLine(min_x, y, max_x, y, grid_pen)
 
-        # Draw the main axes on top of the grid
+        # X-axis
         self.working_plane_scene.addLine(-280, 0, 280, 0, pen_axis)
+        # Y-axis
         self.working_plane_scene.addLine(0, -280, 0, 280, pen_axis)
 
-        # Draw ticks to match the grid (e.g., every 50mm)
-        for x in range(-280, 281, 50):
+        # X ticks every 10
+        for x in range(-280, 281, 10):
             if x == 0:
                 continue
-            length = 12
+            length = 6 if x % 50 else 12
             self.working_plane_scene.addLine(x, -length / 2, x, length / 2, pen_ticks)
- 
-        for y in range(-280, 281, 50):
+
+        # Y ticks every 10
+        for y in range(-280, 281, 10):
             if y == 0:
                 continue
-            length = 12
+            length = 6 if y % 50 else 12
             self.working_plane_scene.addLine(-length / 2, y, length / 2, y, pen_ticks)
-         
-            
+
+        
     def draw_mycobot280pi_working_plane(self):
+        
+        #--- working area ----
         circle_radius = 280.0
-        circle_item = self.working_plane_scene.addEllipse(-circle_radius, -circle_radius, 2 * circle_radius, 2 * circle_radius,
-                                          pen=QPen(Qt.NoPen), brush=QBrush(QColor(173, 216, 230, 50)))
-        circle_item.setZValue(-1)
+        circle_item = QGraphicsEllipseItem(-circle_radius, -circle_radius, 2 * circle_radius, 2 * circle_radius)
         
-        rect_width, rect_height, corner_radius = 110, 150, 7.5
+        # Create a QColor with an alpha value (e.g., 150 for semi-transparency)
+        semi_transparent_color = QColor(173, 216, 230, 50) # RGBA for lightblue with 150 alpha
+        circle_item.setBrush(QBrush(QColor(semi_transparent_color)))
+        circle_item.setPen(QPen(Qt.NoPen)) # Use Qt.NoPen for no outline
+        circle_item.setZValue(-1) # Place it behind other items
+        self.working_plane_scene.addItem(circle_item)
+        
+        # --- baseplate ----
+        rect_width = 110
+        rect_height = 150
+        corner_radius =  7.5
+        
+        rectangle_item = QGraphicsRectItem((-rect_width / 2), (-rect_height / 2), rect_width, rect_height)
+        rectangle_item.setRect(QRectF((-rect_width / 2), (-rect_height / 2), rect_width, rect_height))
+
         path = QPainterPath()
-        path.addRoundedRect(QRectF(-rect_width/2, -rect_height/2, rect_width, rect_height), corner_radius, corner_radius)
-        self.working_plane_scene.addPath(path, pen=QPen(Qt.NoPen), brush=QBrush(QColor("#DFDFDF"))).setZValue(0)
+        path.addRoundedRect(QRectF((-rect_width / 2), (-rect_height / 2), rect_width, rect_height), corner_radius, corner_radius)
         
+        rounded_rect_item = self.working_plane_scene.addPath(path)
+        rounded_rect_item.setBrush(QBrush(QColor("#DFDFDF")))
+        rounded_rect_item.setPen(QPen(Qt.NoPen))
+        rounded_rect_item.setZValue(0)
+        
+        # --- robot base ---
         robotbase_radius = 45
-        self.working_plane_scene.addEllipse(-robotbase_radius, -robotbase_radius, 2*robotbase_radius, 2*robotbase_radius,
-                                       pen=QPen(Qt.NoPen), brush=QBrush(QColor("#C3C3C3"))).setZValue(1)
+        robotbase_item = QGraphicsEllipseItem(-robotbase_radius, -robotbase_radius, 2 * robotbase_radius, 2 * robotbase_radius)
         
-        face_width, face_height = 20, 60
-        face_item = self.working_plane_scene.addRect(-face_width / 2 - 45, -face_height / 2, face_width, face_height)
-        face_item.setPen(QPen(Qt.NoPen))
+        robotbase_item.setBrush(QBrush(QColor("#C3C3C3")))
+        robotbase_item.setPen(QPen(Qt.NoPen))
+        robotbase_item.setZValue(1) # Ensure it's on top of the rounded rectangle
+        
+        self.working_plane_scene.addItem(robotbase_item)
+        
+        face_width = 20
+        face_height = 60
+
+        face_item = QGraphicsRectItem((-face_width / 2 - 45), (-face_height / 2 ), face_width, face_height)
+        
         face_item.setBrush(QBrush(QColor("#C3C3C3")))
+        face_item.setPen(QPen(Qt.NoPen))
         face_item.setZValue(1)
+        
+        self.working_plane_scene.addItem(face_item)
+        
+        
+ 
 
-
-#========================================================================
+# ...existing code...
 
 
 def main(args=None):
     rclpy.init(args=args)
-
+    
+    # --- Standard ROS2 + PyQt5 integration ---
     app = QApplication(sys.argv)
     
-    # Create the main window instance first
-    main_window = MainWindow() 
+    # 1. Create the ROS 2 node
+    ros_node = CombinedROSNode()
     
-    # Pass the GUI methods to the ROS node here
-    gui_node = CombinedROSNode(
-        gui_callback=main_window.update_gui,
-        service_callback=main_window.on_response_received,
-        node_name='action_gui_node'
-    )
-    
+    # 2. Create the GUI, passing the node to it
+    main_window = MainWindow(ros_node)
     main_window.show()
-
     
+    # 3. Set up a ROS 2 executor in a separate thread
+    executor = MultiThreadedExecutor()
+    executor.add_node(ros_node)
+    
+    # 4. Start the ROS 2 thread
+    ros_thread = threading.Thread(target=executor.spin)
+    ros_thread.daemon = True
+    ros_thread.start()
+
     try:
+        # Start the Qt event loop (this blocks)
         sys.exit(app.exec_())
     finally:
+        # Cleanup
+        print("Shutting down ROS 2 node...")
         executor.shutdown()
-        gui_node.destroy_node()
+        ros_node.destroy_node()
         rclpy.shutdown()
 
 if __name__ == '__main__':
