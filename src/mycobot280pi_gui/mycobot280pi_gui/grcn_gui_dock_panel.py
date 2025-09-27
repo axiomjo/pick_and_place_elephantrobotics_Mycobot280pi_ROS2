@@ -88,12 +88,12 @@ class DockPanel(QWidget):
 
             # Create the cutout pixmap
             cutout_cv = source_image[y:y+h, x:x+w]
-            # ... (code to convert cutout_cv to a QGraphicsPixmapItem) ...
-            # pixmap_item = QGraphicsPixmapItem(pixmap)
-            # pixmap_item.setPos(0, y_offset)
-            # self.cutout_scene.addItem(pixmap_item)
-            # y_offset += h + 5 # Move down for the next item
-
+            
+            pixmap_item = QGraphicsPixmapItem(pixmap)
+            pixmap_item.setPos(0, y_offset)
+            self.cutout_scene.addItem(pixmap_item)
+            
+            y_offset += h + 5 # Move down for the next ite
         # Placeholder text until conversion is fully implemented
         self.cutout_scene.addText(f"Received {len(objects_msg.objects)} objects.")
 

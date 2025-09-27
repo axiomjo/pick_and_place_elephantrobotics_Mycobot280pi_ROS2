@@ -7,25 +7,56 @@ Subscribes to /vision/corrected_image, runs object detection, and publishes resu
 
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Image
-from mycobot280pi_interfaces.msg import ManyDetectedObjects
+
+import cv2
 from cv_bridge import CvBridge
 
-from mycobot280pi_vision.vodn_object_detection import detect_objects
-from mycobot280pi_vision.vodn_message_converter import objects_to_rosmsg
+from .vodn_object_detection import detect_objects, draw_detections
+
+from mycobot280pi_interfaces.msg import ManyDetectedObjects, OneDetectedObject, Point2D
+from sensor_msgs.msg import Image
+from std_msgs.msg import Header
+
+
+def objects_to_rosmsg(detected_objects, header: Header):
+    """
+    Converts a list of detected objects to a ManyDetectedObjects ROS message.
+
+    Args:
+        detected_objects (List[dict]): List of dicts with keys id, x, y, w, h.
+        header (std_msgs.msg.Header): Header from the input image.
+
+    Returns:
+        ManyDetectedObjects: ROS message containing all detected objects.
+    """
+    msg = ManyDetectedObjects()
+    msg.header = header
+    for obj in detected_objects:
+        one = OneDetectedObject()
+        one.id = obj['id']
+        # Center point calculation
+        center = Point2D()
+        center.x = float(obj['x'] + obj['w'] // 2)
+        center.y = float(obj['y'] + obj['h'] // 2)
+        one.center_point = center
+        one.width = obj['w']
+        one.height = obj['h']
+
+        msg.objects.append(one)
+        
+    return msg
+
+
 
 class VisionObjectDetectorNode(Node):
-    """
-    The Finder: Detects objects in the corrected image and publishes results.
-    """
     def __init__(self):
         super().__init__('vision_object_detector_node')
         self.bridge = CvBridge()
 
         # Subscribe to the corrected image topic
-        self.create_subscription(
+        self.image_sub = self.create_subscription(
             Image,
-            '/vision/corrected_image',
+            '/vision/msg_top_down_image',
             self.image_callback,
             10
         )
@@ -33,7 +64,14 @@ class VisionObjectDetectorNode(Node):
         # Publisher for detected objects
         self.objects_pub = self.create_publisher(
             ManyDetectedObjects,
-            '/vision/detected_objects',
+            '/vision/msg_detected_objects',
+            10
+        )
+        
+        # Publisher for annotated image
+        self.annotated_image_pub = self.create_publisher(
+            Image,
+            '/vision/msg_annotated_image',
             10
         )
 
@@ -41,16 +79,25 @@ class VisionObjectDetectorNode(Node):
 
     def image_callback(self, msg):
         # Convert ROS image to OpenCV image
-        frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-
+        try:
+            cv_image = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
+        except Exception as e:
+            self.get_logger().error(f'Failed to convert image: {e}')
+            return
+            
         # Detect objects (returns a list of bounding boxes)
-        detected_objects = detect_objects(frame)
+        detected_objects = detect_objects(cv_image)
+        
+        # draw bounding boxes
+        annotated_image = draw_detections(cv_image, detected_objects)
 
-        # Convert detection results to ROS message
-        rosmsg = objects_to_rosmsg(detected_objects, msg.header)
+        # Convert to ROS message
+        detected_objects_msg = objects_to_rosmsg(detected_objects, msg.header)
+        annotated_image_msg = self.bridge.cv2_to_imgmsg(annotated_image, "bgr8")
 
         # Publish detected objects
-        self.objects_pub.publish(rosmsg)
+        self.objects_pub.publish(detected_objects_msg)
+        self.annotated_image_pub.publish(annotated_image_msg)
 
 def main(args=None):
     rclpy.init(args=args)

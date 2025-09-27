@@ -37,6 +37,7 @@ class MainWindow(QMainWindow):
         # --- ROS Communication Layer ---
         self.ros_comm = ros_comm
         self.latest_objects_msg = None
+        self.latest_annotated_image = None
         
         # --- Assemble the GUI from Panels ---
         central_widget = QWidget()
@@ -76,6 +77,8 @@ class MainWindow(QMainWindow):
         
         # Connect signals from the facade to our handler methods (slots)
         self.ros_comm.detected_objects_received.connect(self.cache_detected_objects)
+        self.ros_comm.annotated_image_received.connect(self.cache_annotated_image)
+        
         self.ros_comm.simple_command_response.connect(self.on_simple_command_response)
         self.ros_comm.action_result.connect(self.on_action_result)
         self.ros_comm.action_feedback.connect(self.on_action_feedback)
@@ -104,11 +107,20 @@ class MainWindow(QMainWindow):
     # --- Main Application Logic Methods ---
     
     def cache_detected_objects(self, objects_msg: ManyDetectedObjects):
-        """Caches the latest message for use by other methods."""
+        """Caches the latest message AND triggers the dock panel to update."""
         self.latest_objects_msg = objects_msg
-        # You could also forward this signal to the dock panel if it needs it:
-        self.dock_panel_widget.update_object_cutouts(objects_msg)
         
+        # Now that we have a new list of objects, tell the dock panel to
+        # re-generate its cutouts using our latest annotated image.
+        if self.dock_panel_widget and self.latest_annotated_image is not None:
+            self.dock_panel_widget.update_object_cutouts(
+                self.latest_annotated_image, 
+                self.latest_objects_msg
+            )
+            
+    def cache_annotated_image(self, cv_image):
+        """Receives the annotated image from the ROS layer and stores it."""
+        self.latest_annotated_image = cv_image    
         
     def send_service_request(self):
         # This method is now much cleaner! It doesn't need to know about ROS request objects.
@@ -163,9 +175,10 @@ class MainWindow(QMainWindow):
             
         try:
             # Get the source image from the cached message
-            full_image = self.ros_comm.bridge.imgmsg_to_cv2(self.latest_objects_msg.source_image, 'bgr8')
+            full_image = self.latest_annotated_image
+            
         except Exception as e:
-            print(f"Could not convert source image for cutouts: {e}")
+            print(f"Could not get the image for cutouts huhuhuhu {e}")
             return
 
         for obj in self.latest_objects_msg.objects:

@@ -1,11 +1,15 @@
 """
 vodn_object_detection.py
 
-Contains the vision algorithm for detecting objects in an image.
+Contains the core, non-ROS computer vision logic for object detection.
+This implementation uses grayscale thresholding to find any non-white objects.
+
 """
 
 import cv2
 import numpy as np
+
+
 
 def detect_objects(frame):
     """
@@ -40,3 +44,19 @@ def detect_objects(frame):
         obj_id += 1
 
     return detected_objects
+    
+def draw_detections(image: np.ndarray, boxes: list):
+    """
+    (This function remains the same)
+    Draws bounding boxes and labels on an image for visualization.
+    """
+    output_image = image.copy()
+    for obj in boxes:
+        # Get box from the dictionary
+        x, y, w, h = obj['x'], obj['y'], obj['w'], obj['h']
+        
+        cv2.rectangle(output_image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        label = f"Object {obj['id']}"
+        cv2.putText(output_image, label, (x, y - 5), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+    return output_image
