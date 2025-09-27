@@ -1,7 +1,7 @@
 [LAST EDITED: 27 SEP 2025 10:38]
-ok gui bisa bulish four perspective points.  
+ok gui bisa pubulish four perspective points.  
 
-![](ASSET_README/ss_gui_ada_perspectivepoints.png)
+![](ASSET_README/ss_perspectivetransform_yeah.png)
 
 ---
 ok mulai ada vision ppeline di gui yh.  
