@@ -1,13 +1,14 @@
 """grcn_gui_main_window.py
 
-Assembles the full GUI for gui_robot_control_node.
-Contains:
-- CameraPanel (perspective editing)
-- Annotated workspace image (top-down)
-- Detected objects dock (placeholder)
-- Control panel (buttons / status)
+TODO: actually not done yet.
 
-Focus: wiring signals from ROSCommunication to widgets.
+Create instances of your specialized panel widgets (from the other grcn_gui_... files).
+
+Assemble them into the final window layout.
+
+Connect them all so they can talk to each other and to the ROS node.
+
+Hold the high-level application logic that coordinates actions between panels.
 """
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -16,73 +17,284 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import Qt
 
+# from other grcn files
 from .grcn_gui_camera_panel import CameraPanel
-from .grcn_ros_communication import ROSCommunication
-from .grcn_pyqt_widget import ImageDisplayWidget, PerspectiveEditorDialog
+from .grcn_gui_working_plane import WorkingPlane
+# from .grcn_gui_control_panel import ControlPanel
+# from .grcn_gui_dock_panel import DockPanel
+
+# ros interfaces
+from mycobot280pi_interfaces.msg import ManyDetectedObjects
+from sensor_msgs.msg import Image
+
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, ros_comm):
         super().__init__()
-        self.setWindowTitle("MyCobot 280 Pi Control Center")
+        self.setWindowTitle("MyCobot 280 Pi GUI")
         self.resize(1400, 900)
 
         # --- ROS Communication Layer ---
-        self.ros = ROSCommunication()
+        self.ros_comm = ros_comm
+        
+        # --- Assemble the GUI from Panels ---
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
 
-        # --- Central Widgets ---
-        central = QWidget()
-        central_layout = QHBoxLayout(central)
-        self.setCentralWidget(central)
+        # Create instances of all grcn classes 
+        self.camera_panel = CameraPanel(self.ros_comm)
+        self.working_plane = WorkingPlane()
+        # self.control_panel = ControlPanel()
+        # self.dock_panel_widget = DockPanel()
 
-        # Left: Perspective editing camera panel
-        self.camera_panel = CameraPanel(ros_comm=self.ros)
-        self.camera_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        central_layout.addWidget(self.camera_panel, 2)
+        
+        
+        # --- Assemble the layout ---
+        # Right side combines the working plane and its controls
+        right_layout = QVBoxLayout()
+        right_layout.addWidget(self.working_plane)
+        #right_layout.addWidget(self.control_panel)
 
-        # Right: Annotated workspace view
-        right_container = QVBoxLayout()
-        self.annotated_label = ImageDisplayWidget()
-        self.annotated_label.setMinimumSize(640, 480)
-        right_container.addWidget(self.annotated_label, 3)
+        # Main layout combines the left and right sides
+        main_layout = QHBoxLayout(central_widget)
+        main_layout.addWidget(self.camera_panel, 1) # Ratio 1
+        main_layout.addLayout(right_layout, 2)     # Ratio 2
 
-        # Control buttons (simplified)
-        controls_row = QHBoxLayout()
-        self.btn_send_simple = QPushButton("Send Simple Command")
-        self.btn_send_simple.clicked.connect(self._on_simple_command)
-        self.btn_start_action = QPushButton("Start Complex Action")
-        self.btn_start_action.clicked.connect(self._on_start_action)
-        self.btn_cancel_action = QPushButton("Cancel Action")
-        self.btn_cancel_action.clicked.connect(self._on_cancel_action)
-        controls_row.addWidget(self.btn_send_simple)
-        controls_row.addWidget(self.btn_start_action)
-        controls_row.addWidget(self.btn_cancel_action)
-        right_container.addLayout(controls_row)
+        # --- Create and set the dock widget ---
+        dock = QDockWidget("Controls & Cutouts", self)
+        
+        """
+        dock.setWidget(self.dock_panel_widget)
+        self.addDockWidget(Qt.RightDockWidgetArea, dock)
+        """
+        
+        # --- Connect Signals and Slots ---
+        self.connect_signals()
+        
+    def connect_signals(self):
+        
+        # Connect signals from the facade to our handler methods (slots)
+        self.ros_comm.detected_objects_received.connect(self.cache_detected_objects)
+        self.ros_comm.simple_command_response.connect(self.on_simple_command_response)
+        self.ros_comm.action_result.connect(self.on_action_result)
+        self.ros_comm.action_feedback.connect(self.on_action_feedback)
+        
+        # You would also connect signals to your panels here. For example:
+        # self.ros_comm.annotated_image_received.connect(self.camera_panel.update_camera_view)
+        # self.control_panel.send_button.clicked.connect(self.send_service_request)
 
-        # Status labels
-        self.status_simple = QLabel("SimpleCmd: idle")
-        self.status_action = QLabel("Action: idle")
-        right_container.addWidget(self.status_simple)
-        right_container.addWidget(self.status_action)
+    # --- Main Application Logic Methods ---
+    
+    def cache_detected_objects(self, objects_msg: ManyDetectedObjects):
+        """Caches the latest message for use by other methods."""
+        self.latest_objects_msg = objects_msg
+        # You could also forward this signal to the dock panel if it needs it:
+        # self.dock_panel_widget.update_object_cutouts(objects_msg)
+        
+        
+    def send_service_request(self):
+        # This method is now much cleaner! It doesn't need to know about ROS request objects.
+        selected_items = self.working_plane.scene.selectedItems()
+        if not selected_items:
+            print("No item selected.")
+            return
+        
+        item = selected_items[0]
+        center_pos = item.mapToScene(item.boundingRect().center())
+        rot = item.rotation()
 
-        central_layout.addLayout(right_container, 2)
+        coords = [center_pos.x(), center_pos.y(), 60.0, 180.0, 0.0, rot]
+        
+        # Call the clean facade method with simple Python types
+        self.ros_comm.call_simple_command(coords=coords, speed=80, is_linear_mode=False) # Example
+        print(f"Sent command to robot: x={coords[0]:.1f}, y={coords[1]:.1f}, rz={coords[5]:.1f}")
+    
+    
+    # --- New Slots to handle responses from the facade ---
+    def on_simple_command_response(self, success: bool, message: str):
+        """Handles the feedback from the simple command service."""
+        print(f"Service Response: Success={success}, Message='{message}'")
+        # Here you would update a status bar in your GUI.
 
-        # --- Dock: Detected objects placeholder ---
-        self.objects_dock = QDockWidget("Detected Objects", self)
-        self.objects_dock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
-        self.objects_content = QLabel("(objects will list here)")
-        self.objects_content.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-        self.objects_dock.setWidget(self.objects_content)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.objects_dock)
+    def on_action_feedback(self, status: str):
+        """Handles live feedback from a running action."""
+        print(f"Action Feedback: {status}")
+        # Update a status bar with the current action state.
 
-        # --- Signal Wiring ---
-        self.ros.undistorted_image_received.connect(self._update_undistorted_image)
-        self.ros.annotated_image_received.connect(self._update_annotated_image)
-        self.ros.detected_objects_received.connect(self._update_objects)
-        self.ros.joint_state_received.connect(self._update_joint_state)
-        self.ros.simple_command_response.connect(self._simple_cmd_response)
-        self.ros.action_feedback.connect(self._action_feedback)
-        self.ros.action_result.connect(self._action_result)
+    def on_action_result(self, success: bool, message: str):
+        """Handles the final result of an action."""
+        print(f"Action Result: Success={success}, Message='{message}'")
+        
 
+        # --- Working Plane Controls ---  
+    def reset_plane(self):
+        self.working_plane_scene.clear()
+        self.items_on_plane.clear()
+        self.draw_mycobot280pi_working_plane()
+        self.draw_axes_with_ticks()
+        
+    def add_new_objects_from_cutouts(self):
+        # We need the last frame and detected boxes to add objects
+        frame = self.ros_comm.latest_frame
+        boxes = self.ros_comm.latest_boxes
+        
+        if frame is None or not boxes:
+            print("No new objects to add.")
+            return
+            
+        # Get the camera's center
+        height, width, _ = frame.shape
+        cam_center_x = width / 2.0
+        cam_center_y = height / 2.0
+
+        for (x, y, w, h) in boxes:
+            if w <= 0 or h <= 0:
+                continue
+
+            cutout = frame[y:y+h, x:x+w].copy()
+            if cutout.size == 0:
+                continue
+
+            rgb = cv2.cvtColor(cutout, cv2.COLOR_BGR2RGB)
+            h2, w2, ch = rgb.shape
+            bytes_per_line = ch * w2
+            qt_img = QImage(rgb.data, w2, h2, bytes_per_line, QImage.Format_RGB888)
+            pixmap = QPixmap.fromImage(qt_img)
+
+            item = DraggableItem(
+                pixmap,
+                original_x=x,
+                original_y=y,
+                original_w=w,
+                original_h=h
+            )
+            
+
+            # Make sure these lines are inside this loop
+            obj_center_x = x
+            obj_center_y = y
+            
+            # Translate to be relative to the center of the camera frame
+            scene_x = obj_center_x - cam_center_x
+            scene_y = -(obj_center_y - cam_center_y)
+            
+            
+            # Place new items near the center of the working plane
+            item.setPos(scene_x,scene_y)
+            self.working_plane_scene.addItem(item)
+            self.items_on_plane.append(item)
+      
+
+    def set_selected_item_rotation(self, angle):
+        selected_items = self.working_plane_scene.selectedItems()
+        if selected_items:
+            item = selected_items[0]
+            item.setRotation(angle)
+    
+    def update_rotation_widgets(self):
+        selected_items = self.working_plane_scene.selectedItems()
+        if selected_items:
+            item = selected_items[0]
+            self.rotation_slider.setDisabled(False)
+            self.rotation_spinbox.setDisabled(False)
+            self.rotation_spinbox.setValue(item.rotation())
+        else:
+            self.rotation_slider.setDisabled(True)
+            self.rotation_spinbox.setDisabled(True)
+    
+    def send_service_request(self):
+        selected_items = self.working_plane_scene.selectedItems()
+        if not selected_items:
+            print("No item selected. Cannot send coordinates.")
+            return
+    
+        item = selected_items[0]
+        center_pos = item.mapToScene(item.pixmap().rect().center())
+        rot = item.rotation()
+    
+        req = Mycobot280PiSimpleCommandsMadeSure.Request()
+        req.x = center_pos.x()
+        req.y = center_pos.y()
+        req.z = 60.0
+        req.rx = 180.0
+        req.ry = 0.0
+        req.rz = rot
+        req.speed = 80
+        req.model = 0
+    
+        self.ros_comm.call_service(req)
+        print(f"Sent to robot: x={req.x:.1f}, y={req.y:.1f}, rz={req.rz:.1f}")
+
+    def handle_refresh_result(self, warped_img):
+        rgb = cv2.cvtColor(warped_img, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgb.shape
+        qt_img = QImage(rgb.data, w, h, ch*w, QImage.Format_RGB888)
+        pixmap = QPixmap.fromImage(qt_img)
+        self.working_plane_scene.clear()
+        self.working_plane_scene.addPixmap(pixmap)
+
+    def rotate_clockwise(self):
+        self.current_rotation -= 90
+        self.set_pov()
+
+    def rotate_counter_clockwise(self):
+        self.current_rotation += 90
+        self.set_pov()
+
+    def set_pov(self):
+        transform = QTransform()
+        transform.scale(1, -1)
+        transform.rotate(self.current_rotation)
+        self.working_plane_view.setTransform(transform)
+        print(f"View rotated to {self.current_rotation % 360}°")
+
+    def analyze_positions(self):
+        print("\n=== Analyzing All Items LOCALLY ===")
+        for i, item in enumerate(self.items_on_plane, start=1):
+            pos = item.scenePos()
+            rot = item.rotation()
+            print(f"Item {i}: x={pos.x():.1f}, y={pos.y():.1f}, rotation={rot:.1f}")
+        print("==========================\n")
+
+        print("=== Object Analysis ===")
+        for i, item in enumerate(self.working_plane_scene.items()):
+            if isinstance(item, DraggableItem):
+                center_in_scene = item.mapToScene(item.rect().center())
+                x = center_in_scene.x()
+                y = center_in_scene.y()
+                rotation = item.rotation()
+                print(f"Rect {i+1}: X={x:.2f}, Y={y:.2f}, Rotation={rotation:.2f}°")
+        print("=======================")
+
+
+    def delete_selected(self):
+        selected_items = self.working_plane_scene.selectedItems()
+        for item in selected_items:
+            self.working_plane_scene.removeItem(item)
+            if item in self.items_on_plane:
+                self.items_on_plane.remove(item)
+        print(f"Deleted {len(selected_items)} item(s).")
+      
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
     # ----------------- GUI Slots -----------------
     def _update_undistorted_image(self, cv_img):
         # Just delegate into camera panel (already subscribed), optional for other overlays
@@ -135,10 +347,3 @@ class MainWindow(QMainWindow):
     def _on_cancel_action(self):
         self.ros.cancel_complex_goal()
 
-    # ----------------- Lifecycle -----------------
-    def closeEvent(self, event):
-        try:
-            self.ros.shutdown()
-        except Exception:
-            pass
-        event.accept()

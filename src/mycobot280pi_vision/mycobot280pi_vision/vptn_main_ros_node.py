@@ -23,136 +23,115 @@ If automatic detection fails, it allows the user to manually select the four cor
 
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Image
-from std_msgs.msg import String
-from cv_bridge import CvBridge
-import cv2
 import numpy as np
-import threading
+from cv_bridge import CvBridge
 
-# Import the perspective transform helper (now encapsulates ordering + warp)
-from mycobot280pi_vision.vptn_perspective_transform import compute_topdown
+# ROS 2 Message Imports
+from sensor_msgs.msg import Image
+from mycobot280pi_interfaces.msg import Point2DArray
 
-# Custom Interfaces
-from mycobot280pi_interfaces.msg import Point2DArray  
+# Import the logic class from the other file
+from .vptn_perspective_transform import PerspectiveTransformer
 
 class VisionPerspectiveTransformNode(Node):
-    """Transforms an incoming undistorted perspective image into a square top-down view.
-
-    Responsibilities:
-    - Subscribe to `/vision/msg_undistorted_image` (sensor_msgs/Image).
-    - Subscribe to `/gui/msg_four_perspective_points` (Point2DArray) supplied by the GUI.
-    - When BOTH an image and 4 valid points are present, compute perspective warp.
-    - Publish warped image on `/vision/msg_top_down_image` (sensor_msgs/Image).
-
-    Notes / Project Conventions:
-    - GUI sends points in image pixel coordinates.
-    - Order of points from GUI may be arbitrary (user drags) → we must order them deterministically.
-    - Existing warp_perspective() expects source points ordered to map to destination order:
-        dst = [TR, TL, BL, BR] (non‑standard ordering defined in vptn_perspective_transform.py)
-    - We therefore build (TR, TL, BL, BR) when calling warp_perspective.
+    """
+    A ROS 2 node that subscribes to an image and four points, performs a 
+    perspective transform, and publishes the resulting top-down image.
     """
 
     def __init__(self):
-        super().__init__('vision_perspective_transform_node')
+        super().__init__('vision_perspective_transformer_node')
+        self.get_logger().info('Perspective Transformer Node has started.')
+
+        # State variables to hold the latest data from subscribers
+        self.latest_image = None
+        self.latest_points = None
+
+        # Initialize the CvBridge and the transformer logic
         self.bridge = CvBridge()
+        self.transformer = PerspectiveTransformer()
 
-        # Parameters
-        self.declare_parameter('output_size', 600)
-        self.output_size = int(self.get_parameter('output_size').value)
-
-        # Internal state
-        self._latest_image = None          # (cv_image, header)
-        self._latest_points = None         # np.ndarray shape (4,2)
-        self._lock = threading.Lock()
-        self._last_warn_missing_points = 0.0
-
-        # Subscriptions
-        self.create_subscription(
+         # === SUBSCRIBERS ===
+        self.image_subscriber = self.create_subscription(
             Image,
             '/vision/msg_undistorted_image',
             self.image_callback,
             10
         )
-        self.create_subscription(
+        
+        self.points_subscriber = self.create_subscription(
             Point2DArray,
             '/gui/msg_four_perspective_points',
-            self.perspective_points_callback,
+            self.points_callback,
             10
         )
 
-        # Publisher
-        self.topdown_pub = self.create_publisher(
+        # === PUBLISHER ===
+        self.top_down_publisher = self.create_publisher(
             Image,
             '/vision/msg_top_down_image',
             10
         )
-
-        self.get_logger().info("vision_perspective_transform_node is ready (waiting for image + 4 points)")
-
-    def _try_publish_warp(self):
-        """Attempt warp & publish if both image and 4 points available."""
-        with self._lock:
-            if self._latest_image is None or self._latest_points is None:
-                return
-            cv_image, header = self._latest_image
-            pts = self._latest_points
-
-        if pts.shape != (4, 2):
-            self.get_logger().warn(f"Expected 4 points, got shape {pts.shape}; skipping warp")
-            return
-
-        try:
-            warped = compute_topdown(cv_image, pts, output_size=self.output_size)
-        except Exception as e:
-            self.get_logger().error(f"Perspective warp failed: {e}")
-            return
-
-        try:
-            out_msg = self.bridge.cv2_to_imgmsg(warped, encoding='bgr8')
-            # Preserve timing metadata; keep same frame_id for traceability
-            out_msg.header = header
-            out_msg.header.frame_id = header.frame_id or 'vision_topdown'
-            self.topdown_pub.publish(out_msg)
-        except Exception as e:
-            self.get_logger().error(f"Failed to publish warped image: {e}")
-
-    # ----------------------------- Callbacks ---------------------------------------
+        
     def image_callback(self, msg: Image):
+        """Callback for the undistorted image topic."""
         try:
-            cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+            self.latest_image = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
+            self.process_and_publish()
         except Exception as e:
-            self.get_logger().error(f"Failed to convert incoming image: {e}")
-            return
-        with self._lock:
-            self._latest_image = (cv_image, msg.header)
-        self._try_publish_warp()
+            self.get_logger().error(f'Failed to convert image: {e}')
 
-    def perspective_points_callback(self, msg: Point2DArray):
-        # Extract points
-        pts_list = [(p.x, p.y) for p in msg.points]
-        if len(pts_list) != 4:
-            # Throttle warning to avoid spamming logs if GUI still dragging points
-            now = self.get_clock().now().seconds_nanoseconds()[0]
-            if now - self._last_warn_missing_points > 1.0:
-                self.get_logger().warn(f"Need exactly 4 points; received {len(pts_list)}. Waiting...")
-                self._last_warn_missing_points = now
+    def points_callback(self, msg: Point2DArray):
+        """Callback for the four points topic from the GUI."""
+        if len(msg.points) == 4:
+            # Convert the message to a NumPy array of shape (4, 2)
+            self.latest_points = np.array(
+                [[p.x, p.y] for p in msg.points], 
+                dtype=np.float32
+            )
+            self.process_and_publish()
+        else:
+            self.get_logger().warn(
+                f'Received points message with {len(msg.points)} points, expected 4.')
+            self.latest_points = None
+        
+
+    def process_and_publish(self):
+        """
+        Checks if all required data is available and, if so,
+        performs the transformation and publishes the result.
+        """
+        # Only proceed if we have received at least one image and one set of valid points
+        if self.latest_image is None or self.latest_points is None:
             return
-        pts = np.array(pts_list, dtype=np.float32)
-        with self._lock:
-            self._latest_points = pts
-        self._try_publish_warp()
+
+        # Perform the transformation using our logic class
+        warped_image = self.transformer.transform(self.latest_image, self.latest_points)
+
+        if warped_image is not None:
+            try:
+                # Convert the warped OpenCV image back to a ROS message and publish
+                top_down_msg = self.bridge.cv2_to_imgmsg(warped_image, 'bgr8')
+                self.top_down_publisher.publish(top_down_msg)
+            except Exception as e:
+                self.get_logger().error(f'Failed to publish warped image: {e}')
 
 
 def main(args=None):
     rclpy.init(args=args)
-    node = VisionPerspectiveTransformNode()
-    try:
-        rclpy.spin(node)
-    finally:
-        cv2.destroyAllWindows()
-        node.destroy_node()
-        rclpy.shutdown()
+    vptn_node = VisionPerspectiveTransformNode()
+    rclpy.spin(vptn_node)
+    
+    # Cleanup
+    vptn_node.destroy_node()
+    rclpy.shutdown()
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
+
+        
+        
+        
+        
+        
+        

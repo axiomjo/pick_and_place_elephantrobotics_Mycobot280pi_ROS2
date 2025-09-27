@@ -1,3 +1,10 @@
+"""
+Todo: cakepin format createsubscription dll supaya g sebaris
+ganti nama pyqt signalnya
+
+apus/ gabungin yg bagus dari file lawas di bawah ke atas
+"""
+
 """grcn_ros_communication.py
 
 Central ROS2 communication layer for the gui_robot_control_node.
@@ -23,32 +30,28 @@ Action Client
 -------------
 1. /planner/act_complex_command -> mycobot280pi_interfaces/action/ProcessWorkspace
 
-Design Notes
-------------
-* Runs rclpy spin inside a QThread so the PyQt GUI thread remains responsive.
-* Emits PyQt signals carrying decoded numpy arrays or message objects.
-* Provides thin wrapper methods that higher level GUI widgets can call.
-* Topic / service / action names are centralized as constants for easy future refactor.
+
+
 """
 
 import rclpy
 from rclpy.node import Node
-from PyQt5.QtCore import QObject, pyqtSignal, QThread
+from rclpy.action import ActionClient
+from rclpy.executors import MultiThreadedExecutor
+import threading
+import numpy as np
 
+from PyQt5.QtCore import QObject, pyqtSignal
+from cv_bridge import CvBridge
+
+# ROS2 interfaces
 from sensor_msgs.msg import Image, JointState
-from mycobot280pi_interfaces.msg import (ManyDetectedObjects, SimpleCommands,
-                                         Point2DArray, Point2D)
+from mycobot280pi_interfaces.msg import Point2D, Point2DArray, ManyDetectedObjects
 from mycobot280pi_interfaces.srv import Mycobot280PiSimpleCommandsMadeSure
 from mycobot280pi_interfaces.action import ProcessWorkspace
 
-from cv_bridge import CvBridge
-import numpy as np
-import rclpy
-from rclpy.action import ActionClient
 
-# ---------------------------------------------------------------------------
-# Constants (single source of truth for interface names)
-# ---------------------------------------------------------------------------
+# --- Constants (single source of truth for interface names) ---
 TOPIC_UNDISTORTED_IMAGE = '/vision/msg_undistorted_image'
 TOPIC_DETECTED_OBJECTS = '/vision/msg_detected_objects'
 TOPIC_ANNOTATED_IMAGE = '/vision/msg_annotated_image'
@@ -58,80 +61,101 @@ TOPIC_FOUR_POINTS = '/gui/msg_four_perspective_points'
 SERVICE_SIMPLE_COMMAND = '/planner/srv_simple_command'
 ACTION_COMPLEX_COMMAND = '/planner/act_complex_command'
 
-class ROSCommunication(QObject):
-    """Facade object exposed to GUI widgets (lives in the GUI thread)."""
 
-    # --- PyQt Signals ---
-    undistorted_image_received = pyqtSignal(np.ndarray)   # Perspective editing
-    annotated_image_received = pyqtSignal(np.ndarray)     # Workspace / annotated view
+
+# =========================================================================
+#  Part 1: The Manager Class (ROSCommunication)
+# =========================================================================
+class ROSCommunication(QObject):
+    """
+    This is the Head Chef (Manager). The GUI talks to this class.
+    It provides simple methods and forwards the hard work to the Line Cook (_ROSNode).
+    """
+    # These are the "notification bells". The Head Chef rings these to alert
+    # the Waiters (GUI) that something is ready (e.g., a new image has arrived).
+    undistorted_image_received = pyqtSignal(np.ndarray)
+    annotated_image_received = pyqtSignal(np.ndarray)
     detected_objects_received = pyqtSignal(ManyDetectedObjects)
     joint_state_received = pyqtSignal(JointState)
-    simple_command_response = pyqtSignal(bool, str)       # success, message
-    action_feedback = pyqtSignal(str)                     # current_state
-    action_result = pyqtSignal(bool, str)                 # success, message
+    simple_command_response = pyqtSignal(bool, str)
+    action_feedback = pyqtSignal(str)
+    action_result = pyqtSignal(bool, str)
 
     def __init__(self, parent=None):
-        super().__init__(parent)
-        self.bridge = CvBridge()
-        self._ros_thread = QThread()
-        self._ros_node = _ROSNode(self)
-        self._ros_thread.started.connect(self._ros_node.spin)
-        self._ros_thread.start()
-
-    # ------------------------------------------------------------------
-    # Outgoing interface methods (called by GUI widgets)
-    # ------------------------------------------------------------------
-    def publish_four_points(self, points):
-        """Publish user selected perspective rectangle.
-        points: list[(x, y)] length==4
         """
-        msg = Point2DArray()
-        for x, y in points:
-            pt = Point2D()
-            pt.x = float(x)
-            pt.y = float(y)
-            msg.points.append(pt)
-        self._ros_node.publish_perspective_points(msg)
+        This runs when the restaurant opens for the day.
+        """
+        super().__init__(parent)
+        
+        # 1. The Head Chef hires their expert Line Cook (_ROSNode).
+        self._ros_node = _ROSNode(self)
+        
+        # 2. The Head Chef opens the Kitchen (a new thread), and tells the
+        #    Line Cook to start working there continuously.
+        self.executor = MultiThreadedExecutor()
+        self.executor.add_node(self._ros_node)
+        self.ros_thread = threading.Thread(target=self.executor.spin)
+        self.ros_thread.daemon = True  # Allows the ros node to close when gui is closed
+        self.ros_thread.start()
+        print("GUI's node is ready!")
+
+    # --- Public Methods for the GUI ---
+    # These are the simple orders the Waiters (GUI) give to the Head Chef.
+    # The Head Chef just passes the order to the Line Cook.
+    
+    def publish_four_points(self, points):
+        """Waiter says: 'Chef, here are the four corner points from the customer.'"""
+        self._ros_node.publish_perspective_points(points)
 
     def call_simple_command(self, coords=None, speed=50, is_linear_mode=True):
+        """Waiter says: 'Chef, the customer wants a simple robot move.'"""
         self._ros_node.call_simple_command_service(coords or [], speed, is_linear_mode)
 
     def send_complex_goal(self, objects_to_move, target_positions, target_orientation):
+        """Waiter says: 'Chef, the customer wants a complex pick-and-place order.'"""
         self._ros_node.send_complex_action_goal(objects_to_move, target_positions, target_orientation)
 
     def cancel_complex_goal(self):
-        self._ros_node.cancel_action_goal()
+        """Waiter says: 'Chef, cancel that complex order!'"""
+        self._ros_node.cancel_complex_goal()
 
     def shutdown(self):
-        self._ros_node.shutdown()
-        self._ros_thread.quit()
-        self._ros_thread.wait()
-
-
+        """This is the 'closing time' procedure to safely shut down the kitchen."""
+        print("Closing the kitchen...")
+        self.executor.shutdown()
+        self._ros_node.destroy_node()
+        
+        
+        
+        
+        
 class _ROSNode(Node):
-    """Internal rclpy Node that lives entirely inside a QThread."""
-    def __init__(self, facade: ROSCommunication):  # type: ignore[name-defined]
+    """
+    Internal rclpy Node that lives entirely inside the background thread.
+    (Reorganized for clarity)
+    """
+    def __init__(self, facade: ROSCommunication):
         super().__init__('gui_robot_control_node')
         self.facade = facade
         self.bridge = CvBridge()
+        self._active_action_goal = None
 
-        # Publishers & Clients (created early for simplicity)
+        # --- Group 1: Publishers & Clients (Setup) ---
+        # All outgoing communication channels are set up here.
         self.points_pub = self.create_publisher(Point2DArray, TOPIC_FOUR_POINTS, 10)
         self.simple_cmd_client = self.create_client(Mycobot280PiSimpleCommandsMadeSure, SERVICE_SIMPLE_COMMAND)
         self.action_client = ActionClient(self, ProcessWorkspace, ACTION_COMPLEX_COMMAND)
-        self._active_action_goal = None
 
-        # Subscribers
+        # --- Group 2: Subscribers (Setup) ---
+        # All incoming communication channels are set up here.
         self.create_subscription(Image, TOPIC_UNDISTORTED_IMAGE, self._undistorted_cb, 10)
         self.create_subscription(Image, TOPIC_ANNOTATED_IMAGE, self._annotated_cb, 10)
         self.create_subscription(ManyDetectedObjects, TOPIC_DETECTED_OBJECTS, self._objects_cb, 10)
         self.create_subscription(JointState, TOPIC_JOINT_ANGLES, self._joints_cb, 10)
 
-    # ----------------- Spin Loop -----------------
-    def spin(self):
-        rclpy.spin(self)
-
-    # ----------------- Subscriber Callbacks -----------------
+    # =========================================================================
+    #  Methods for INCOMING Data (Subscriber Callbacks)
+    # =========================================================================
     def _undistorted_cb(self, msg: Image):
         try:
             cv_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
@@ -152,11 +176,20 @@ class _ROSNode(Node):
     def _joints_cb(self, msg: JointState):
         self.facade.joint_state_received.emit(msg)
 
-    # ----------------- Publishers -----------------
-    def publish_perspective_points(self, msg: Point2DArray):
+    # =========================================================================
+    #  Methods for OUTGOING Data (Publisher)
+    # =========================================================================
+    def publish_perspective_points(self, points):
+        msg = Point2DArray()
+        for x, y in points:
+            pt = Point2D()
+            pt.x, pt.y = float(x), float(y)
+            msg.points.append(pt)
         self.points_pub.publish(msg)
 
-    # ----------------- Service Call -----------------
+    # =========================================================================
+    #  Methods for Quick Tasks (Service Client)
+    # =========================================================================
     def call_simple_command_service(self, coords, speed, is_linear_mode):
         if not self.simple_cmd_client.wait_for_service(timeout_sec=1.0):
             self.facade.simple_command_response.emit(False, 'Service unavailable')
@@ -175,7 +208,9 @@ class _ROSNode(Node):
         except Exception as e:
             self.facade.simple_command_response.emit(False, f'Exception: {e}')
 
-    # ----------------- Action Goal -----------------
+    # =========================================================================
+    #  Methods for Complex, Multi-Step Tasks (Action Client)
+    # =========================================================================
     def send_complex_action_goal(self, objects_to_move, target_positions, target_orientation):
         if not self.action_client.wait_for_server(timeout_sec=1.0):
             self.facade.action_result.emit(False, 'Action server not available')
@@ -219,10 +254,39 @@ class _ROSNode(Node):
             cancel_future.add_done_callback(lambda _: self.facade.action_result.emit(False, 'Cancelled'))
         else:
             self.facade.action_result.emit(False, 'No active goal to cancel')
-
-    # ----------------- Shutdown -----------------
+            
+    # =========================================================================
+    #  Shutdown Method
+    # =========================================================================
     def shutdown(self):
         try:
             self.destroy_node()
         except Exception:
             pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
