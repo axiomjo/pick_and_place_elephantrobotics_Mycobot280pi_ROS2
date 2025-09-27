@@ -12,3 +12,5 @@ habis dibenerin, colcon buildnya berhasil koq.
 
 # lagi launchfiles. 
 ternyata ada pola berulang buat nambahin custom files n folder di package ros. pake yg os.path.join, trus diganti nama directory nya.
+
+# balik ke bikin gui

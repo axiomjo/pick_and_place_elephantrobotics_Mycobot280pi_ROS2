@@ -19,7 +19,6 @@ from rclpy.node import Node
 from rclpy.action import ActionClient
 from rclpy.executors import MultiThreadedExecutor
 from sensor_msgs.msg import Image,JointState
-from std_msgs.msg import Int32MultiArray
 from cv_bridge import CvBridge
 
 # Custom ROS 2 Interfaces
@@ -27,16 +26,7 @@ from mycobot280pi_interfaces.action import ProcessWorkspace
 from mycobot280pi_interfaces.msg import Point2DArray, Point2D, ManyDetectedObjects 
 from mycobot280pi_interfaces.srv import Mycobot280PiSimpleCommandsMadeSure
 
-
-#========================================================================
-
-# --- ROS2 Signal Emitter (for thread-safe communication) ---
-class SignalEmitter(Node):
-    def __init__(self, callback):
-        super().__init__('signal_emitter')
-        self.timer = self.create_timer(0.1, callback)
-        
-     
+   
 #========================================================================
 
 # ----------- Helper Classes ----------------------
@@ -90,6 +80,7 @@ class PerspectiveEditorWidget(QWidget):
         
         # ----- Top: graphics scene
         self.preview_label = QLabel("Warped preview")
+        self.preview_label.setMinimumHeight(300)
         self.perspectivepoints_scene = QGraphicsScene()
         self.view = QGraphicsView(self.perspectivepoints_scene)
         self.pixmap_item = QGraphicsPixmapItem() # Create an empty item to hold the image
@@ -140,10 +131,24 @@ class PerspectiveEditorWidget(QWidget):
         msg = Point2DArray()
         for (x, y) in pts:
             pt = Point2D()
-            pt.x, pt.y = int(x), int(y)
+            pt.x, pt.y = float(x), float(y)
             msg.points.append(pt)
-            
+         
+        #sebenenrnya bisa diganti ke ngesubscribe vptn sih, ini sementatra aja.    
         self.node.perspective_points_pub.publish(msg) 
+        
+        # Warp preview image for visual feedback
+        h, w, _ = self.frame.shape
+        dst = np.array([[0,0],[w,0],[w,h],[0,h]], dtype=np.float32)
+        M = cv2.getPerspectiveTransform(pts, dst)
+        warped = cv2.warpPerspective(self.frame, M, (w,h))
+
+        # Convert to QPixmap and display it in the preview_label
+        rgb = cv2.cvtColor(warped, cv2.COLOR_BGR2RGB)
+        qimg = QImage(rgb.data, w, h, 3*w, QImage.Format_RGB888)
+        self.preview_label.setPixmap(QPixmap.fromImage(qimg).scaled(
+            self.preview_label.width(), self.preview_label.height(), Qt.KeepAspectRatio
+))
 
         
         
@@ -354,6 +359,16 @@ class MainWindow(QMainWindow):
         self.reset_btn = QPushButton("Reset Plane")
         self.reset_btn.clicked.connect(self.reset_plane)
         
+        self.analyze_btn = QPushButton("Analyze (Print All)")
+        self.analyze_btn.clicked.connect(self.analyze_positions)
+        self.analyze_btn.setDisabled(True)
+        controls_h_layout.addWidget(self.analyze_btn)
+
+        self.delete_btn = QPushButton("Delete Selected")
+        self.delete_btn.clicked.connect(self.delete_selected)
+        controls_h_layout.addWidget(self.delete_btn)
+
+        
         
         self.current_rotation = 0
         
@@ -459,62 +474,9 @@ class MainWindow(QMainWindow):
         except Exception as e:
             print(f"Service call failed with exception: {e}")
     
-    def update_gui(self, image, boxes):
-        """Callback from ROS node to update the GUI with image data."""
-        # Update camera feed
-        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        h, w, ch = rgb_image.shape
-        bytes_per_line = ch * w
-        qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
-        pixmap = QPixmap.fromImage(qt_image)
-        self.camera_label.setPixmap(pixmap.scaled(self.camera_label.width(), self.camera_label.height(), Qt.KeepAspectRatio))
-
-        # Update service button state
-        self.send_btn.setDisabled(not self.ros_node.is_service_ready)
-
-        # Clear and update cutout scene
-        self.cutout_scene.clear()
-        x_offset = 0
-        y_offset = 0
-        for (x, y, w, h) in boxes:
-            if w <= 0 or h <= 0:
-                continue
-            cutout = image[y:y+h, x:x+w].copy()
-            if cutout.size == 0:
-                continue
-
-            rgb_cutout = cv2.cvtColor(cutout, cv2.COLOR_BGR2RGB)
-            h_c, w_c, ch_c = rgb_cutout.shape
-            bytes_per_line_c = ch_c * w_c
-            qt_img_c = QImage(rgb_cutout.data, w_c, h_c, bytes_per_line_c, QImage.Format_RGB888)
-            pixmap_c = QPixmap.fromImage(qt_img_c)
-            
-            # Use a non-draggable, simple PixmapItem for the cutout view
-            item = QGraphicsPixmapItem(pixmap_c.scaled(100, 100, Qt.KeepAspectRatio))
-            item.setPos(x_offset, y_offset)
-            self.cutout_scene.addItem(item)
-            y_offset += 110 # Space out cutouts vertically
-
-       
+    
     # ------------------- 4. Event Handlers & Helper Functions -------------------
     # These methods handle user interaction with the GUI.
-    
-    def open_perspective_editor(self):
-        """Creates and shows the PerspectiveEditorWindow dialog."""
-        # Make sure we have a camera frame to work with
-        if self.ros_node.latest_frame is None:
-            print("Cannot open perspective editor: No camera image received yet.")
-            return
-
-        # Create an instance of the editor window
-        editor_dialog = PerspectiveEditorWindow(
-            parent=self, 
-            node=self.ros_node, 
-            frame=self.ros_node.latest_frame
-        )
-        # Execute the dialog (this will show the window and pause the main window)
-        editor_dialog.exec_()
-
     
     # --- Working Plane Controls ---  
     def reset_plane(self):
@@ -656,17 +618,6 @@ class MainWindow(QMainWindow):
                 print(f"Rect {i+1}: X={x:.2f}, Y={y:.2f}, Rotation={rotation:.2f}°")
         print("=======================")
 
-    # Add buttons for analyze and delete
-    def setup_control_buttons(self):
-        # ...existing code...
-        self.analyze_btn = QPushButton("Analyze (Print All)")
-        self.analyze_btn.clicked.connect(self.analyze_positions)
-        self.analyze_btn.setDisabled(True)
-        controls_h_layout.addWidget(self.analyze_btn)
-
-        self.delete_btn = QPushButton("Delete Selected")
-        self.delete_btn.clicked.connect(self.delete_selected)
-        controls_h_layout.addWidget(self.delete_btn)
 
     def delete_selected(self):
         selected_items = self.working_plane_scene.selectedItems()

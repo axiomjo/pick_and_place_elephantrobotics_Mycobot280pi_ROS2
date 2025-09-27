@@ -1,8 +1,12 @@
-[LAST EDITED: 27 SEP 2025 00:30]
+[LAST EDITED: 27 SEP 2025 10:38]
+ok gui bisa bulish four perspective points.  
 
+![](ASSET_README/ss_gui_ada_perspectivepoints.png)
+
+---
 ok mulai ada vision ppeline di gui yh.  
 
-![](ASSET_README/ss_gui_ada perspectivepoints.png)
+![](ASSET_README/ss_gui_ada_perspectivepoints.png)
 
 ---
 basically alu mundur ke gui 3 sept.
