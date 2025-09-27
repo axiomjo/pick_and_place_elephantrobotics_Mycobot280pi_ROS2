@@ -20,8 +20,8 @@ from PyQt5.QtCore import Qt
 # from other grcn files
 from .grcn_gui_camera_panel import CameraPanel
 from .grcn_gui_working_plane import WorkingPlane
-# from .grcn_gui_control_panel import ControlPanel
-# from .grcn_gui_dock_panel import DockPanel
+from .grcn_gui_control_panel import ControlPanel
+from .grcn_gui_dock_panel import DockPanel
 
 # ros interfaces
 from mycobot280pi_interfaces.msg import ManyDetectedObjects
@@ -36,6 +36,7 @@ class MainWindow(QMainWindow):
 
         # --- ROS Communication Layer ---
         self.ros_comm = ros_comm
+        self.latest_objects_msg = None
         
         # --- Assemble the GUI from Panels ---
         central_widget = QWidget()
@@ -44,8 +45,10 @@ class MainWindow(QMainWindow):
         # Create instances of all grcn classes 
         self.camera_panel = CameraPanel(self.ros_comm)
         self.working_plane = WorkingPlane()
-        # self.control_panel = ControlPanel()
-        # self.dock_panel_widget = DockPanel()
+        self.control_panel = ControlPanel()
+        self.dock_panel_widget = DockPanel()
+        
+        self.items_on_plane = []
 
         
         
@@ -53,7 +56,7 @@ class MainWindow(QMainWindow):
         # Right side combines the working plane and its controls
         right_layout = QVBoxLayout()
         right_layout.addWidget(self.working_plane)
-        #right_layout.addWidget(self.control_panel)
+        right_layout.addWidget(self.control_panel)
 
         # Main layout combines the left and right sides
         main_layout = QHBoxLayout(central_widget)
@@ -62,11 +65,9 @@ class MainWindow(QMainWindow):
 
         # --- Create and set the dock widget ---
         dock = QDockWidget("Controls & Cutouts", self)
-        
-        """
         dock.setWidget(self.dock_panel_widget)
         self.addDockWidget(Qt.RightDockWidgetArea, dock)
-        """
+       
         
         # --- Connect Signals and Slots ---
         self.connect_signals()
@@ -81,7 +82,24 @@ class MainWindow(QMainWindow):
         
         # You would also connect signals to your panels here. For example:
         # self.ros_comm.annotated_image_received.connect(self.camera_panel.update_camera_view)
-        # self.control_panel.send_button.clicked.connect(self.send_service_request)
+         # --- UNCOMMENT or ADD these lines to connect the buttons ---
+        self.control_panel.send_btn.clicked.connect(self.send_service_request)
+        self.control_panel.reset_btn.clicked.connect(self.reset_plane)
+        self.control_panel.add_object_btn.clicked.connect(self.add_new_objects_from_cutouts)
+        self.control_panel.analyze_btn.clicked.connect(self.analyze_positions)
+        self.control_panel.delete_btn.clicked.connect(self.delete_selected)
+        self.control_panel.rotate_clockwise_btn.clicked.connect(self.working_plane.rotate_clockwise)
+        self.control_panel.rotate_counter_clockwise_btn.clicked.connect(self.working_plane.rotate_counter_clockwise)
+        
+        
+    def update_button_states(self, success, message):
+        # Example logic, you can tie this to a service availability signal later
+        self.control_panel.send_btn.setDisabled(False)
+        self.control_panel.analyze_btn.setDisabled(False)
+
+        # You also need to connect the service status to the buttons
+        self.ros_comm.simple_command_response.connect(self.update_button_states) # Example
+        # A better way would be a dedicated signal for service availability
 
     # --- Main Application Logic Methods ---
     
@@ -89,7 +107,7 @@ class MainWindow(QMainWindow):
         """Caches the latest message for use by other methods."""
         self.latest_objects_msg = objects_msg
         # You could also forward this signal to the dock panel if it needs it:
-        # self.dock_panel_widget.update_object_cutouts(objects_msg)
+        self.dock_panel_widget.update_object_cutouts(objects_msg)
         
         
     def send_service_request(self):
@@ -125,36 +143,39 @@ class MainWindow(QMainWindow):
         """Handles the final result of an action."""
         print(f"Action Result: Success={success}, Message='{message}'")
         
-
+        
+        
+        
+    
+    
         # --- Working Plane Controls ---  
     def reset_plane(self):
-        self.working_plane_scene.clear()
-        self.items_on_plane.clear()
-        self.draw_mycobot280pi_working_plane()
-        self.draw_axes_with_ticks()
+        self.working_plane.working_plane_scene.clear()
+        self.working_plane.items_on_plane.clear()
+        self.working_plane.draw_mycobot280pi_working_plane()
+        self.working_plane.draw_axes_with_ticks()
         
     def add_new_objects_from_cutouts(self):
         # We need the last frame and detected boxes to add objects
-        frame = self.ros_comm.latest_frame
-        boxes = self.ros_comm.latest_boxes
-        
-        if frame is None or not boxes:
-            print("No new objects to add.")
+        if self.latest_objects_msg is None:
+            print("No new objects to add (no message received yet).")
             return
             
-        # Get the camera's center
-        height, width, _ = frame.shape
-        cam_center_x = width / 2.0
-        cam_center_y = height / 2.0
+        try:
+            # Get the source image from the cached message
+            full_image = self.ros_comm.bridge.imgmsg_to_cv2(self.latest_objects_msg.source_image, 'bgr8')
+        except Exception as e:
+            print(f"Could not convert source image for cutouts: {e}")
+            return
 
-        for (x, y, w, h) in boxes:
+        for obj in self.latest_objects_msg.objects:
+            x, y, w, h = obj.box
             if w <= 0 or h <= 0:
                 continue
 
-            cutout = frame[y:y+h, x:x+w].copy()
-            if cutout.size == 0:
-                continue
+            cutout = full_image[y:y+h, x:x+w]
 
+            # Convert cutout to QPixmap
             rgb = cv2.cvtColor(cutout, cv2.COLOR_BGR2RGB)
             h2, w2, ch = rgb.shape
             bytes_per_line = ch * w2
@@ -163,10 +184,6 @@ class MainWindow(QMainWindow):
 
             item = DraggableItem(
                 pixmap,
-                original_x=x,
-                original_y=y,
-                original_w=w,
-                original_h=h
             )
             
 
@@ -181,18 +198,18 @@ class MainWindow(QMainWindow):
             
             # Place new items near the center of the working plane
             item.setPos(scene_x,scene_y)
-            self.working_plane_scene.addItem(item)
+            self.working_plane.working_plane_scene.addItem(item)
             self.items_on_plane.append(item)
       
 
     def set_selected_item_rotation(self, angle):
-        selected_items = self.working_plane_scene.selectedItems()
+        selected_items = self.working_plane.working_plane_scene.selectedItems()
         if selected_items:
             item = selected_items[0]
             item.setRotation(angle)
     
     def update_rotation_widgets(self):
-        selected_items = self.working_plane_scene.selectedItems()
+        selected_items = self.working_plane.working_plane_scene.selectedItems()
         if selected_items:
             item = selected_items[0]
             self.rotation_slider.setDisabled(False)
@@ -203,7 +220,7 @@ class MainWindow(QMainWindow):
             self.rotation_spinbox.setDisabled(True)
     
     def send_service_request(self):
-        selected_items = self.working_plane_scene.selectedItems()
+        selected_items = self.working_plane.working_plane_scene.selectedItems()
         if not selected_items:
             print("No item selected. Cannot send coordinates.")
             return
@@ -230,24 +247,12 @@ class MainWindow(QMainWindow):
         h, w, ch = rgb.shape
         qt_img = QImage(rgb.data, w, h, ch*w, QImage.Format_RGB888)
         pixmap = QPixmap.fromImage(qt_img)
-        self.working_plane_scene.clear()
-        self.working_plane_scene.addPixmap(pixmap)
+        self.working_plane.working_plane_scene.clear()
+        self.working_plane.working_plane_scene.addPixmap(pixmap)
+        
+        
 
-    def rotate_clockwise(self):
-        self.current_rotation -= 90
-        self.set_pov()
-
-    def rotate_counter_clockwise(self):
-        self.current_rotation += 90
-        self.set_pov()
-
-    def set_pov(self):
-        transform = QTransform()
-        transform.scale(1, -1)
-        transform.rotate(self.current_rotation)
-        self.working_plane_view.setTransform(transform)
-        print(f"View rotated to {self.current_rotation % 360}°")
-
+   
     def analyze_positions(self):
         print("\n=== Analyzing All Items LOCALLY ===")
         for i, item in enumerate(self.items_on_plane, start=1):
@@ -257,7 +262,7 @@ class MainWindow(QMainWindow):
         print("==========================\n")
 
         print("=== Object Analysis ===")
-        for i, item in enumerate(self.working_plane_scene.items()):
+        for i, item in enumerate(self.working_plane.working_plane_scene.items()):
             if isinstance(item, DraggableItem):
                 center_in_scene = item.mapToScene(item.rect().center())
                 x = center_in_scene.x()
@@ -268,9 +273,9 @@ class MainWindow(QMainWindow):
 
 
     def delete_selected(self):
-        selected_items = self.working_plane_scene.selectedItems()
+        selected_items = self.working_plane.working_plane_scene.selectedItems()
         for item in selected_items:
-            self.working_plane_scene.removeItem(item)
+            self.working_plane.working_plane_scene.removeItem(item)
             if item in self.items_on_plane:
                 self.items_on_plane.remove(item)
         print(f"Deleted {len(selected_items)} item(s).")

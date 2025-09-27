@@ -52,8 +52,8 @@ def generate_launch_description():
         ),
         # GUI Robot Control Node
         Node(
-            package='mycobot280pi_dummy',
-            executable='d2ummy_gui_robot_control_node',
+            package='mycobot280pi_gui',
+            executable='gui_robot_control_node',
             name='gui_robot_control_node',
             output='screen'
         ),

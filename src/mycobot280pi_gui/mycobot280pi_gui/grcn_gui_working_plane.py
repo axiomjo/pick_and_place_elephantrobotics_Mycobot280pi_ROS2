@@ -15,6 +15,9 @@ class WorkingPlane(QWidget):
         self.working_plane_scene = QGraphicsScene()
         self.working_plane_scene.setSceneRect(QRectF(-300, -300, 600, 600))
         self.view.setScene(self.working_plane_scene)
+
+        self.current_rotation = 0 
+        self.items_on_plane = []
         
         transform = QTransform()
         transform.scale(1, -1)
@@ -98,8 +101,26 @@ class WorkingPlane(QWidget):
                 continue
             length = 6 if y % 50 else 12
             self.working_plane_scene.addLine(-length / 2, y, length / 2, y, pen_ticks)
-        
-        
+            
+            
+            
+       
+    
+    def rotate_clockwise(self):
+        self.current_rotation -= 90
+        self.set_pov()
+
+    def rotate_counter_clockwise(self):
+        self.current_rotation += 90
+        self.set_pov()
+
+    def set_pov(self):
+        transform = QTransform()
+        transform.scale(1, -1)
+        transform.rotate(self.current_rotation)
+        self.view.setTransform(transform)
+        print(f"View rotated to {self.current_rotation % 360}°")
+    
         
         
 
