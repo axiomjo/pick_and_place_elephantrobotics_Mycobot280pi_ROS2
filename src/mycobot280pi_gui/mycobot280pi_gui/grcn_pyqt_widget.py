@@ -38,12 +38,9 @@ class DraggableItem(QGraphicsPixmapItem):
         self.setTransformOriginPoint(self.boundingRect().center())
         
     def mouseReleaseEvent(self, event):
-        final_local_pos = self.scenePos()
-        print(f"LOCALLY, Item released at: ({final_local_pos.x():.1f}, {final_local_pos.y():.1f}), "
-              f"rotation={self.rotation():.1f}")
-              
+        
         final_true_pos = self.mapToScene(self.boundingRect().center())
-        print(f"Item released at: ({final_true_pos.x():.1f}, {final_true_pos.y():.1f}), "
+        print(f"Item CENTERPOINT released at: ({final_true_pos.x():.1f}, {final_true_pos.y():.1f}), "
               f"rotation={self.rotation():.1f}")
         super().mouseReleaseEvent(event)
 

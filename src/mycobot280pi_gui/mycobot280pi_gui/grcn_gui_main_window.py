@@ -98,13 +98,17 @@ class MainWindow(QMainWindow):
         self.working_plane.reset_scene()
 
     def add_new_objects_from_cutouts(self):
+    
+        objects_to_process = self.latest_objects_msg
+        image_to_process = self.latest_annotated_image
+        
         if self.latest_objects_msg is None or self.latest_annotated_image is None:
-            print("No new objects to add (data not available yet).")
+            self.logger.warn("Add objects called, but data is not ready yet.")
+            self.statusBar().showMessage("Data not available to add objects.")
             return
-        
-        source_image = self.latest_annotated_image
-        
-        img_height, img_width, _ = source_image.shape
+            
+
+        img_height, img_width, _ = image_to_process.shape
         cam_center_x = img_width / 2.0
         cam_center_y = img_height / 2.0
         
@@ -115,42 +119,33 @@ class MainWindow(QMainWindow):
                 
                 self.logger.info(f"--- Processing Object ID {obj.id} ---")
 
-                pixmap = create_cutout_pixmap(source_image, obj)
-              
-                if pixmap.isNull():
-                    self.logger.warn(f"Step 1 Failed: create_cutout_pixmap returned a null pixmap for obj {obj.id}.")
-                    continue
-                self.logger.info("Step 1: create_cutout_pixmap successful.")
-
+                pixmap = create_cutout_pixmap(image_to_process, obj)
+                if pixmap.isNull(): continue
+                
                 transform = QTransform()
                 transform.scale(1, -1)
                 flipped_pixmap = pixmap.transformed(transform)
-                if flipped_pixmap.isNull():
-                    self.logger.warn(f"Step 2 Failed: pixmap.transformed returned a null pixmap for obj {obj.id}.")
-                    continue
-                self.logger.info("Step 2: pixmap.transformed successful.")
+                if flipped_pixmap.isNull(): continue
+                
 
-                item = DraggableItem(pixmap=flipped_pixmap, object_id=obj.id)
-                self.logger.info("Step 3: DraggableItem created successfully.")
-
+                item = DraggableItem(
+                    pixmap=flipped_pixmap, 
+                    object_id=obj.id
+                )
+                
                 obj_center_x = obj.center_point.x
                 obj_center_y = obj.center_point.y
-                self.logger.info(f"Step 4: Got center point ({obj_center_x}, {obj_center_y}).")
-
+                
                 scene_x = obj_center_x - cam_center_x
                 scene_y = -(obj_center_y - cam_center_y)
-                self.logger.info(f"Step 5: Calculated scene coords ({scene_x}, {scene_y}).")
-
+                
                 final_x = scene_x - (flipped_pixmap.width() / 2)
                 final_y = scene_y - (flipped_pixmap.height() / 2)
-                self.logger.info(f"Step 6: Calculated final coords ({final_x}, {final_y}).")
-
+                
                 item.setPos(final_x, final_y)
-                self.logger.info("Step 7: setPos successful.")
-
+                
                 self.working_plane.working_plane_scene.addItem(item)
-                self.logger.info("Step 8: addItem successful.")
-
+                
                 self.working_plane.items_on_plane.append(item)
                 self.logger.info(f"--- Finished Object ID {obj.id} ---")
 
@@ -216,7 +211,7 @@ class MainWindow(QMainWindow):
 
         # Make sure it's a DraggableItem before we try to access its properties
         if isinstance(item, DraggableItem):
-            pos = item.scenePos()
+            pos = item.mapToScene(item.boundingRect().center())
             rot = item.rotation()
 
             # Create a nicely formatted string with the item's info
