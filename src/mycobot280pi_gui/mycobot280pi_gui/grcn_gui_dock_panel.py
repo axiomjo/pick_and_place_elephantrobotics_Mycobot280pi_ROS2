@@ -20,6 +20,9 @@ from PyQt5.QtCore import Qt
 # Custom ROS 2 Interfaces
 from mycobot280pi_interfaces.msg import ManyDetectedObjects
 
+from .grcn_pyqt_widget import create_cutout_pixmap
+
+
 class DockPanel(QWidget):
     """
     This class builds the widget containing the cutout
@@ -66,34 +69,28 @@ class DockPanel(QWidget):
 
     # --- Public Methods (Slots) for MainWindow to Call ---
 
-    def update_object_cutouts(self, objects_msg: ManyDetectedObjects):
+    def update_object_cutouts(self, source_image, objects_msg: ManyDetectedObjects):
         """
-        The General Contractor (MainWindow) calls this method to update the
-        display shelves with new items.
+        Receives a ready-to-use OpenCV image and object data from MainWindow
+        to generate and display the cutouts.
         """
+        
         self.cutout_scene.clear()
         
-        try:
-            # Get the original image from the message
-            source_image = self.bridge.imgmsg_to_cv2(objects_msg.source_image, 'bgr8')
-        except Exception as e:
-            print(f"Dock Panel: Could not convert source image for cutouts: {e}")
+        if source_image is None or not objects_msg.objects:
+            self.cutout_scene.addText("No objects detected.")
             return
-            
-        y_offset = 0
-        for obj in objects_msg.objects:
-            x, y, w, h = obj.box
-            if w <= 0 or h <= 0:
-                continue
 
-            # Create the cutout pixmap
-            cutout_cv = source_image[y:y+h, x:x+w]
+        y_offset = 0
+        
+        for obj in objects_msg.objects:
+            pixmap = create_cutout_pixmap(source_image, obj)
             
-            pixmap_item = QGraphicsPixmapItem(pixmap)
-            pixmap_item.setPos(0, y_offset)
-            self.cutout_scene.addItem(pixmap_item)
-            
-            y_offset += h + 5 # Move down for the next ite
+            if not pixmap.isNull():
+                pixmap_item = self.cutout_scene.addPixmap(pixmap)
+                pixmap_item.setPos(0, y_offset)
+                y_offset += pixmap.height() + 5
+                
         # Placeholder text until conversion is fully implemented
         self.cutout_scene.addText(f"Received {len(objects_msg.objects)} objects.")
 

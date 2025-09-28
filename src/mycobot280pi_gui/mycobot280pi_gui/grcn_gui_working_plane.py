@@ -1,11 +1,22 @@
 
 from PyQt5.QtWidgets import (
-    QApplication, QWidget, QLabel, QVBoxLayout, QTextEdit,
-    QHBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsPixmapItem,
-    QPushButton, QMainWindow, QDockWidget, QSlider, QDoubleSpinBox, QGraphicsItem, QDialog, QGraphicsEllipseItem, QGraphicsRectItem 
+    QWidget, 
+    QVBoxLayout, 
+    QGraphicsView, 
+    QGraphicsScene,
+    QGraphicsEllipseItem,
+    QGraphicsRectItem,
+    QGraphicsTextItem
 )
-from PyQt5.QtGui import QPixmap, QImage, QColor, QBrush, QPen, QPainterPath, QTransform
-from PyQt5.QtCore import QTimer, Qt, QRectF, pyqtSignal, QObject, QPointF
+from PyQt5.QtGui import (
+    QTransform, 
+    QColor, 
+    QBrush, 
+    QPen, 
+    QPainterPath, 
+    QFont
+)
+from PyQt5.QtCore import Qt, QRectF
 
 class WorkingPlane(QWidget):
     def __init__(self, parent=None):
@@ -78,31 +89,68 @@ class WorkingPlane(QWidget):
         
         self.working_plane_scene.addItem(face_item)
         
+
     def draw_axes_with_ticks(self):
-        # --- cartesian axes ---
+        """
+        Draws a background grid with major axes and numeric labels.
+        """
+        # --- Define Pens ---
         pen_axis = QPen(Qt.black, 2)
-        pen_ticks = QPen(Qt.black, 1)
+        pen_grid = QPen(QColor(220, 220, 220), 1, Qt.DashLine)
+        
+        grid_range = 280
 
-        # X-axis
-        self.working_plane_scene.addLine(-280, 0, 280, 0, pen_axis)
-        # Y-axis
-        self.working_plane_scene.addLine(0, -280, 0, 280, pen_axis)
+        # --- Draw Grid Lines ---
+        for x in range(-grid_range, grid_range + 1, 10):
+            self.working_plane_scene.addLine(x, -grid_range, x, grid_range, pen_grid)
+        for y in range(-grid_range, grid_range + 1, 10):
+            self.working_plane_scene.addLine(-grid_range, y, grid_range, y, pen_grid)
 
-        # X ticks every 10
-        for x in range(-280, 281, 10):
-            if x == 0:
-                continue
-            length = 6 if x % 50 else 12
-            self.working_plane_scene.addLine(x, -length / 2, x, length / 2, pen_ticks)
+        # --- Draw Main Axes ---
+        self.working_plane_scene.addLine(-grid_range, 0, grid_range, 0, pen_axis)
+        self.working_plane_scene.addLine(0, -grid_range, 0, grid_range, pen_axis)
+        
+        # --- Add Numeric Labels ---
+        font = QFont()
+        font.setPointSize(8)
 
-        # Y ticks every 10
-        for y in range(-280, 281, 10):
-            if y == 0:
-                continue
-            length = 6 if y % 50 else 12
-            self.working_plane_scene.addLine(-length / 2, y, length / 2, y, pen_ticks)
+        # Add X-axis labels
+        for x in range(-grid_range, grid_range + 1, 50):
+            if x == 0: continue
+            text_item = QGraphicsTextItem(str(x))
+            text_item.setFont(font)
+            text_item.setPos(x - 10, 5)
             
+            # --- FIX IS HERE ---
+            transform = QTransform()
+            transform.scale(1, -1) # Flip the text vertically
+            text_item.setTransform(transform)
             
+            self.working_plane_scene.addItem(text_item)
+
+        # Add Y-axis labels
+        for y in range(-grid_range, grid_range + 1, 50):
+            if y == 0: continue
+            text_item = QGraphicsTextItem(str(y))
+            text_item.setFont(font)
+            text_item.setPos(5, y - 8)
+            
+           
+            transform = QTransform()
+            transform.scale(1, -1) # Flip the text vertically
+            text_item.setTransform(transform)
+            
+            self.working_plane_scene.addItem(text_item)
+                    
+    def reset_scene(self):
+        """
+        Clears all items from the scene and redraws the static background.
+        """
+        self.working_plane_scene.clear()
+        self.items_on_plane.clear()
+        self.draw_mycobot280pi_working_plane()
+        self.draw_axes_with_ticks()
+        
             
        
     

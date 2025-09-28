@@ -32,8 +32,6 @@ class PerspectiveEditorWidget(QWidget):
         main_layout = QVBoxLayout(self) # Apply layout directly to this widget
         
         # ----- Top: graphics scene
-        self.preview_label = QLabel("Warped preview")
-        self.preview_label.setMinimumHeight(300)
         self.perspectivepoints_scene = QGraphicsScene()
         self.view = QGraphicsView(self.perspectivepoints_scene)
         self.pixmap_item = QGraphicsPixmapItem() # Create an empty item to hold the image
@@ -41,11 +39,6 @@ class PerspectiveEditorWidget(QWidget):
         main_layout.addWidget(self.view)
         
         # ----- Right side: warped preview + button
-        ok_btn = QPushButton("Confirm Points")
-        ok_btn.clicked.connect(self.on_ok)
-        main_layout.addWidget(self.preview_label)
-        main_layout.addWidget(ok_btn)
-
         
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_preview_and_publish)
@@ -87,28 +80,8 @@ class PerspectiveEditorWidget(QWidget):
             pt.x, pt.y = float(x), float(y)
             msg.points.append(pt)
          
-        #sebenenrnya bisa diganti ke ngesubscribe vptn sih, ini sementatra aja.    
         self.node.publish_four_points(pts)
         
-        # Warp preview image for visual feedback
-        h, w, _ = self.frame.shape
-        dst = np.array([[0,0],[w,0],[w,h],[0,h]], dtype=np.float32)
-        M = cv2.getPerspectiveTransform(pts, dst)
-        warped = cv2.warpPerspective(self.frame, M, (w,h))
-
-        # Convert to QPixmap and display it in the preview_label
-        rgb = cv2.cvtColor(warped, cv2.COLOR_BGR2RGB)
-        qimg = QImage(rgb.data, w, h, 3*w, QImage.Format_RGB888)
-        self.preview_label.setPixmap(QPixmap.fromImage(qimg).scaled(
-            self.preview_label.width(), self.preview_label.height(), Qt.KeepAspectRatio
-))
-
-        
-        
-    def on_ok(self):
-        # This method can be adapted, perhaps to just log or finalize points
-        self.node.get_logger().info("Perspective points confirmed by user.")
-
 
 class CameraPanel(QWidget):
     def __init__(self, ros_node, parent=None):
@@ -123,7 +96,7 @@ class CameraPanel(QWidget):
 
         # Annotated camera view
         self.camera_label = QLabel("Waiting for annotated camera feed...")
-        self.camera_label.setMinimumHeight(300)
+        self.camera_label.setFixedSize(200, 200)
         self.camera_label.setAlignment(Qt.AlignCenter)
         self.camera_label.setStyleSheet("border: 1px solid black;")
         layout.addWidget(self.camera_label)
@@ -145,12 +118,19 @@ class CameraPanel(QWidget):
         
     def update_camera_view(self, cv_image):
         """Displays the annotated image."""
+        # 1. Convert colors: OpenCV uses Blue-Green-Red (BGR), but Qt needs Red-Green-Blue (RGB).
         rgb_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
         h, w, ch = rgb_image.shape
+        
+        # 2. Convert format: Create a QImage from the raw image data.
         qt_image = QImage(rgb_image.data, w, h, ch * w, QImage.Format_RGB888)
+        
+        # 3. Create a QPixmap (a displayable image) and scale it to fit the label.
         pixmap = QPixmap.fromImage(qt_image)
-        self.camera_label.setPixmap(pixmap.scaled(
-            self.camera_label.width(), self.camera_label.height(), Qt.KeepAspectRatio))
+        scaled_pixmap = pixmap.scaled(200,200, Qt.KeepAspectRatio)
+        
+        # 4. "Plop" the final image onto the label widget.
+        self.camera_label.setPixmap(scaled_pixmap)
 
     def update_joint_display(self, joint_state_msg):
         """Displays the latest joint states."""

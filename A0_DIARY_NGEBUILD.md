@@ -45,3 +45,37 @@ Think of the `_ROSNode` class as a **Head Chef** in a very advanced kitchen. Thi
       * *Result: 5 methods*
 
 Adding these up (4 + 1 + 2 + 5) gives you **12** distinct methods, each with a unique and necessary job for handling the complexities of ROS 2 communication.
+
+# perkara object detection
+kan annotated image aman yh.
+
+teus ternyata many detected objects msg yg gw bikin, ga ngasih cutout ke GUI, 
+trus sungguhan kudu balik bikin service baru 
+aduh ini ngganti blueprint lagiiii
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
