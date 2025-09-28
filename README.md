@@ -1,4 +1,9 @@
-[LAST EDITED: 27 SEP 2025 10:38]
+[LAST EDITED: 28 SEP 2025 21:33]
+
+why do i need to re-debug the coordinate system hweee
+![](ASSET_README/ss_KUDUDEBUGCOORDINAT.png)
+
+----
 ok gui bisa pubulish four perspective points.  
 
 ![](ASSET_README/ss_perspectivetransform_yeah.png)

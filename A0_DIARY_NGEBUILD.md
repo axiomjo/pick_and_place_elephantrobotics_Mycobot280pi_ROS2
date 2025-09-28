@@ -53,6 +53,10 @@ teus ternyata many detected objects msg yg gw bikin, ga ngasih cutout ke GUI,
 trus sungguhan kudu balik bikin service baru 
 aduh ini ngganti blueprint lagiiii
 
+# perkara add draggable objects ke working plane
+broooo itu sistem koordinatnya ancur lagi astagaaaaa
+kudu ngedebug kyk waktu dulu gui 3 sept T-T
+
 
 
 
