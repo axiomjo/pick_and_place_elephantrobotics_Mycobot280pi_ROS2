@@ -1,6 +1,6 @@
 import cv2 # Make sure cv2 is imported
 from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QDockWidget
-from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtGui import QImage, QPixmap, QTransform
 from PyQt5.QtCore import Qt
 
 # from other grcn files
@@ -15,7 +15,16 @@ from mycobot280pi_interfaces.msg import ManyDetectedObjects
 
 class MainWindow(QMainWindow):
     def __init__(self, ros_comm):
+    
+        
         super().__init__()
+        
+        # 1. Assign ros_comm to self so the object knows about it.
+        self.ros_comm = ros_comm
+        
+        # 2. NOW that self.ros_comm exists, we can get the logger from it.
+        self.logger = self.ros_comm.get_logger()
+
         self.setWindowTitle("MyCobot 280 Pi GUI")
         self.resize(1400, 900)
 
@@ -47,6 +56,7 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, dock)
        
         self.connect_signals()
+        self.statusBar().showMessage("GUI is Ready.")
         
     def connect_signals(self):
         # ROS Facade -> MainWindow Slots
@@ -65,7 +75,10 @@ class MainWindow(QMainWindow):
         self.control_panel.analyze_btn.clicked.connect(self.analyze_positions)
         self.control_panel.delete_btn.clicked.connect(self.delete_selected)
         
-        # --- BUG FIX: Rotation logic is now in WorkingPlane ---
+        # When an item is selected in the working plane, call our new update method
+        self.working_plane.working_plane_scene.selectionChanged.connect(self.update_status_bar_with_selection)
+        
+        # rotation stuff
         self.control_panel.rotate_clockwise_btn.clicked.connect(self.working_plane.rotate_clockwise)
         self.control_panel.rotate_counter_clockwise_btn.clicked.connect(self.working_plane.rotate_counter_clockwise)
 
@@ -73,8 +86,7 @@ class MainWindow(QMainWindow):
     def cache_detected_objects(self, objects_msg: ManyDetectedObjects):
         self.latest_objects_msg = objects_msg
         if self.dock_panel_widget and self.latest_annotated_image is not None:
-            self.dock_panel_widget.update_object_cutouts(
-                self.latest_annotated_image, self.latest_objects_msg)
+            self.dock_panel_widget.update_object_count(objects_msg)
             
     def cache_annotated_image(self, cv_image):
         self.latest_annotated_image = cv_image
@@ -96,23 +108,65 @@ class MainWindow(QMainWindow):
         cam_center_x = img_width / 2.0
         cam_center_y = img_height / 2.0
         
+        
         for obj in self.latest_objects_msg.objects:
-            pixmap = create_cutout_pixmap(source_image, obj)
-            if pixmap.isNull():
-                continue
-            item = DraggableItem(pixmap=pixmap, object_id=obj.id)
-            
-            obj_center_x = obj.center_point.x
-            obj_center_y = obj.center_point.y
-            scene_x = obj_center_x - cam_center_x
-            scene_y = -(obj_center_y - cam_center_y)
-            item.setPos(scene_x, scene_y)
-            
-            # --- BUG FIX: Use the correct scene name ---
-            self.working_plane.working_plane_scene.addItem(item)
-            self.working_plane.items_on_plane.append(item)
+            try:
+
                 
-        print(f"Added {len(self.latest_objects_msg.objects)} objects to the plane.")
+                self.logger.info(f"--- Processing Object ID {obj.id} ---")
+
+                pixmap = create_cutout_pixmap(source_image, obj)
+              
+                if pixmap.isNull():
+                    self.logger.warn(f"Step 1 Failed: create_cutout_pixmap returned a null pixmap for obj {obj.id}.")
+                    continue
+                self.logger.info("Step 1: create_cutout_pixmap successful.")
+
+                transform = QTransform()
+                transform.scale(1, -1)
+                flipped_pixmap = pixmap.transformed(transform)
+                if flipped_pixmap.isNull():
+                    self.logger.warn(f"Step 2 Failed: pixmap.transformed returned a null pixmap for obj {obj.id}.")
+                    continue
+                self.logger.info("Step 2: pixmap.transformed successful.")
+
+                item = DraggableItem(pixmap=flipped_pixmap, object_id=obj.id)
+                self.logger.info("Step 3: DraggableItem created successfully.")
+
+                obj_center_x = obj.center_point.x
+                obj_center_y = obj.center_point.y
+                self.logger.info(f"Step 4: Got center point ({obj_center_x}, {obj_center_y}).")
+
+                scene_x = obj_center_x - cam_center_x
+                scene_y = -(obj_center_y - cam_center_y)
+                self.logger.info(f"Step 5: Calculated scene coords ({scene_x}, {scene_y}).")
+
+                final_x = scene_x - (flipped_pixmap.width() / 2)
+                final_y = scene_y - (flipped_pixmap.height() / 2)
+                self.logger.info(f"Step 6: Calculated final coords ({final_x}, {final_y}).")
+
+                item.setPos(final_x, final_y)
+                self.logger.info("Step 7: setPos successful.")
+
+                self.working_plane.working_plane_scene.addItem(item)
+                self.logger.info("Step 8: addItem successful.")
+
+                self.working_plane.items_on_plane.append(item)
+                self.logger.info(f"--- Finished Object ID {obj.id} ---")
+
+            except Exception as e:
+                # This is our existing, detailed exception reporter
+                error_msg = f"ERROR on obj {obj.id}: {type(e).__name__}. See terminal."
+                self.statusBar().showMessage(error_msg, 5000)
+                
+                self.logger.error("\n" + "="*20)
+                self.logger.error(f"CAUGHT EXCEPTION: {type(e).__name__} - {e}")
+                self.logger.error(f"Problem occurred on Object ID: {obj.id}")
+                self.logger.error("--- Dumping Problematic Object Data ---")
+                self.logger.error(f"{obj}")
+                self.logger.error("="*20 + "\n")
+        success_msg = f"Finished processing. Added {len(self.working_plane.items_on_plane)} objects to the plane."
+        #self.statusBar().showMessage(success_msg)
         
     def send_service_request(self):
         # --- BUG FIX: Use the correct scene name ---
@@ -125,30 +179,56 @@ class MainWindow(QMainWindow):
             return
 
         robot_target_id = item.object_id
-        print(f"User wants to move the object with ID: {robot_target_id}")
         
         center_pos = item.mapToScene(item.boundingRect().center())
         rot = item.rotation()
         coords = [center_pos.x(), center_pos.y(), 60.0, 180.0, 0.0, rot]
         
         self.ros_comm.call_simple_command(coords=coords, speed=80, is_linear_mode=False)
-        print(f"Sent command to robot: x={coords[0]:.1f}, y={coords[1]:.1f}, rz={coords[5]:.1f}")
-    
+        
     def on_simple_command_response(self, success: bool, message: str):
-        print(f"Service Response: Success={success}, Message='{message}'")
         # Here you would update a status bar or enable/disable buttons.
         self.control_panel.send_btn.setDisabled(False) # Example
         self.control_panel.analyze_btn.setDisabled(False) # Example
 
     def analyze_positions(self):
-        print("\n=== Analyzing All Items on Plane ===")
         # --- BUG FIX: Use the list from the working_plane object ---
         for i, item in enumerate(self.working_plane.items_on_plane, start=1):
             pos = item.scenePos()
             rot = item.rotation()
-            print(f"Item {i} (ID: {item.object_id}): x={pos.x():.1f}, y={pos.y():.1f}, rotation={rot:.1f}")
-        print("==========================\n")
+         
 
+    def update_status_bar_with_selection(self):
+        """
+        Called whenever the selection changes in the working_plane_scene.
+        Updates the status bar with the details of the selected item.
+        """
+        # Get the list of all currently selected items
+        selected_items = self.working_plane.working_plane_scene.selectedItems()
+
+        if not selected_items:
+            # If the list is empty, it means nothing is selected
+            self.statusBar().showMessage("No item selected.")
+            return
+
+        # We'll just focus on the first selected item
+        item = selected_items[0]
+
+        # Make sure it's a DraggableItem before we try to access its properties
+        if isinstance(item, DraggableItem):
+            pos = item.scenePos()
+            rot = item.rotation()
+
+            # Create a nicely formatted string with the item's info
+            message = (
+                f"Selected Item ID: {item.object_id} | "
+                f"Position: (X={pos.x():.1f}, Y={pos.y():.1f}) | "
+                f"Rotation: {rot:.1f}°"
+            )
+            
+            # Display the message in the status bar
+            self.statusBar().showMessage(message)
+    
     def delete_selected(self):
         # --- BUG FIX: Use the correct scene name ---
         selected_items = self.working_plane.working_plane_scene.selectedItems()
@@ -157,8 +237,7 @@ class MainWindow(QMainWindow):
             self.working_plane.working_plane_scene.removeItem(item)
             if item in self.working_plane.items_on_plane:
                 self.working_plane.items_on_plane.remove(item)
-        print(f"Deleted {len(selected_items)} item(s).")
-      
+       
         
         
         

@@ -16,19 +16,6 @@ def generate_launch_description():
 
 
     return LaunchDescription([
-    
-        # dummy_circle_n_squares_img_node
-        Node(
-            package='mycobot280pi_dummy',
-            executable='dummy_circle_n_squares_img_node',
-            name='dummy_circle_n_squares_img_node',
-            remappings=[
-                ('/dummy/undistorted600x600', '/vision/msg_undistorted_image'),
-            ],
-
-            
-                
-        ),
 
         # Vision Perspective Transformer Node
         Node(
@@ -53,6 +40,7 @@ def generate_launch_description():
             package='mycobot280pi_gui',
             executable='gui_robot_control_node',
             name='gui_robot_control_node',
-            output='screen'
+            output='screen',
+            emulate_tty=True
         ),
     ])

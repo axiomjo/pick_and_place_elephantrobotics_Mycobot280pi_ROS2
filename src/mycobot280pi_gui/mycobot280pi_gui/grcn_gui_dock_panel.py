@@ -69,28 +69,18 @@ class DockPanel(QWidget):
 
     # --- Public Methods (Slots) for MainWindow to Call ---
 
-    def update_object_cutouts(self, source_image, objects_msg: ManyDetectedObjects):
+    def update_object_count(self, objects_msg: ManyDetectedObjects):
         """
-        Receives a ready-to-use OpenCV image and object data from MainWindow
-        to generate and display the cutouts.
+        Receives the ms ManyDetectedObjects and displays the amount of objects it has.
         """
-        
         self.cutout_scene.clear()
+       
         
-        if source_image is None or not objects_msg.objects:
+        if not objects_msg.objects:
             self.cutout_scene.addText("No objects detected.")
             return
 
-        y_offset = 0
-        
-        for obj in objects_msg.objects:
-            pixmap = create_cutout_pixmap(source_image, obj)
-            
-            if not pixmap.isNull():
-                pixmap_item = self.cutout_scene.addPixmap(pixmap)
-                pixmap_item.setPos(0, y_offset)
-                y_offset += pixmap.height() + 5
-                
+       
         # Placeholder text until conversion is fully implemented
         self.cutout_scene.addText(f"Received {len(objects_msg.objects)} objects.")
 

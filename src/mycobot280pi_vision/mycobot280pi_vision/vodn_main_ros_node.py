@@ -27,7 +27,7 @@ def objects_to_rosmsg(detected_objects, header: Header):
         header (std_msgs.msg.Header): Header from the input image.
 
     Returns:
-        ManyDetectedObjects: ROS message containing all detected objects.
+        ManyDetectedObjects: ROS message containing all detected objects. already cleaned so it gives center points. but, still uses computer graphics coordinate.
     """
     msg = ManyDetectedObjects()
     msg.header = header
@@ -52,6 +52,10 @@ class VisionObjectDetectorNode(Node):
     def __init__(self):
         super().__init__('vision_object_detector_node')
         self.bridge = CvBridge()
+        
+        self.last_process_time = 0
+        self.process_interval = 1.0 # 1 Hz
+        
 
         # Subscribe to the corrected image topic
         self.image_sub = self.create_subscription(
@@ -78,6 +82,14 @@ class VisionObjectDetectorNode(Node):
         self.get_logger().info("vision_object_detector_node started.")
 
     def image_callback(self, msg):
+        
+        # non-blocking timer kyk dulu pak andri
+        current_time = self.get_clock().now().nanoseconds / 1e9
+        if (current_time - self.last_process_time) < self.process_interval:
+            return # Skip this frame
+        self.last_process_time = current_time
+
+
         # Convert ROS image to OpenCV image
         try:
             cv_image = self.bridge.imgmsg_to_cv2(msg, 'bgr8')

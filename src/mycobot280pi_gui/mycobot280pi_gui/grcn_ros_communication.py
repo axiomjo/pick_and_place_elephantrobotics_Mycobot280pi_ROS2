@@ -103,6 +103,10 @@ class ROSCommunication(QObject):
     # These are the simple orders the Waiters (GUI) give to the Head Chef.
     # The Head Chef just passes the order to the Line Cook.
     
+    def get_logger(self):
+        """A simple bridge method to return the internal node's logger."""
+        return self._ros_node.get_logger()
+    
     def publish_four_points(self, points):
         """Waiter says: 'Chef, here are the four corner points from the customer.'"""
         self._ros_node.publish_perspective_points(points)

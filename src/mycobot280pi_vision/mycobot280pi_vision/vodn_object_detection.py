@@ -20,6 +20,9 @@ def detect_objects(frame):
 
     Returns:
         List[dict]: List of detected objects, each as a dict with keys: x, y, w, h.
+
+    fyi, it gives TOP LEFT point for x,y
+    
     """
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(gray, (5, 5), 0)
