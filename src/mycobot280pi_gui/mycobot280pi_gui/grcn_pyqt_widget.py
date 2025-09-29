@@ -25,24 +25,52 @@ class PointHandle(QGraphicsEllipseItem):
 
 class DraggableItem(QGraphicsPixmapItem):
     """ A QGraphicsPixmapItem that can be moved and rotated. """
-    def __init__(self, pixmap, object_id, parent=None):
+    def __init__(self, pixmap, detected_object, parent=None):
         super().__init__(pixmap, parent)
         
-        self.object_id = object_id
+        self.detected_object = detected_object
+        self.object_id = detected_object.id
+        
+        self.was_moved = False
         
         self.setFlags(
             QGraphicsItem.ItemIsMovable |
             QGraphicsItem.ItemIsSelectable
         )
+        
+        self.setCursor(Qt.PointingHandCursor)
+        
+        # Atur border awal
+        self.border_pen = QPen(Qt.transparent)
+        self.border_pen.setWidth(4)
+        
         # Set transform origin to the center of the pixmap
         self.setTransformOriginPoint(self.boundingRect().center())
         
+    def paint(self, painter, option, widget):
+        """Override paint to draw a border when selected or moved."""
+        super().paint(painter, option, widget) # Gambar pixmap asli
+        
+        # Beri border hijau jika sudah dipindahkan, atau border kuning jika sedang dipilih
+        if self.was_moved:
+            self.border_pen.setColor(QColor("green"))
+            painter.setPen(self.border_pen)
+            painter.drawRect(self.boundingRect())
+        elif self.isSelected():
+            self.border_pen.setColor(QColor("gold"))
+            painter.setPen(self.border_pen)
+            painter.drawRect(self.boundingRect())
+    
     def mouseReleaseEvent(self, event):
         
         final_true_pos = self.mapToScene(self.boundingRect().center())
         print(f"Item CENTERPOINT released at: ({final_true_pos.x():.1f}, {final_true_pos.y():.1f}), "
               f"rotation={self.rotation():.1f}")
         super().mouseReleaseEvent(event)
+        
+        if not self.was_moved:
+            self.was_moved = True
+            self.update() # Minta item untuk menggambar ulang dirinya (untuk menampilkan border)
 
 
 

@@ -130,7 +130,7 @@ class MainWindow(QMainWindow):
 
                 item = DraggableItem(
                     pixmap=flipped_pixmap, 
-                    object_id=obj.id
+                    detected_object=obj 
                 )
                 
                 obj_center_x = obj.center_point.x
@@ -304,44 +304,42 @@ class MainWindow(QMainWindow):
         self.ros.call_simple_command(coords=[], speed=40, is_linear_mode=True)
 
     def _on_start_action(self):
-        """Mengumpulkan data dari working plane dan memulai action goal."""
-        if not self.working_plane.items_on_plane:
-            QMessageBox.warning(self, "Error", "No items on the working plane to process.")
+        """Mengumpulkan data HANYA dari item yang dipindahkan dan memulai action goal."""
+        moved_items = [item for item in self.working_plane.items_on_plane if item.was_moved]
+        
+        
+        if not moved_items:
+            QMessageBox.warning(self, "Error", "No items have been moved to a new target position.")
             return
 
-        self.statusBar().showMessage("Preparing action goal...")
+        self.statusBar().showMessage("Preparing action goal for moved items...")
         
         # Siapkan pesan goal
         objects_to_move = ManyDetectedObjects()
         target_positions = Point2DArray()
         target_orientations = []
 
-        # Kumpulkan data dari setiap item di working plane
-        for item in self.working_plane.items_on_plane:
-            # Di sini kita asumsikan setiap item adalah target
-            # Anda bisa membuat logika lebih canggih untuk membedakan start vs target
+        for item in moved_items:
+            # 1. Ambil data objek asli (posisi awal) dari data yang disimpan
+            original_object_data = item.detected_object
+            objects_to_move.objects.append(original_object_data)
             
-            # Data objek (menggunakan posisi saat ini sebagai posisi awal)
-            start_pos = item.scenePos()
-            obj = OneDetectedObject()
-            obj.id = item.object_id
-            obj.center_point.x = start_pos.x() # Perlu konversi dari pixel/scene ke meter
-            obj.center_point.y = start_pos.y() # Perlu konversi dari pixel/scene ke meter
-            objects_to_move.objects.append(obj)
-            
-            # Data target (contoh: pindah 50 unit ke kanan)
+            # 2. Ambil data target (posisi akhir) dari posisi item di scene
+            #    Anda perlu mengonversi koordinat scene ke koordinat robot di sini!
+            new_pos_scene = item.scenePos()
+            # CONTOH KONVERSI (sesuaikan dengan sistem koordinat Anda)
+            # robot_x, robot_y = self.scene_to_robot_coords(new_pos_scene.x(), new_pos_scene.y())
+
             target_pt = Point2D()
-            target_pt.x = start_pos.x() + 50.0 # Ganti dengan logika target Anda
-            target_pt.y = start_pos.y()
+            target_pt.x = new_pos_scene.x() # Ganti dengan robot_x
+            target_pt.y = new_pos_scene.y() # Ganti dengan robot_y
             target_positions.points.append(target_pt)
 
-            # Data orientasi
+            # 3. Ambil data orientasi
             target_orientations.append(int(item.rotation()))
 
-        # Kirim goal melalui ROS communication layer
         self.ros_comm.send_complex_goal(objects_to_move, target_positions, target_orientations)
         
-        # Nonaktifkan tombol untuk mencegah pengiriman ganda
         self.control_panel.analyze_btn.setDisabled(True)
         self.control_panel.send_btn.setDisabled(True)
         

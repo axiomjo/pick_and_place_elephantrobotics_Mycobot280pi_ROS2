@@ -26,8 +26,7 @@ def generate_launch_description():
                 ('dummy/raw_webcam', '/camera/msg_image_raw'),
             ],
 
-           
-                
+      
         ),
         # Vision Undistorter Node
         Node(
@@ -64,4 +63,24 @@ def generate_launch_description():
             output='screen',
             emulate_tty=True
         ),
+        
+        # planner robot node
+        Node(
+            package='mycobot280pi_planner',
+            executable='planner_robot_node',
+            name='planner_robot_node',
+            output='screen',
+            emulate_tty=True
+        ),
+        
+        # dummy_executor_node
+        Node(
+            package='mycobot280pi_dummy',
+            executable='dummy_executor_node',
+            name='dummy_executor_node',
+            output='screen',
+            emulate_tty=True
+        )
+            
+        
     ])
