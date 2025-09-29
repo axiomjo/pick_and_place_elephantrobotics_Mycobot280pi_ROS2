@@ -1,6 +1,12 @@
 [LAST EDITED: 29 SEP 2025 02:17]
 
 
+planner udh bisa action yey
+![](ASSET_README/ss_actionampeselesai.png)
+![](ASSET_README/ss_ngecancelaction.png)
+
+---
+
 HAHAHA VISION PIPELINE KELAR  
 ![](ASSET_README/ss_VISIONPIPELINEDONE.png)
 
