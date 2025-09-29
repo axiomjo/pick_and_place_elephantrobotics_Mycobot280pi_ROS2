@@ -216,13 +216,19 @@ class _ROSNode(Node):
     #  Methods for Complex, Multi-Step Tasks (Action Client)
     # =========================================================================
     def send_complex_action_goal(self, objects_to_move, target_positions, target_orientation):
-        if not self.action_client.wait_for_server(timeout_sec=1.0):
+        """Mengirim goal ke action server."""
+        if not self.action_client.wait_for_server(timeout_sec=2.0):
+            self.get_logger().error('Action server not available!')
             self.facade.action_result.emit(False, 'Action server not available')
             return
+            
         goal_msg = ProcessWorkspace.Goal()
         goal_msg.objects_to_move = objects_to_move
         goal_msg.objects_target_position = target_positions
         goal_msg.objects_target_orientation = target_orientation
+        
+        self.get_logger().info('Sending complex action goal...')
+        
         send_future = self.action_client.send_goal_async(
             goal_msg,
             feedback_callback=self._action_feedback
@@ -230,11 +236,17 @@ class _ROSNode(Node):
         send_future.add_done_callback(self._goal_response)
 
     def _goal_response(self, fut):
-        goal_handle = fut.result()
+        """Callback yang dipanggil setelah goal dikirim."""
+        goal_handle = future.result()
         if not goal_handle.accepted:
+            self.get_logger().info('Goal rejected :(')
             self.facade.action_result.emit(False, 'Goal rejected')
             return
+
+        self.get_logger().info('Goal accepted :)')
+        # Simpan goal handle agar bisa dibatalkan nanti
         self._active_action_goal = goal_handle
+        
         result_future = goal_handle.get_result_async()
         result_future.add_done_callback(self._action_result)
 
@@ -242,23 +254,30 @@ class _ROSNode(Node):
         try:
             self.facade.action_feedback.emit(feedback_msg.feedback.current_state)
         except Exception:
-            pass
+            self.get_logger().warn(f"Error processing feedback: {e}")
+
 
     def _action_result(self, fut):
+        """Callback yang dipanggil saat hasil akhir diterima."""
         try:
-            result = fut.result().result
+            result = future.result().result
+            self.get_logger().info(f'Action finished with result: {result.message}')
             self.facade.action_result.emit(result.success, result.message)
         except Exception as e:
+            self.get_logger().error(f'Exception while getting action result: {e}')
             self.facade.action_result.emit(False, f'Exception: {e}')
-        self._active_action_goal = None
+        finally:
+            # Bersihkan goal handle setelah selesai
+            self._active_action_goal = None
 
     def cancel_action_goal(self):
-        if self._active_action_goal:
+        if self._active_action_goal and self._active_action_goal.is_active:
+            self.get_logger().info('Cancelling active goal...')
             cancel_future = self._active_action_goal.cancel_goal_async()
-            cancel_future.add_done_callback(lambda _: self.facade.action_result.emit(False, 'Cancelled'))
+            cancel_future.add_done_callback(lambda _: self.facade.action_result.emit(False, 'Goal Cancelled'))
         else:
-            self.facade.action_result.emit(False, 'No active goal to cancel')
-            
+            self.get_logger().warn('No active goal to cancel.')
+     
     # =========================================================================
     #  Shutdown Method
     # =========================================================================

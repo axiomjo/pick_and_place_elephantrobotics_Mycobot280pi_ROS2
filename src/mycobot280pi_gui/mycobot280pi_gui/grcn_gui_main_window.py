@@ -1,5 +1,5 @@
 import cv2 # Make sure cv2 is imported
-from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QDockWidget
+from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QDockWidget, QMessageBox
 from PyQt5.QtGui import QImage, QPixmap, QTransform
 from PyQt5.QtCore import Qt
 
@@ -10,8 +10,7 @@ from .grcn_gui_control_panel import ControlPanel
 from .grcn_gui_dock_panel import DockPanel
 from .grcn_pyqt_widget import create_cutout_pixmap, DraggableItem
 
-# ros interfaces
-from mycobot280pi_interfaces.msg import ManyDetectedObjects
+from mycobot280pi_interfaces.msg import OneDetectedObject, ManyDetectedObjects, Point2DArray, Point2D # Impor pesan yang dibutuhkan
 
 class MainWindow(QMainWindow):
     def __init__(self, ros_comm):
@@ -64,11 +63,12 @@ class MainWindow(QMainWindow):
         self.ros_comm.annotated_image_received.connect(self.cache_annotated_image)
         self.ros_comm.simple_command_response.connect(self.on_simple_command_response)
         
-        # --- BUG FIX: Moved button state connection here ---
-        # A better way would be a dedicated signal for service availability
-        # self.ros_comm.service_availability.connect(self.update_button_states)
+        self.ros_comm.action_feedback.connect(self._action_feedback)
+        self.ros_comm.action_result.connect(self._action_result)
         
         # Control Panel Buttons -> MainWindow Logic
+        self.control_panel.analyze_btn.clicked.connect(self._on_start_action)
+        self.control_panel.emergency_btn.clicked.connect(self._on_cancel_action)
         self.control_panel.send_btn.clicked.connect(self.send_service_request)
         self.control_panel.reset_btn.clicked.connect(self.reset_plane)
         self.control_panel.add_object_btn.clicked.connect(self.add_new_objects_from_cutouts)
@@ -280,11 +280,22 @@ class MainWindow(QMainWindow):
     def _simple_cmd_response(self, success, message):
         self.status_simple.setText(f"SimpleCmd: {'OK' if success else 'FAIL'} - {message}")
 
-    def _action_feedback(self, current_state):
-        self.status_action.setText(f"Action: {current_state}")
+    def _action_feedback(self, current_state: str):
+        """Slot untuk menampilkan feedback dari action server."""
+        self.statusBar().showMessage(f"Action Progress: {current_state}")
 
-    def _action_result(self, success, message):
-        self.status_action.setText(f"Action: {'SUCCESS' if success else 'FAILED'} - {message}")
+    def _action_result(self, success: bool, message: str):
+        """Slot untuk menampilkan hasil akhir dari action."""
+        self.statusBar().showMessage(f"Action Finished: {message}", 5000) # Tampilkan selama 5 detik
+        
+        # Aktifkan kembali tombol-tombol setelah action selesai
+        self.control_panel.analyze_btn.setDisabled(False)
+        self.control_panel.send_btn.setDisabled(False)
+
+        if success:
+            QMessageBox.information(self, "Action Success", message)
+        else:
+            QMessageBox.warning(self, "Action Failed / Cancelled", message)
 
     # ----------------- Button Handlers -----------------
     def _on_simple_command(self):
@@ -293,14 +304,49 @@ class MainWindow(QMainWindow):
         self.ros.call_simple_command(coords=[], speed=40, is_linear_mode=True)
 
     def _on_start_action(self):
-        self.status_action.setText("Action: sending goal...")
-        # Placeholder empty goal components (must conform to interface types)
-        from mycobot280pi_interfaces.msg import ManyDetectedObjects, Point2DArray
-        empty_objects = ManyDetectedObjects()
-        target_positions = Point2DArray()
-        target_orientation = []  # list[int]
-        self.ros.send_complex_goal(empty_objects, target_positions, target_orientation)
+        """Mengumpulkan data dari working plane dan memulai action goal."""
+        if not self.working_plane.items_on_plane:
+            QMessageBox.warning(self, "Error", "No items on the working plane to process.")
+            return
 
+        self.statusBar().showMessage("Preparing action goal...")
+        
+        # Siapkan pesan goal
+        objects_to_move = ManyDetectedObjects()
+        target_positions = Point2DArray()
+        target_orientations = []
+
+        # Kumpulkan data dari setiap item di working plane
+        for item in self.working_plane.items_on_plane:
+            # Di sini kita asumsikan setiap item adalah target
+            # Anda bisa membuat logika lebih canggih untuk membedakan start vs target
+            
+            # Data objek (menggunakan posisi saat ini sebagai posisi awal)
+            start_pos = item.scenePos()
+            obj = OneDetectedObject()
+            obj.id = item.object_id
+            obj.center_point.x = start_pos.x() # Perlu konversi dari pixel/scene ke meter
+            obj.center_point.y = start_pos.y() # Perlu konversi dari pixel/scene ke meter
+            objects_to_move.objects.append(obj)
+            
+            # Data target (contoh: pindah 50 unit ke kanan)
+            target_pt = Point2D()
+            target_pt.x = start_pos.x() + 50.0 # Ganti dengan logika target Anda
+            target_pt.y = start_pos.y()
+            target_positions.points.append(target_pt)
+
+            # Data orientasi
+            target_orientations.append(int(item.rotation()))
+
+        # Kirim goal melalui ROS communication layer
+        self.ros_comm.send_complex_goal(objects_to_move, target_positions, target_orientations)
+        
+        # Nonaktifkan tombol untuk mencegah pengiriman ganda
+        self.control_panel.analyze_btn.setDisabled(True)
+        self.control_panel.send_btn.setDisabled(True)
+        
     def _on_cancel_action(self):
-        self.ros.cancel_complex_goal()
+        """Memanggil fungsi cancel di ROS communication layer."""
+        self.logger.info("Cancel button clicked.")
+        self.ros_comm.cancel_complex_goal()
 

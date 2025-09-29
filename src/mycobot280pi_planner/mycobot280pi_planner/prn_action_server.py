@@ -1,16 +1,8 @@
-"""
-prn_action_server.py
-
-Implements the /planner/process_workspace action server for the planner node.
-Receives a list of objects to move (with their target positions/orientations) from the GUI,
-and coordinates the pick-and-place sequence for each object, providing feedback as it works.
-"""
+# prn_action_server.py
 
 import rclpy
 from rclpy.action import ActionServer
-from rclpy.node import Node
 from mycobot280pi_interfaces.action import ProcessWorkspace
-from mycobot280pi_interfaces.msg import OneDetectedObject, ManyDetectedObjects, Point2DArray
 
 class PlannerActionServer:
     def __init__(self, node, logic):
@@ -19,46 +11,71 @@ class PlannerActionServer:
         self._action_server = ActionServer(
             node,
             ProcessWorkspace,
-            '/planner/process_workspace',
+            '/planner/act_complex_command',
             self.execute_callback
         )
+        self.node.get_logger().info("Action server for complex commands is ready.")
 
-    async def execute_callback(self, goal_handle):
-        self.node.get_logger().info("Received process_workspace action goal.")
+    def execute_callback(self, goal_handle):
+        self.node.get_logger().info("Received 'ProcessWorkspace' action goal.")
 
         objects = goal_handle.request.objects_to_move.objects
         target_positions = goal_handle.request.objects_target_position.points
-        target_orientation = goal_handle.request.objects_target_orientation
+        target_orientations = goal_handle.request.objects_target_orientation
 
         feedback_msg = ProcessWorkspace.Feedback()
         result_msg = ProcessWorkspace.Result()
 
+        if len(objects) != len(target_positions):
+            result_msg.success = False
+            result_msg.message = "Mismatch between objects and target positions."
+            goal_handle.abort()
+            return result_msg
+
+        # Definisikan fungsi helper untuk menerbitkan feedback
+        def publish_feedback(state_from_logic):
+            if not rclpy.ok() or goal_handle.is_cancel_requested:
+                return
+            
+            # Variabel 'state_from_logic' hanya ada di dalam fungsi ini
+            feedback_msg.current_state = state_from_logic
+            goal_handle.publish_feedback(feedback_msg)
+            self.node.get_logger().info(f"Feedback: {state_from_logic}")
+
         try:
-            # Check that the number of objects matches the number of target positions
-            if len(objects) != len(target_positions):
-                result_msg.success = False
-                result_msg.message = "Mismatch between objects and target positions."
-                goal_handle.abort()
-                return result_msg
-
             for idx, obj in enumerate(objects):
-                # Assign target position and orientation to the object (if needed)
+                self.node.get_logger().info(f"Processing object {idx+1}/{len(objects)} (ID: {obj.id}).")
+                
+                # Update 'current_object' di pesan feedback untuk objek ini
+                feedback_msg.current_object = obj
+                
                 obj_target = target_positions[idx]
-                # Optionally, you can add orientation to obj if your message supports it
 
-                # Call planning logic to process this object
-                # This should break down the task and publish atomic commands
-                async for state in self.logic.pick_and_place_object(obj, obj_target, target_orientation):
-                    feedback_msg.current_state = state
-                    feedback_msg.current_object = obj
-                    goal_handle.publish_feedback(feedback_msg)
-                    await rclpy.sleep(0.1)  # Simulate work or wait for real feedback
+                # Ambil orientasi untuk objek saat ini
+                target_orientation_for_obj = target_orientations[idx]
+
+                # Teruskan orientasi ke fungsi logic
+                self.logic.pick_and_place_object(
+                    obj, obj_target, target_orientation_for_obj, publish_feedback
+                )
+
+                if goal_handle.is_cancel_requested:
+                    goal_handle.canceled()
+                    result_msg.success = False
+                    result_msg.message = "Action canceled by client."
+                    return result_msg
 
             result_msg.success = True
             result_msg.message = "All objects processed successfully."
             goal_handle.succeed()
+
         except Exception as e:
+            # BAGIAN INI MEMASTIKAN MASALAH #2 TIDAK TERJADI
+            # Jangan gunakan variabel 'state' di sini karena ia tidak ada di lingkup ini
+            error_msg = f"An exception occurred: {e}"
+            self.node.get_logger().error(error_msg)
             result_msg.success = False
-            result_msg.message = f"Error: {e}"
+            result_msg.message = error_msg
             goal_handle.abort()
+        
         return result_msg

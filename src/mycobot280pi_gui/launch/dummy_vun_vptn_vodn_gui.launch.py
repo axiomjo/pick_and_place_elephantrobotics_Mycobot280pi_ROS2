@@ -17,21 +17,16 @@ def generate_launch_description():
 
     return LaunchDescription([
     
-        # vision_usb_cam_node
+        # dummy_usb_cam_node
         Node(
-            package='usb_cam',
-            executable='usb_cam_node_exe',
-            name='vision_usb_cam_node',
+            package='mycobot280pi_dummy',
+            executable='dummy_raw_webcam',
+            name='dummy_vision_usb_cam_node',
             remappings=[
-                ('/image_raw', '/camera/msg_image_raw'),
+                ('dummy/raw_webcam', '/camera/msg_image_raw'),
             ],
 
-            # This handles all the '-p' arguments
-            parameters=[{
-                'video_device': '/dev/video0',
-                'camera_name': 'my_camera',
-                'camera_info_url': 'file://' + camera_info_file_path,
-            }]
+           
                 
         ),
         # Vision Undistorter Node
@@ -42,7 +37,8 @@ def generate_launch_description():
             output='screen',
             parameters=[{'camera_info_file': camera_info_file_path}]
         ),
-        # Vision Perspective Transformer Node
+        
+       # Vision Perspective Transformer Node
         Node(
             package='mycobot280pi_vision',
             executable='vision_perspective_transform_node',
@@ -50,11 +46,22 @@ def generate_launch_description():
             output='screen',
             parameters=[{'output_size': 600}]
         ),
+        
+        #vision object detector node
+        Node(
+            package='mycobot280pi_vision',
+            executable='vision_object_detector_node',
+            name='vision_object_detector_node',
+            output='screen',
+            parameters=[{'output_size': 600}]
+        ),
+        
         # GUI Robot Control Node
         Node(
             package='mycobot280pi_gui',
             executable='gui_robot_control_node',
             name='gui_robot_control_node',
-            output='screen'
+            output='screen',
+            emulate_tty=True
         ),
     ])

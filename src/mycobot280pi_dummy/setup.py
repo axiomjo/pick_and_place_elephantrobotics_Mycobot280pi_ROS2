@@ -27,7 +27,9 @@ setup(
             'dummy_gui_robot_control_node = mycobot280pi_dummy.dummy_gui_robot_control_node:main',
             'd2ummy_gui_robot_control_node = mycobot280pi_dummy.dummy_gui_robot_control_node_2:main',
             'dummy_circle_n_squares_img_node = mycobot280pi_dummy.dummy_generated_600x600oixel_img:main',
-            'dummy_raw_webcam = mycobot280pi_dummy.dummy_singlephoto_publisher_img:main'
+            'dummy_raw_webcam = mycobot280pi_dummy.dummy_singlephoto_publisher_img:main',
+            'dummy_executor_node = mycobot280pi_dummy.dummy_executor_node:main',
+            
         
             
         ],

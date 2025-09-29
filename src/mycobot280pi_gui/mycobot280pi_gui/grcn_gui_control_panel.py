@@ -18,11 +18,13 @@ class ControlPanel(QWidget):
 
         self.add_object_btn = QPushButton("Add New Object (to Plane)")
         self.reset_btn = QPushButton("Reset Plane")
-        self.analyze_btn = QPushButton("Analyze (Print All)")
-        self.analyze_btn.setDisabled(True)
+        self.analyze_btn = QPushButton("Do All PnP")
+        self.emergency_btn = QPushButton("Cancel Action")
         self.delete_btn = QPushButton("Delete Selected")
         self.rotate_counter_clockwise_btn = QPushButton("Rotate 90° CCW")
         self.rotate_clockwise_btn = QPushButton("Rotate 90° CW")
+        
+        
 
         # Add buttons to the layout in the desired order
         layout.addWidget(self.analyze_btn)

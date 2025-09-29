@@ -1,7 +1,13 @@
-[LAST EDITED: 28 SEP 2025 21:33]
+[LAST EDITED: 29 SEP 2025 02:17]
 
-why do i need to re-debug the coordinate system hweee
-![](ASSET_README/ss_KUDUDEBUGCOORDINAT.png)
+
+HAHAHA VISION PIPELINE KELAR  
+![](ASSET_README/ss_VISIONPIPELINEDONE.png)
+
+---
+yeeyyy koordinatnya waras  
+ini pake dummy image buat debug hahahaha  
+![](ASSET_README/ss_koordinatwaras.png)
 
 ----
 ok gui bisa pubulish four perspective points.  
