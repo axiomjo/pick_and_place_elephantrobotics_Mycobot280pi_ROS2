@@ -18,6 +18,9 @@ from PyQt5.QtGui import (
 )
 from PyQt5.QtCore import Qt, QRectF
 
+from .grcn_pyqt_widget import DraggableItem
+
+
 class WorkingPlane(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -168,7 +171,17 @@ class WorkingPlane(QWidget):
         transform.rotate(self.current_rotation)
         self.view.setTransform(transform)
         print(f"View rotated to {self.current_rotation % 360}°")
-    
+        
+    def set_selected_items_rotation(self, angle):
+        """
+        Sets the absolute rotation for all currently selected DraggableItems.
+        """
+        selected_items = self.working_plane_scene.selectedItems()
+        for item in selected_items:
+            # Good practice to ensure it's the right kind of item
+            if isinstance(item, DraggableItem):
+                item.setRotation(float(angle))
+        
         
         
 

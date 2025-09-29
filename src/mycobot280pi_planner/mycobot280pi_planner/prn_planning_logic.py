@@ -1,6 +1,5 @@
-# prn_planning_logic.py
-import asyncio
-import threading  # DIUBAH: Ganti asyncio.Event dengan threading.Event
+import rclpy
+import threading
 from mycobot280pi_interfaces.msg import SimpleCommands
 from std_msgs.msg import String
 
@@ -9,10 +8,7 @@ class PlannerLogic:
         self.node = node
         self.state = "idle"
         self.command_pub = None
-        
-        # DIUBAH: Gunakan Event yang thread-safe
         self.feedback_event = threading.Event()
-
         self.feedback_sub = self.node.create_subscription(
             String,
             '/executor/feedback',
@@ -25,64 +21,84 @@ class PlannerLogic:
     def executor_feedback_callback(self, msg):
         self.node.get_logger().info(f"Received feedback from executor: '{msg.data}'")
         if msg.data == "success":
-            # .set() pada threading.Event aman dipanggil dari thread manapun
             self.feedback_event.set()
-            
-    def _send_and_wait_for_feedback_blocking(self, command_msg):
+
+
+    def _send_and_wait_for_feedback_blocking(self, command_msg, goal_handle):
+        """This is the new NON-BLOCKING wait function."""
+        
+        self.node.get_logger().error("--- RUNNING THE NEW NON-BLOCKING WAIT FUNCTION ---")
+
+        
         self.feedback_event.clear()
         self.command_pub.publish(command_msg)
         self.node.get_logger().info(f"Command '{command_msg.command_type}' sent. Waiting for feedback...")
         
-        # Ini akan memblokir thread saat ini sampai event diset
-        self.feedback_event.wait()
-        self.node.get_logger().info("Feedback received. Proceeding.")
+        while rclpy.ok() and not self.feedback_event.is_set():
+            if goal_handle.is_cancel_requested:
+                self.node.get_logger().info("Cancellation detected while waiting for feedback.")
+                return False
+            self.feedback_event.wait(timeout=0.1)
 
-    
-    def pick_and_place_object(self, obj, obj_target, obj_orientation, feedback_callback):
+        if self.feedback_event.is_set():
+            self.node.get_logger().info("Feedback received. Proceeding.")
+            return True
+        else:
+            return False
+
+        
+    def pick_and_place_object(self, obj, obj_target, obj_orientation, feedback_callback, goal_handle):
         self.node.get_logger().info(f"Starting pick and place for object ID: {obj.id}")
         self.state = "processing"
         
-        plane_height = 50 #mm from robot's z=0
-        RX_DOWN = 0.0 #klo mau posenya ke bawah
-        RY_DOWN = 0.0 #klo mau posenya ke bawah
+        plane_height = 50.0
+        RX_DOWN = 180.0
+        RY_DOWN = 0.0
 
 
-        # --- Langkah 1: Bergerak ke posisi pick ---
-        feedback_callback("moving_to_pick")
-        pick_pose = [obj.center_point.x, obj.center_point.y, plane_height, RX_DOWN, RY_DOWN, 0.0]
-        cmd = SimpleCommands(command_type="move", coords=pick_pose, speed=50)
-        self._send_and_wait_for_feedback_blocking(cmd)
+        try:
+            # --- Step 1: Move to pick position ---
+            feedback_callback(f"Moving to pick position for object {obj.id}")
+            pick_pose = [obj.center_point.x, obj.center_point.y, plane_height, RX_DOWN, RY_DOWN, 0.0]
+            cmd = SimpleCommands(command_type="move", coords=pick_pose, speed=50)
+            if not self._send_and_wait_for_feedback_blocking(cmd, goal_handle):
+                return False
 
-        # --- Langkah 2: Aktifkan vacuum ---
-        feedback_callback("activating_vacuum")
-        cmd = SimpleCommands(command_type="vacuum_on")
-        self._send_and_wait_for_feedback_blocking(cmd)
+            # --- Step 2: Activate vacuum ---
+            feedback_callback("Activating vacuum")
+            cmd = SimpleCommands(command_type="vacuum_on")
+            if not self._send_and_wait_for_feedback_blocking(cmd, goal_handle):
+                return False
 
-        # --- Langkah 3: Bergerak ke posisi place ---
-        feedback_callback("moving_to_place")
-        place_pose = [
-            obj_target.x,
-            obj_target.y,
-            plane_height,
-            RX_DOWN,  # Rx (Roll)
-            RY_DOWN,  # Ry (Pitch)
-            float(obj_orientation) # Rz (Yaw)
-        ]
-        cmd = SimpleCommands(command_type="move", coords=place_pose, speed=50)
-        self._send_and_wait_for_feedback_blocking(cmd)
+            # --- Step 3: Move to place position ---
+            feedback_callback("Moving to place position")
+            place_pose = [obj_target.x, obj_target.y, plane_height, RX_DOWN, RY_DOWN, float(obj_orientation)]
+            cmd = SimpleCommands(command_type="move", coords=place_pose, speed=50)
+            if not self._send_and_wait_for_feedback_blocking(cmd, goal_handle):
+                return False
 
-        feedback_callback("deactivating_vacuum")
-        cmd = SimpleCommands(command_type="vacuum_off")
-        self._send_and_wait_for_feedback_blocking(cmd)
+            # --- Step 4: Deactivate vacuum ---
+            feedback_callback("Deactivating vacuum")
+            cmd = SimpleCommands(command_type="vacuum_off")
+            if not self._send_and_wait_for_feedback_blocking(cmd, goal_handle):
+                return False
 
-        feedback_callback("returning_home")
-        home_pose = [0.0, 0.1, 0.2, 0.0, 0.0, 0.0] #kudu ganti yg joint angles tea.
-        cmd = SimpleCommands(command_type="move", coords=home_pose, speed=50)
-        self._send_and_wait_for_feedback_blocking(cmd)
+            # --- Step 5: Return to home position ---
+            feedback_callback("Returning to home position")
+            home_pose = [135.0, 145.0, -30.0, 180.0, 0.0, 0.0]
+            cmd = SimpleCommands(command_type="move", coords=home_pose, speed=50)
+            if not self._send_and_wait_for_feedback_blocking(cmd, goal_handle):
+                return False
 
-        self.state = "idle"
-        feedback_callback("Done")
-    
+            self.state = "idle"
+            feedback_callback(f"Finished processing object {obj.id}")
+            
+            return True # Return True to indicate success
+
+        except Exception as e:
+            self.node.get_logger().error(f"An exception occurred during PnP logic: {e}")
+            self.state = "idle"
+            return False # Return False to indicate failure      
 
     def manual_command_callback(self, msg):
         self.node.get_logger().info(f"Forwarding manual command: {msg.command_type}")

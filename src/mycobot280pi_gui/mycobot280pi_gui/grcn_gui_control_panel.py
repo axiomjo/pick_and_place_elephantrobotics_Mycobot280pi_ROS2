@@ -28,9 +28,12 @@ class ControlPanel(QWidget):
 
         # Add buttons to the layout in the desired order
         layout.addWidget(self.analyze_btn)
+        layout.addWidget(self.emergency_btn)
+        
         layout.addWidget(self.delete_btn)
         layout.addStretch() # Adds a flexible space
         layout.addWidget(self.reset_btn)
+        
         layout.addWidget(self.add_object_btn)
         layout.addWidget(self.rotate_counter_clockwise_btn)
         layout.addWidget(self.rotate_clockwise_btn)

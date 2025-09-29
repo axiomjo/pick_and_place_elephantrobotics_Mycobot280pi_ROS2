@@ -34,6 +34,7 @@ def generate_launch_description():
             }]
                 
         ),
+        
         # Vision Undistorter Node
         Node(
             package='mycobot280pi_vision',
@@ -42,7 +43,8 @@ def generate_launch_description():
             output='screen',
             parameters=[{'camera_info_file': camera_info_file_path}]
         ),
-        # Vision Perspective Transformer Node
+        
+       # Vision Perspective Transformer Node
         Node(
             package='mycobot280pi_vision',
             executable='vision_perspective_transform_node',
@@ -59,11 +61,33 @@ def generate_launch_description():
             output='screen',
             parameters=[{'output_size': 600}]
         ),
+        
         # GUI Robot Control Node
         Node(
             package='mycobot280pi_gui',
             executable='gui_robot_control_node',
             name='gui_robot_control_node',
-            output='screen'
+            output='screen',
+            emulate_tty=True
         ),
+        
+        # planner robot node
+        Node(
+            package='mycobot280pi_planner',
+            executable='planner_robot_node',
+            name='planner_robot_node',
+            output='screen',
+            emulate_tty=True
+        ),
+        
+        # dummy_executor_node
+        Node(
+            package='mycobot280pi_dummy',
+            executable='dummy_executor_node',
+            name='dummy_executor_node',
+            output='screen',
+            emulate_tty=True
+        )
+            
+        
     ])

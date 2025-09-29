@@ -50,6 +50,7 @@ from mycobot280pi_interfaces.msg import Point2D, Point2DArray, ManyDetectedObjec
 from mycobot280pi_interfaces.srv import Mycobot280PiSimpleCommandsMadeSure
 from mycobot280pi_interfaces.action import ProcessWorkspace
 
+from action_msgs.msg import GoalStatus
 
 # --- Constants (single source of truth for interface names) ---
 TOPIC_UNDISTORTED_IMAGE = '/vision/msg_undistorted_image'
@@ -104,33 +105,25 @@ class ROSCommunication(QObject):
     # The Head Chef just passes the order to the Line Cook.
     
     def get_logger(self):
-        """A simple bridge method to return the internal node's logger."""
         return self._ros_node.get_logger()
     
     def publish_four_points(self, points):
-        """Waiter says: 'Chef, here are the four corner points from the customer.'"""
         self._ros_node.publish_perspective_points(points)
 
     def call_simple_command(self, coords=None, speed=50, is_linear_mode=True):
-        """Waiter says: 'Chef, the customer wants a simple robot move.'"""
         self._ros_node.call_simple_command_service(coords or [], speed, is_linear_mode)
 
     def send_complex_goal(self, objects_to_move, target_positions, target_orientation):
-        """Waiter says: 'Chef, the customer wants a complex pick-and-place order.'"""
         self._ros_node.send_complex_action_goal(objects_to_move, target_positions, target_orientation)
 
     def cancel_complex_goal(self):
-        """Waiter says: 'Chef, cancel that complex order!'"""
         self._ros_node.cancel_complex_goal()
 
     def shutdown(self):
-        """This is the 'closing time' procedure to safely shut down the kitchen."""
         print("Closing the kitchen...")
         self.executor.shutdown()
         self._ros_node.destroy_node()
-        
-        
-        
+
         
         
 class _ROSNode(Node):
@@ -142,7 +135,11 @@ class _ROSNode(Node):
         super().__init__('gui_robot_control_node')
         self.facade = facade
         self.bridge = CvBridge()
+        
+        self._goal_handle_lock = threading.Lock()
         self._active_action_goal = None
+        
+        
 
         # --- Group 1: Publishers & Clients (Setup) ---
         # All outgoing communication channels are set up here.
@@ -237,15 +234,17 @@ class _ROSNode(Node):
 
     def _goal_response(self, fut):
         """Callback yang dipanggil setelah goal dikirim."""
-        goal_handle = future.result()
+        goal_handle = fut.result() 
         if not goal_handle.accepted:
             self.get_logger().info('Goal rejected :(')
             self.facade.action_result.emit(False, 'Goal rejected')
             return
 
         self.get_logger().info('Goal accepted :)')
-        # Simpan goal handle agar bisa dibatalkan nanti
-        self._active_action_goal = goal_handle
+        
+        with self._goal_handle_lock:
+            # Simpan goal handle agar bisa dibatalkan nanti
+            self._active_action_goal = goal_handle
         
         result_future = goal_handle.get_result_async()
         result_future.add_done_callback(self._action_result)
@@ -253,31 +252,50 @@ class _ROSNode(Node):
     def _action_feedback(self, feedback_msg):
         try:
             self.facade.action_feedback.emit(feedback_msg.feedback.current_state)
-        except Exception:
+        except Exception as e: # Added 'e' to the exception clause
             self.get_logger().warn(f"Error processing feedback: {e}")
 
 
     def _action_result(self, fut):
         """Callback yang dipanggil saat hasil akhir diterima."""
         try:
-            result = future.result().result
+            result = fut.result().result
             self.get_logger().info(f'Action finished with result: {result.message}')
             self.facade.action_result.emit(result.success, result.message)
         except Exception as e:
             self.get_logger().error(f'Exception while getting action result: {e}')
             self.facade.action_result.emit(False, f'Exception: {e}')
         finally:
-            # Bersihkan goal handle setelah selesai
-            self._active_action_goal = None
+            with self._goal_handle_lock:
+                # Bersihkan goal handle setelah selesai
+                self._active_action_goal = None
 
-    def cancel_action_goal(self):
-        if self._active_action_goal and self._active_action_goal.is_active:
-            self.get_logger().info('Cancelling active goal...')
-            cancel_future = self._active_action_goal.cancel_goal_async()
-            cancel_future.add_done_callback(lambda _: self.facade.action_result.emit(False, 'Goal Cancelled'))
+   
+    def cancel_complex_goal(self):
+        goal_to_cancel = None
+        with self._goal_handle_lock:
+            if self._active_action_goal:
+                status = self._active_action_goal.status
+                if status == GoalStatus.STATUS_ACCEPTED or status == GoalStatus.STATUS_EXECUTING:
+                    self.get_logger().info('Cancelling active goal...')
+                    goal_to_cancel = self._active_action_goal
+                else:
+                    self.get_logger().warn('Goal is not in an active state, cannot cancel.')
+            else:
+                self.get_logger().warn('No active goal to cancel (it may have just finished).')
+
+        # Perform the async call outside the lock to avoid holding it
+        if goal_to_cancel:
+            cancel_future = goal_to_cancel.cancel_goal_async()
+            cancel_future.add_done_callback(self._cancel_done)
+    
+    def _cancel_done(self, future):
+        cancel_response = future.result()
+        if len(cancel_response.goals_canceling) > 0:
+            self.get_logger().info('Goal cancellation was successful.')
         else:
-            self.get_logger().warn('No active goal to cancel.')
-     
+            self.get_logger().warn('Goal cancellation failed or goal was already done.')
+
     # =========================================================================
     #  Shutdown Method
     # =========================================================================
@@ -286,30 +304,3 @@ class _ROSNode(Node):
             self.destroy_node()
         except Exception:
             pass
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

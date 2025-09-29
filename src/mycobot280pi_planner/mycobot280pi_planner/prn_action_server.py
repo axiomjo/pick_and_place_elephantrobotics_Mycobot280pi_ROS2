@@ -5,14 +5,15 @@ from rclpy.action import ActionServer
 from mycobot280pi_interfaces.action import ProcessWorkspace
 
 class PlannerActionServer:
-    def __init__(self, node, logic):
+    def __init__(self, node, logic, callback_group):
         self.node = node
         self.logic = logic
         self._action_server = ActionServer(
             node,
             ProcessWorkspace,
             '/planner/act_complex_command',
-            self.execute_callback
+            self.execute_callback,
+            callback_group=callback_group
         )
         self.node.get_logger().info("Action server for complex commands is ready.")
 
@@ -55,15 +56,26 @@ class PlannerActionServer:
                 target_orientation_for_obj = target_orientations[idx]
 
                 # Teruskan orientasi ke fungsi logic
-                self.logic.pick_and_place_object(
-                    obj, obj_target, target_orientation_for_obj, publish_feedback
-                )
+                was_successful = self.logic.pick_and_place_object(
+        obj, obj_target, target_orientation_for_obj, publish_feedback, goal_handle
+    )
 
-                if goal_handle.is_cancel_requested:
-                    goal_handle.canceled()
-                    result_msg.success = False
-                    result_msg.message = "Action canceled by client."
-                    return result_msg
+                # Check if the logic was cancelled or failed
+                if not was_successful:
+                    # The is_cancel_requested check inside the logic already caught it.
+                    # We just need to formalize it here.
+                    if goal_handle.is_cancel_requested:
+                        goal_handle.canceled()
+                        result_msg.success = False
+                        result_msg.message = "Action canceled during object processing."
+                    else:
+                        # Handle non-cancellation failures (e.g., robot couldn't reach)
+                        goal_handle.abort()
+                        result_msg.success = False
+                        result_msg.message = f"Action failed while processing object ID {obj.id}."
+
+                    return result_msg # Exit the callback
+
 
             result_msg.success = True
             result_msg.message = "All objects processed successfully."
