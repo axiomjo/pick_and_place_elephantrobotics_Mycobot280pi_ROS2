@@ -258,6 +258,8 @@ class _ROSNode(Node):
 
     def _action_result(self, fut):
         """Callback yang dipanggil saat hasil akhir diterima."""
+        self.get_logger().error("--- ACTION RESULT CALLBACK FIRED! ---")
+
         try:
             result = fut.result().result
             self.get_logger().info(f'Action finished with result: {result.message}')

@@ -4,6 +4,7 @@ from PyQt5.QtGui import QImage, QPixmap, QTransform
 from PyQt5.QtCore import Qt
 from enum import Enum # <<< ADDED: Import Enum for state machine
 
+
 # from other grcn files
 from .grcn_gui_camera_panel import CameraPanel
 from .grcn_gui_working_plane import WorkingPlane
@@ -14,7 +15,7 @@ from .grcn_pyqt_widget import create_cutout_pixmap, DraggableItem
 from mycobot280pi_interfaces.msg import OneDetectedObject, ManyDetectedObjects, Point2DArray, Point2D # Impor pesan yang dibutuhkan
 
 class MainWindow(QMainWindow):
-    # <<< ADDED: State machine definition
+    
     AppState = Enum('AppState', ['IDLE', 'BUSY', 'FINISHED'])
     
     def __init__(self, ros_comm):
@@ -115,6 +116,9 @@ class MainWindow(QMainWindow):
             self.control_panel.analyze_btn.setEnabled(False) # PnP button is DISABLED
             self.control_panel.emergency_btn.setEnabled(False)
             self.control_panel.reset_btn.setEnabled(True) # Only Reset is enabled
+    
+        
+
 
     # --- Data Caching ---
     def cache_detected_objects(self, objects_msg: ManyDetectedObjects):

@@ -1,7 +1,7 @@
 # prn_action_server.py
 
 import rclpy
-from rclpy.action import ActionServer
+from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from mycobot280pi_interfaces.action import ProcessWorkspace
 
 class PlannerActionServer:
@@ -12,82 +12,71 @@ class PlannerActionServer:
             node,
             ProcessWorkspace,
             '/planner/act_complex_command',
-            self.execute_callback,
+            execute_callback=self.execute_callback,
+            goal_callback=self.goal_callback,
+            cancel_callback=self.cancel_callback,
             callback_group=callback_group
         )
         self.node.get_logger().info("Action server for complex commands is ready.")
 
+    def goal_callback(self, goal_request):
+        """Accepts or rejects a new goal."""
+        self.node.get_logger().info('Received new goal request...')
+        if self.logic.state != "idle":
+            self.node.get_logger().warn('Planner is busy! Rejecting new goal.')
+            return GoalResponse.REJECT
+        self.node.get_logger().info('Planner is idle. Accepting new goal.')
+        return GoalResponse.ACCEPT
+
+    def cancel_callback(self, goal_handle):
+        """Accepts or rejects a client request to cancel an action."""
+        self.node.get_logger().info('Received cancel request.')
+        return CancelResponse.ACCEPT
+
     def execute_callback(self, goal_handle):
-        self.node.get_logger().info("Received 'ProcessWorkspace' action goal.")
-
-        objects = goal_handle.request.objects_to_move.objects
-        target_positions = goal_handle.request.objects_target_position.points
-        target_orientations = goal_handle.request.objects_target_orientation
-
-        feedback_msg = ProcessWorkspace.Feedback()
-        result_msg = ProcessWorkspace.Result()
-
-        if len(objects) != len(target_positions):
-            result_msg.success = False
-            result_msg.message = "Mismatch between objects and target positions."
-            goal_handle.abort()
-            return result_msg
-
-        # Definisikan fungsi helper untuk menerbitkan feedback
-        def publish_feedback(state_from_logic):
-            if not rclpy.ok() or goal_handle.is_cancel_requested:
-                return
-            
-            # Variabel 'state_from_logic' hanya ada di dalam fungsi ini
-            feedback_msg.current_state = state_from_logic
-            goal_handle.publish_feedback(feedback_msg)
-            self.node.get_logger().info(f"Feedback: {state_from_logic}")
+        """This function runs the entire pick-and-place process."""
+        self.node.get_logger().info("Executing goal...")
 
         try:
+            objects = goal_handle.request.objects_to_move.objects
+            target_positions = goal_handle.request.objects_target_position.points
+            target_orientations = goal_handle.request.objects_target_orientation
+
+            feedback_msg = ProcessWorkspace.Feedback()
+            result_msg = ProcessWorkspace.Result()
+
+            def publish_feedback(state_from_logic):
+                feedback_msg.current_state = state_from_logic
+                goal_handle.publish_feedback(feedback_msg)
+                self.node.get_logger().info(f"Feedback: {state_from_logic}")
+
             for idx, obj in enumerate(objects):
+                if goal_handle.is_cancel_requested:
+                    result_msg.success = False
+                    result_msg.message = "Action canceled by user."
+                    goal_handle.canceled()
+                    return result_msg
+
                 self.node.get_logger().info(f"Processing object {idx+1}/{len(objects)} (ID: {obj.id}).")
                 
-                # Update 'current_object' di pesan feedback untuk objek ini
-                feedback_msg.current_object = obj
-                
-                obj_target = target_positions[idx]
-
-                # Ambil orientasi untuk objek saat ini
-                target_orientation_for_obj = target_orientations[idx]
-
-                # Teruskan orientasi ke fungsi logic
                 was_successful = self.logic.pick_and_place_object(
-        obj, obj_target, target_orientation_for_obj, publish_feedback, goal_handle
-    )
+                    obj, target_positions[idx], target_orientations[idx], 
+                    publish_feedback, goal_handle
+                )
 
-                # Check if the logic was cancelled or failed
                 if not was_successful:
-                    # The is_cancel_requested check inside the logic already caught it.
-                    # We just need to formalize it here.
-                    if goal_handle.is_cancel_requested:
-                        goal_handle.canceled()
-                        result_msg.success = False
-                        result_msg.message = "Action canceled during object processing."
-                    else:
-                        # Handle non-cancellation failures (e.g., robot couldn't reach)
-                        goal_handle.abort()
-                        result_msg.success = False
-                        result_msg.message = f"Action failed while processing object ID {obj.id}."
-
-                    return result_msg # Exit the callback
-
+                    result_msg.success = False
+                    result_msg.message = f"Action failed while processing object ID {obj.id}."
+                    goal_handle.abort()
+                    return result_msg
 
             result_msg.success = True
             result_msg.message = "All objects processed successfully."
             goal_handle.succeed()
+            self.node.get_logger().info("Goal succeeded.")
+            return result_msg
 
-        except Exception as e:
-            # BAGIAN INI MEMASTIKAN MASALAH #2 TIDAK TERJADI
-            # Jangan gunakan variabel 'state' di sini karena ia tidak ada di lingkup ini
-            error_msg = f"An exception occurred: {e}"
-            self.node.get_logger().error(error_msg)
-            result_msg.success = False
-            result_msg.message = error_msg
-            goal_handle.abort()
-        
-        return result_msg
+        finally:
+            # This guarantees the planner state is reset, no matter what happens.
+            self.node.get_logger().info("Action finished. Resetting planner state to 'idle'.")
+            self.logic.state = "idle"
