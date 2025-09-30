@@ -176,6 +176,72 @@ remind me buat kasih difference between ros distributions. mostly what doesnt ex
 # yey servicenya udh bisa. 
 gtw nih, publishernya ketriggernya bener ga waoaokwkwaokwoakoa
 
+# yey publishenya waras
+kan aku `ros2 topic echo /planner/msg_primitive_command`  
+trus dapet deh echo-an topic tiap planner minta robotnya do smthg :D
+```
+command_type: set_rz_angle
+coords:
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+joint_angles: []
+speed: 0
+r: 0
+g: 0
+b: 0
+vacuum_pin1_level: 0
+vacuum_pin2_level: 0
+extra_strings: []
+extra_floats: []
+extra_ints: []
+---
+command_type: vacuum_strong
+coords: []
+joint_angles: []
+speed: 0
+r: 0
+g: 0
+b: 0
+vacuum_pin1_level: 0
+vacuum_pin2_level: 1
+extra_strings: []
+extra_floats: []
+extra_ints: []
+---
+command_type: vacuum_strong
+coords: []
+joint_angles: []
+speed: 0
+r: 0
+g: 0
+b: 0
+vacuum_pin1_level: 0
+vacuum_pin2_level: 1
+extra_strings: []
+extra_floats: []
+extra_ints: []
+---
+command_type: vacuum_strong
+coords: []
+joint_angles: []
+speed: 0
+r: 0
+g: 0
+b: 0
+vacuum_pin1_level: 0
+vacuum_pin2_level: 1
+extra_strings: []
+extra_floats: []
+extra_ints: []
+---
+
+
+dst...
+```
 
 
 
