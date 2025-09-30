@@ -1,9 +1,7 @@
-[LAST EDITED: 29 SEP 2025 02:17]
+[LAST EDITED: 30 SEP 2025 13:03]
 
-
-planner udh bisa action yey
-![](ASSET_README/ss_actionampeselesai.png)
-![](ASSET_README/ss_ngecancelaction.png)
+waras juga ini GUI
+![](ASSET_README/ss_waras_after_refactor.png)
 
 ---
 
