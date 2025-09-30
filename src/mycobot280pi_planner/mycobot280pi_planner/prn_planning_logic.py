@@ -1,21 +1,32 @@
 import rclpy
 import threading
-import asyncio
+# asyncio is not needed for the synchronous approach
+# import asyncio 
 
 from mycobot280pi_interfaces.msg import SimpleCommands
 from std_msgs.msg import String
+from rclpy.time import Time # Import Time for accurate time checks in the wait loop
+
+# Define a safe timeout for blocking operations
+WAIT_TIMEOUT = 5.0 # Increased timeout for safety
+
+# Renamed topic for clarity
+SERVICE_FEEDBACK_TOPIC = '/executor/system_service_feedback'
 
 class PlannerLogic:
-    def __init__(self, node):
+    def __init__(self, node, feedback_callback_group):
         self.node = node
         self.state = "idle"
         self.command_pub = None
         self.feedback_event = threading.Event()
+        
         self.feedback_sub = self.node.create_subscription(
             String,
-            '/executor/feedback',
+            SERVICE_FEEDBACK_TOPIC,
             self.executor_feedback_callback,
-            10)
+            10,
+            callback_group=feedback_callback_group  
+        )
 
     def set_command_publisher(self, pub):
         self.command_pub = pub
@@ -26,48 +37,56 @@ class PlannerLogic:
             self.feedback_event.set()
 
 
-    def _send_and_wait_for_feedback_blocking(self, command_msg, goal_handle):
-        """TUsed ONLY by the synchronous Action goal handling."""
+    def _send_and_wait_for_feedback_blocking(self, command_msg, goal_handle=None):
+        """
+        Sends a command and blocks the calling thread until:
+        1. Successful feedback is received (unblocked by executor_feedback_callback).
+        2. The global WAIT_TIMEOUT is reached.
+        3. The ROS context shuts down (rclpy.ok() is False).
+        4. (If goal_handle is provided) Cancellation is requested.
+        """
         
-        self.node.get_logger().error("--- RUNNING THE NEW NON-BLOCKING WAIT FUNCTION (For Action) ---")
-
-        
+        # 1. Clear the event and publish the command
         self.feedback_event.clear()
+        
+        if not self.command_pub:
+            self.node.get_logger().error("Command publisher is not set!")
+            return False
+            
         self.command_pub.publish(command_msg)
         self.node.get_logger().info(f"Command '{command_msg.command_type}' sent. Waiting for feedback...")
         
-        while rclpy.ok() and not self.feedback_event.is_set():
-            if goal_handle.is_cancel_requested:
+        # 2. Block and check loop
+        
+        # Get start time using the clock for accurate timeout check
+        start_time_sec = self.node.get_clock().now().nanoseconds / 1e9
+
+        while rclpy.ok():
+            elapsed_time_sec = (self.node.get_clock().now().nanoseconds / 1e9) - start_time_sec
+
+            if elapsed_time_sec > WAIT_TIMEOUT:
+                self.node.get_logger().warn(f"Waiting for command '{command_msg.command_type}' timed out after {WAIT_TIMEOUT}s.")
+                return False
+            
+            # Check for cancellation only if running inside an Action (goal_handle is provided)
+            if goal_handle and goal_handle.is_cancel_requested:
                 self.node.get_logger().info("Cancellation detected while waiting for feedback.")
                 return False
-            self.feedback_event.wait(timeout=0.1)
-
-        if self.feedback_event.is_set():
-            self.node.get_logger().info("Feedback received. Proceeding.")
-            return True
-        else:
-            return False
-
-    # ---  Asynchronous Wait Function for Service Handling ---
-    async def _send_and_wait_for_feedback_async(self, command_msg, goal_handle):
-        """Used by the asynchronous Service call handling."""
-
-        self.node.get_logger().error("--- RUNNING ASYNCHRONOUS WAIT FUNCTION (For Service) ---")
+                
+            # Wait for a small timeout, allowing the MultiThreadedExecutor to process callbacks
+            is_set = self.feedback_event.wait(timeout=0.1) 
+            
+            if is_set:
+                self.node.get_logger().info("Feedback received. Proceeding.")
+                return True
         
-        self.feedback_event.clear()
-        self.state = "processing" # Set state before publishing
-        self.command_pub.publish(command_msg)
-        self.node.get_logger().info(f"Command '{command_msg.command_type}' sent. Awaiting feedback...")
+        # This only happens if rclpy.ok() is False
+        self.node.get_logger().warn("ROS context is shutting down while waiting.")
+        return False
 
-        # 1. Loop until the feedback event is set.
-        while rclpy.ok() and not self.feedback_event.is_set():
-            # 2. Use asyncio.sleep(0) to yield control back to the ROS executor
-            #    This is the non-blocking equivalent of threading.Event.wait()
-            await asyncio.sleep(0.01) # Yield to allow the executor to process callbacks
 
-        self.state = "idle" # Reset state after command is complete
-        return self.feedback_event.is_set()
-
+    # The rest of the class remains the same, but now uses the single, corrected
+    # _send_and_wait_for_feedback_blocking function.
     
     def pick_and_place_object(self, obj, obj_target, obj_orientation, feedback_callback, goal_handle):
         self.node.get_logger().info(f"Starting pick and place for object ID: {obj.id}")
@@ -78,7 +97,6 @@ class PlannerLogic:
         RY_DOWN = 0.0
         
         SPEED = 50
-
 
         try:
             # --- Step 1: Move to pick position ---

@@ -5,6 +5,8 @@ from rclpy.node import Node
 from mycobot280pi_interfaces.msg import SimpleCommands
 from std_msgs.msg import String
 
+SERVICE_FEEDBACK_TOPIC = '/executor/system_service_feedback'
+
 class DummyExecutorNode(Node):
     def __init__(self):
         super().__init__('dummy_executor_node')
@@ -17,7 +19,7 @@ class DummyExecutorNode(Node):
 
         self.feedback_pub = self.create_publisher(
             String,
-            '/executor/feedback',
+            SERVICE_FEEDBACK_TOPIC,
             10)
 
         self.is_busy = False
