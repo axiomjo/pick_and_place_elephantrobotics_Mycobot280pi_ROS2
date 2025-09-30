@@ -11,6 +11,13 @@ from PyQt5.QtGui import QImage, QPixmap
 from mycobot280pi_interfaces.msg import OneDetectedObject
 import numpy as np
 
+# Vacuum Pin Mapping: (pin1_level (white wire), pin2_level (yellow wire))
+VACUUM_MAP = {
+    "vacuum_strong": (0, 1),
+    "vacuum_weak":   (0, 0),
+    "vacuum_off":    (1, 0),
+    # "vacuum_off_alt": (1, 1), # Optional, if you want a dedicated command for 11
+}
 
 def create_cutout_pixmap(source_image: np.ndarray, obj: OneDetectedObject) -> QPixmap:
     """

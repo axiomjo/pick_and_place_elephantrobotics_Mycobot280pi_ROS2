@@ -76,6 +76,8 @@ class MainWindow(QMainWindow):
         self.working_plane = WorkingPlane()
         self.control_panel = ControlPanel()
         self.dock_panel = DockPanel()
+        
+        
 
         # Layout (camera left, working plane + controls right)
         right_layout = QVBoxLayout()
@@ -87,9 +89,16 @@ class MainWindow(QMainWindow):
         main_layout.addLayout(right_layout, 2)
 
         # Dock widget
-        dock = QDockWidget("Controls & Cutouts", self)
-        dock.setWidget(self.dock_panel)
-        self.addDockWidget(Qt.RightDockWidgetArea, dock)
+        self.dock_widget = QDockWidget("Controls & Cutouts", self)
+        self.dock_widget.setWidget(self.dock_panel)
+        
+        self.dock_widget.setFeatures(
+            QDockWidget.DockWidgetFeatures(
+                QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetFloatable 
+            )
+        )
+        
+        self.addDockWidget(Qt.RightDockWidgetArea, self.dock_widget)
 
     # -------------------------------------------------------------------------
     # Cached ROS Data

@@ -37,7 +37,7 @@ class CameraPanel(QWidget):
 
         # 1. Annotated camera view
         self.camera_label = QLabel("Waiting for annotated camera feed...")
-        self.camera_label.setMinimumSize(300, 300)
+        self.camera_label.setFixedSize(300, 300)
         self.camera_label.setAlignment(Qt.AlignCenter)
         self.camera_label.setStyleSheet("border: 1px solid black; background-color: #222;")
         layout.addWidget(self.camera_label)

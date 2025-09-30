@@ -28,7 +28,7 @@ def generate_launch_description():
 
             # This handles all the '-p' arguments
             parameters=[{
-                'video_device': '/dev/video0',
+                'video_device': '/dev/video2',
                 'camera_name': 'my_camera',
                 'camera_info_url': 'file://' + camera_info_file_path,
             }]

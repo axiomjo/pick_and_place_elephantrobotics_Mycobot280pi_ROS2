@@ -77,4 +77,41 @@ def connect_signals(main_window):
     main_window.camera_panel.perspective_editor.perspective_points_changed.connect(
         main_window.ros_comm.publish_four_points
     )
+    
+    
+
+    # -------------------------------------------------------------------------
+    # Dock Panel → Service Manager (Service Commands NEW)
+    # -------------------------------------------------------------------------
+    main_window.dock_panel.send_rotation_command.connect(
+        main_window.service_mgr.handle_rotation_command
+    )
+    main_window.dock_panel.send_rgb_command.connect(
+        main_window.service_mgr.handle_rgb_command
+    )
+    main_window.dock_panel.send_vacuum_command.connect(
+        main_window.service_mgr.handle_vacuum_command
+    )
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 

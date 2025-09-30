@@ -15,7 +15,9 @@ int32 r                    # Red value (0-255)
 int32 g                    # Green value (0-255)
 int32 b                    # Blue value (0-255)
 
-# For vacuum or gripper commands, you can add more fields as needed
+# for vacuum pump V2
+uint8 vacuum_pin1_level   # (white wire) 
+uint8 vacuum_pin2_level   # (yellow wire) HIGH/LOW
 
 # For future extensibility, you can add:
 string[] extra_strings     # For any extra string parameters

@@ -26,7 +26,7 @@ class RobotMycobotExecutorNode(Node):
         )
         self.get_logger().info("robot_mycobot_executor_node is ready and waiting for commands.")
 
-    def command_callback(self, msg):
+    def command_callback(self, msg: SimpleCommands):
         """
         Receives a SimpleCommands message and executes the requested action.
         """

@@ -4,19 +4,24 @@ import rclpy
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from mycobot280pi_interfaces.action import ProcessWorkspace
 
+ACTION_COMPLEX_COMMAND = '/planner/act_complex_command'
+
+
 class PlannerActionServer:
     def __init__(self, node, logic, callback_group):
         self.node = node
         self.logic = logic
+        
         self._action_server = ActionServer(
-            node,
-            ProcessWorkspace,
-            '/planner/act_complex_command',
+            node = self.node,
+            action_type=ProcessWorkspace,
+            action_name=ACTION_COMPLEX_COMMAND,
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,
             cancel_callback=self.cancel_callback,
             callback_group=callback_group
         )
+        
         self.node.get_logger().info("Action server for complex commands is ready.")
 
     def goal_callback(self, goal_request):
@@ -41,7 +46,6 @@ class PlannerActionServer:
             objects = goal_handle.request.objects_to_move.objects
             target_positions = goal_handle.request.objects_target_position.points
             target_orientations = goal_handle.request.objects_target_orientation
-
             feedback_msg = ProcessWorkspace.Feedback()
             result_msg = ProcessWorkspace.Result()
 

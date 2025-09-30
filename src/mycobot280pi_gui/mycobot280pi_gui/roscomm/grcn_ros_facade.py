@@ -37,7 +37,7 @@ class ROSCommunication(QObject):
     annotated_image_received = pyqtSignal(np.ndarray)
     detected_objects_received = pyqtSignal(ManyDetectedObjects)
     joint_state_received = pyqtSignal(JointState)
-    simple_command_response = pyqtSignal(bool, str)
+    simple_command_response_received = pyqtSignal(bool, str) 
     action_feedback = pyqtSignal(str)
     action_result = pyqtSignal(bool, str)
 
@@ -70,10 +70,54 @@ class ROSCommunication(QObject):
         """Delegate point publishing to the TopicHandler."""
         self._ros_node.topic_handler.publish_perspective_points(points)
 
-    def call_simple_command(self, coords=None, speed=50, is_linear_mode=True):
-        """Delegate simple command service call to the ServiceClientHandler."""
-        self._ros_node.service_handler.call_simple_command(coords or [], speed, is_linear_mode)
+    def call_simple_command(self, 
+                            command_type: str,
+                            coords: list = None, 
+                            joint_angles: list = None,
+                            speed: int = 0, 
+                            r: int = 0, 
+                            g: int = 0, 
+                            b: int = 0, 
+                            vacuum_pin1_level: int = 0, 
+                            vacuum_pin2_level: int = 0, 
+                            extra_strings: list = None, 
+                            extra_floats: list = None, 
+                            extra_ints: list = None):
+        
+        """
+        Delegate unified simple command service call to the ServiceClientHandler.
+        
+        Note: The command_type is mandatory, all other parameters default to safe values.
+        """
+        def ensure_list(value):
+            """Return [] if value is None, otherwise return value itself."""
+            return [] if value is None else value
 
+        # Always safe: never None
+        coords = ensure_list(coords)
+        joint_angles = ensure_list(joint_angles)
+        extra_strings = ensure_list(extra_strings)
+        extra_floats = ensure_list(extra_floats)
+        extra_ints = ensure_list(extra_ints) 
+        
+        # Delegate the call to the ServiceClientHandler instance
+        self._ros_node.service_handler.call_simple_command(
+            command_type, 
+            coords, 
+            joint_angles,
+            speed, 
+            r, 
+            g, 
+            b, 
+            vacuum_pin1_level, 
+            vacuum_pin2_level, 
+            extra_strings, 
+            extra_floats, 
+            extra_ints
+        )
+        
+
+        
     def send_complex_goal(self, objects_to_move, target_positions, target_orientation):
         """Delegate complex goal action call to the ActionClientHandler."""
         self._ros_node.action_handler.send_goal(objects_to_move, target_positions, target_orientation)

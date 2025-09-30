@@ -54,22 +54,12 @@ class PlannerRobotNode(Node):
             10
         )
         
-        # 4. Berikan publisher ke logic agar ia bisa mengirim perintah
         self.logic.set_command_publisher(self.command_pub)
 
-        self.timer = self.create_timer(
-            1.0,  # Fire every 1 second
-            self.timer_callback,
-            callback_group=timer_callback_group
-        )
-        
         
         self.get_logger().info("PlannerRobotNode is up and running. 🧠")
         
-    def timer_callback(self):
-        """This function will run every second on its own thread."""
-        self.get_logger().warn("--- HEARTBEAT ---")
-
+    
 def main(args=None):
     rclpy.init(args=args)
     node = PlannerRobotNode()

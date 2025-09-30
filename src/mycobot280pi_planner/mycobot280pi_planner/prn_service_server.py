@@ -1,8 +1,10 @@
 # prn_service_server.py
 import rclpy
-# -> Pastikan Anda mengimpor service type yang benar sesuai dokumentasi
+
 from mycobot280pi_interfaces.srv import Mycobot280PiSimpleCommandsMadeSure
 from mycobot280pi_interfaces.msg import SimpleCommands
+
+SERVICE_SIMPLE_COMMAND = '/planner/srv_simple_command'
 
 class PlannerServiceServer:
     def __init__(self, node, logic):
@@ -10,8 +12,8 @@ class PlannerServiceServer:
         self.logic = logic
         self.srv = node.create_service(
             Mycobot280PiSimpleCommandsMadeSure,
-            '/planner/srv_simple_command', # -> Nama service yang benar
-            self.handle_simple_command  # -> Arahkan ke async handler
+            SERVICE_SIMPLE_COMMAND, 
+            self.handle_simple_command  
         )
         self.node.get_logger().info("Service server for simple commands is ready.")
 
@@ -26,24 +28,37 @@ class PlannerServiceServer:
             self.node.get_logger().warn("Rejected service call because planner is busy.")
             return response
             
-        self.node.get_logger().info(f"Received service request to move to: {request.coords}")
+        self.node.get_logger().info(f"Received service request to move to: {request.command_type}")
         
-        # -> 1. Terjemahkan service request menjadi sebuah SimpleCommands message.
-        #    Service ini secara implisit adalah perintah "move".
+         # 1. Translate the rich service request into a SimpleCommands message.
+        #    This is now easy because the message fields match the request fields!
         cmd = SimpleCommands()
-        cmd.command_type = "move"
+        
+        cmd.command_type = request.command_type
+        
         cmd.coords = request.coords
+        cmd.joint_angles = request.joint_angles # Add joint_angles
         cmd.speed = request.speed
         
+        cmd.r = request.r
+        cmd.g = request.g
+        cmd.b = request.b
+        
+        cmd.vacuum_pin1_level = request.vacuum_pin1_level
+        cmd.vacuum_pin2_level = request.vacuum_pin2_level
+        
+        
         try:
-            # -> 2. Panggil dan tunggu metode logic yang sudah ada.
-            #    Ini akan menjeda eksekusi di sini sampai feedback diterima.
-            await self.logic._send_and_wait_for_feedback(cmd)
+            success = await self.logic._send_and_wait_for_feedback_async(cmd, None)
             
-            # -> 3. Jika await selesai tanpa error, berarti berhasil.
-            response.success = True
-            response.message = "Move command executed and confirmed by executor."
-            self.node.get_logger().info("Service call successfully executed.")
+            if success:
+                response.success = True
+                response.message = f"Command '{cmd.command_type}' executed and confirmed."
+                self.node.get_logger().info(f"Service call for {cmd.command_type} successfully executed.")
+            else:
+                response.success = False
+                response.message = f"Command '{cmd.command_type}' failed or was interrupted."
+                self.node.get_logger().error(f"Service call for {cmd.command_type} failed.")
             
         except Exception as e:
             response.success = False

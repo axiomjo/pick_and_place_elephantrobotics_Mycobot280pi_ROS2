@@ -46,7 +46,6 @@ class ParamImagePublisher(Node):
         self.image_pub.publish(ros_image_message)
 
   
-        self.get_logger().info('Published image')
 
 
 def main(args=None):
