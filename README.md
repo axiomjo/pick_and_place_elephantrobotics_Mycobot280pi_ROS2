@@ -1,5 +1,11 @@
-[LAST EDITED: 30 SEP 2025 13:03]
+[LAST EDITED: 30 SEP 2025 21:43]
 
+tambahin simplecommands, bukti action jalan
+![](ASSET_README/ss_actionkomplit30sep.png)
+
+![](ASSET_README/ss_actiondicancel30sep.png)
+
+---
 waras juga ini GUI
 ![](ASSET_README/ss_waras_after_refactor.png)
 
