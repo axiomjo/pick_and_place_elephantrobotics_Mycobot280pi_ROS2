@@ -57,6 +57,53 @@ aduh ini ngganti blueprint lagiiii
 broooo itu sistem koordinatnya ancur lagi astagaaaaa
 kudu ngedebug kyk waktu dulu gui 3 sept T-T
 
+# perkara ngerefactor gui... lagi
+yk, aku mumet sama pkg gui ku yg dulu krn ada beberapa file yg puuuuuuuanjang soro, trus gajelas mana ngimport mana, jadi direfactor lagi jadi gini. all this was once from grcn_*.py files. now its clearer! HAHA!
+
+yg gila itu yg `grcn_gui_main_window.py` versi lawas, semuaan ditaro di sana. aku mo debug mumet sendiri.
+
+`grcn_ros_communication.py` juga nggilani. action clientnya panjang.
+
+untung bisa direfactor jadi gini hehehehe.
+
+```
+
+.
+├── grcn_gui_main_entry.py
+├── gui
+│   ├── grcn_action_manager.py
+│   ├── grcn_app_state.py
+│   ├── grcn_main_window.py
+│   ├── grcn_plane_manager.py
+│   ├── grcn_selection_manager.py
+│   ├── grcn_service_manager.py
+│   ├── grcn_signal_connector.py
+│   ├── __init__.py
+│   ├── utils.py
+│   └── widgets
+│       ├── grcn_camera_panel.py
+│       ├── grcn_control_panel.py
+│       ├── grcn_dock_panel.py
+│       ├── grcn_draggable_item.py
+│       ├── grcn_perspective_editor.py
+│       ├── grcn_point_handle.py
+│       ├── grcn_working_plane.py
+│       └── __init__.py
+├── __init__.py
+└── roscomm
+    ├── grcn_ros_facade.py
+    ├── grcn_ros_node.py
+    ├── handlers
+    │   ├── grcn_action_client_handler.py
+    │   ├── grcn_service_client_handler.py
+    │   ├── grcn_topic_subscriber_publisher_handler.py
+    │   └── __init__.py
+    └── __init__.py
+
+
+            
+```
+
 
 
 
