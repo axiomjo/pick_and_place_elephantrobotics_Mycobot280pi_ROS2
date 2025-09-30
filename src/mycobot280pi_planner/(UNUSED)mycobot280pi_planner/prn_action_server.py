@@ -4,7 +4,8 @@ import rclpy
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from mycobot280pi_interfaces.action import ProcessWorkspace
 
-from . import prn_constants as const # Use constants file
+ACTION_COMPLEX_COMMAND = '/planner/act_complex_command'
+
 
 class PlannerActionServer:
     def __init__(self, node, logic, callback_group):
@@ -14,16 +15,17 @@ class PlannerActionServer:
         self._action_server = ActionServer(
             node = self.node,
             action_type=ProcessWorkspace,
-            action_name=const.ACTION_COMPLEX_COMMAND, # Use constant
+            action_name=ACTION_COMPLEX_COMMAND,
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,
             cancel_callback=self.cancel_callback,
             callback_group=callback_group
         )
+        
         self.node.get_logger().info("Action server for complex commands is ready.")
 
     def goal_callback(self, goal_request):
-        # ... (This function remains unchanged) ...
+        """Accepts or rejects a new goal."""
         self.node.get_logger().info('Received new goal request...')
         if self.logic.state != "idle":
             self.node.get_logger().warn('Planner is busy! Rejecting new goal.')
@@ -32,13 +34,14 @@ class PlannerActionServer:
         return GoalResponse.ACCEPT
 
     def cancel_callback(self, goal_handle):
-        # ... (This function remains unchanged) ...
+        """Accepts or rejects a client request to cancel an action."""
         self.node.get_logger().info('Received cancel request.')
         return CancelResponse.ACCEPT
 
     def execute_callback(self, goal_handle):
-        # ... (This function remains unchanged, but its call to logic is now cleaner) ...
+        """This function runs the entire pick-and-place process."""
         self.node.get_logger().info("Executing goal...")
+
         try:
             objects = goal_handle.request.objects_to_move.objects
             target_positions = goal_handle.request.objects_target_position.points
@@ -76,6 +79,8 @@ class PlannerActionServer:
             goal_handle.succeed()
             self.node.get_logger().info("Goal succeeded.")
             return result_msg
+
         finally:
+            # This guarantees the planner state is reset, no matter what happens.
             self.node.get_logger().info("Action finished. Resetting planner state to 'idle'.")
             self.logic.state = "idle"
