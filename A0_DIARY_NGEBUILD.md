@@ -171,10 +171,7 @@ int32[] extra_ints         # For any extra int parameters
 # pada akhirnya, proyek ini kerasa useless krn cuma bisa dipake di robot ini n bentar lagi juga ditinggalin krn softwarenya obsolete. aku capek. tapi klo gaada proyek ini, aku bisa ga TA. it happens a lot in my uni life tbh. things exist, for my benefit, and none for others. im glad for it. and im sad for it. but i know He provides it all, just for me. it reminds me of my old thought. and it is a direct answer to it. i ... am loved and cared for :'D ! very very much!
 
 # YK service serverku daritadi broken knp? lagi2 nyoba implementasiin sebuah fungsionalitas yg gaada di galactic
-remind me buat kasih difference between ros distributions. mostly what doesnt exist ti galactic tapi ada di versi ros lain. bikin tabel or smth. agak ngeselin tbh. jadi, kita balik ke service yg textbook, pake blocking call biasa.
-
-# yey servicenya udh bisa. 
-gtw nih, publishernya ketriggernya bener ga waoaokwkwaokwoakoa
+remind me buat kasih difference between ros distributions. mostly what doesnt exist ti galactic tapi ada di versi ros lain. bikin tabel or smth. agak ngeselin tbh
 
 # yey publishenya waras
 kan aku `ros2 topic echo /planner/msg_primitive_command`  
