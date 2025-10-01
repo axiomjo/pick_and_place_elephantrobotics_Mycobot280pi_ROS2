@@ -16,7 +16,7 @@ from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import QTimer, pyqtSignal
 
 # Import the custom handle item from its own file
-from .grcn_point_handle import PointHandle
+from ..graphics.grcn_point_handle import PointHandle
 
 
 class PerspectiveEditorWidget(QWidget):

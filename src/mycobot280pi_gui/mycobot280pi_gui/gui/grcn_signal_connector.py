@@ -1,117 +1,91 @@
 """
-grcn_signal_connector.py - Centralizes all Qt signal-slot connections.
+grcn_signal_connector.py - Centralizes all PyQt signal-slot connections.
 
-This module connects:
-- ROS facade signals → GUI widgets.
-- Control panel buttons → GUI managers.
-- Peer widget interactions (dock ↔ working plane, etc.).
+This module is responsible for wiring up the entire application. It connects:
+- ROS facade signals for data updates to the appropriate GUI widgets.
+- User interactions from control panels to the logic in the managers.
+- Signals and slots between different UI components to keep them synchronized.
+
+This decoupled approach makes the individual components more modular and easier
+to test and maintain.
 """
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
-def connect_signals(main_window):
+if TYPE_CHECKING:
+    from .grcn_main_window import MainWindow
+
+
+def connect_signals(main_window: 'MainWindow'):
     """
     Wires up all signals and slots for the application.
 
-    :param main_window: Reference to the QMainWindow instance (with managers + widgets).
+    :param main_window: The main QMainWindow instance which holds references
+                        to all managers and UI panel widgets.
     """
+    # --- Create aliases for managers and panels to improve readability ---
+    ros_comm = main_window.ros_comm
+    action_mgr = main_window.action_mgr
+    service_mgr = main_window.service_mgr
+    plane_mgr = main_window.plane_mgr
+    selection_mgr = main_window.selection_mgr
 
+    monitor_panel = main_window.monitor_panel
+    control_panel = main_window.control_panel
+    dock_panel = main_window.dock_panel
+    working_plane = main_window.working_plane
+    
+    annotated_camera = main_window.monitor_panel.annotated_camera
+    joint_monitor = main_window.monitor_panel.joint_monitor
+    
     # -------------------------------------------------------------------------
     # ROS → GUI (data updates)
     # -------------------------------------------------------------------------
-    main_window.ros_comm.detected_objects_received.connect(main_window.cache_detected_objects)
-    main_window.ros_comm.annotated_image_received.connect(main_window.cache_annotated_image)
-    main_window.ros_comm.undistorted_image_received.connect(
-        main_window.camera_panel.perspective_editor.update_frame
-    )
-    main_window.ros_comm.annotated_image_received.connect(main_window.camera_panel.update_camera_view)
-    main_window.ros_comm.joint_state_received.connect(main_window.joint_angles_display_panel.update_joint_display)
+    ros_comm.detected_objects_received.connect(main_window.cache_detected_objects)
+    ros_comm.annotated_image_received.connect(main_window.cache_annotated_image)
+    ros_comm.undistorted_image_received.connect(monitor_panel.perspective_editor.update_frame)
+    ros_comm.annotated_image_received.connect(annotated_camera.update_camera_view)
 
     # -------------------------------------------------------------------------
     # Control Panel → Managers
     # -------------------------------------------------------------------------
-    main_window.control_panel.analyze_btn.clicked.connect(
-        main_window.action_mgr.start_action
-    )
-    main_window.control_panel.emergency_btn.clicked.connect(
-        main_window.action_mgr.cancel_action
-    )
-    main_window.control_panel.send_btn.clicked.connect(
-        main_window.service_mgr.send_service_request
-    )
-    main_window.control_panel.reset_btn.clicked.connect(
-        main_window.plane_mgr.reset_plane
-    )
-    main_window.control_panel.add_object_btn.clicked.connect(
-        main_window.plane_mgr.add_new_objects_from_cutouts
-    )
-    main_window.control_panel.delete_btn.clicked.connect(
-        main_window.plane_mgr.delete_selected
-    )
-
-    # -------------------------------------------------------------------------
-    # Working Plane → Selection Manager
-    # -------------------------------------------------------------------------
-    main_window.working_plane.working_plane_scene.selectionChanged.connect(
-        main_window.selection_mgr.update_status_bar_with_selection
-    )
-
-    # -------------------------------------------------------------------------
-    # Dock Panel → Working Plane
-    # -------------------------------------------------------------------------
-    main_window.dock_panel.rotation_slider.valueChanged.connect(
-        main_window.working_plane.set_selected_items_rotation
-    )
+    control_panel.analyze_btn.clicked.connect(action_mgr.start_action)
+    control_panel.emergency_btn.clicked.connect(action_mgr.cancel_action)
+    control_panel.reset_btn.clicked.connect(plane_mgr.reset_plane)
+    control_panel.add_object_btn.clicked.connect(plane_mgr.add_new_objects_from_cutouts)
+    control_panel.delete_btn.clicked.connect(plane_mgr.delete_selected)
 
     # -------------------------------------------------------------------------
     # Control Panel (rotation) → Working Plane
     # -------------------------------------------------------------------------
-    main_window.control_panel.rotate_clockwise_btn.clicked.connect(
-        main_window.working_plane.rotate_clockwise
-    )
-    main_window.control_panel.rotate_counter_clockwise_btn.clicked.connect(
-        main_window.working_plane.rotate_counter_clockwise
+    control_panel.rotate_clockwise_btn.clicked.connect(working_plane.rotate_clockwise)
+    control_panel.rotate_counter_clockwise_btn.clicked.connect(working_plane.rotate_counter_clockwise)
+
+    # -------------------------------------------------------------------------
+    # Peer UI Component Connections
+    # -------------------------------------------------------------------------
+    # Working Plane selection changes update the status bar (via selection manager)
+    working_plane.working_plane_scene.item_selected.connect(selection_mgr.set_selected_item)
+    working_plane.working_plane_scene.selection_cleared.connect(selection_mgr.clear_selection) 
+
+
+    # -------------------------------------------------------------------------
+    # GUI → ROS (publishing user input)
+    # -------------------------------------------------------------------------
+    # Changes to the perspective points in the editor are published via ROS
+    monitor_panel.perspective_editor.perspective_points_changed.connect(
+        ros_comm.publish_four_points
     )
 
     # -------------------------------------------------------------------------
-    # Camera Panel → ROS (perspective points)
+    # Dock Panel → Service Manager (Custom Commands)
     # -------------------------------------------------------------------------
-    main_window.camera_panel.perspective_editor.perspective_points_changed.connect(
-        main_window.ros_comm.publish_four_points
-    )
-    
-    
+    dock_panel.send_rgb_command.connect(service_mgr.handle_rgb_command)
+    dock_panel.send_vacuum_command.connect(service_mgr.handle_vacuum_command)
+    dock_panel.send_coords_command.connect(service_mgr.handle_coords_command)
+   
+    selection_mgr.selection_changed.connect(dock_panel.update_target_sliders_from_selection)
+    selection_mgr.selection_changed.connect(dock_panel.update_target_sliders_from_selection)
 
-    # -------------------------------------------------------------------------
-    # Dock Panel → Service Manager (Service Commands NEW)
-    # -------------------------------------------------------------------------
-    main_window.dock_panel.send_rotation_command.connect(
-        main_window.service_mgr.handle_rotation_command
-    )
-    main_window.dock_panel.send_rgb_command.connect(
-        main_window.service_mgr.handle_rgb_command
-    )
-    main_window.dock_panel.send_vacuum_command.connect(
-        main_window.service_mgr.handle_vacuum_command
-    )
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
+    main_window.logger.info("Signal connections established.")

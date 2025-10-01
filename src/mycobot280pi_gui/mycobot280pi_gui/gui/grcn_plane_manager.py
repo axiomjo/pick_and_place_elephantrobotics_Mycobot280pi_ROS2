@@ -5,7 +5,7 @@ grcn_plane_manager.py - Handles working plane operations for the GUI.
 from PyQt5.QtGui import QTransform
 
 from .utils import create_cutout_pixmap
-from .widgets.grcn_draggable_item import DraggableItem
+from .widgets.components.graphics.grcn_draggable_item import DraggableItem
 from .grcn_app_state import AppState
 
 

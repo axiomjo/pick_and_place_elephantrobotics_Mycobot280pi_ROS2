@@ -79,7 +79,16 @@ class ServiceManager:
             vacuum_pin1_level=pin1,
             vacuum_pin2_level=pin2
         )
-
+        
+    def handle_coords_command (self, x: float , y: float, z: float, rx: float , ry: float, rz: float, speed:int):
+        """Handles RGB command from the DockPanel."""
+        self.main_window.statusBar().showMessage(f"Sending MOVE command ")
+        full_coords = [x, y, z, rx, ry, rz]
+        self.ros_comm.call_simple_command(
+            command_type="move",
+            coords= full_coords,
+            speed = speed
+        )
 
     # -------------------------------------------------------------------------
     # ROS → GUI (Response Handling)

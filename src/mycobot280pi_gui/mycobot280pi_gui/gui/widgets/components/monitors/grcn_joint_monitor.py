@@ -1,5 +1,5 @@
 """
-Defines the JointMonitor, a widget for visualizing robot joint angles that uses the interface JointStates [ ROS builtin]. yes. its not a typo.
+Defines the JointMonitorWidget, a widget for visualizing robot joint angles that uses the interface JointStates [ ROS builtin]. yes. its not a typo.
 This widget creates a series of labels and progress bars to show the state
 of each joint in a human-readable format. It is a "dumb" component that
 receives data via a public slot.
@@ -16,7 +16,7 @@ from sensor_msgs.msg import JointState
 JOINT_MIN_DEG = -170
 JOINT_MAX_DEG = 170
 
-class JointMonitor(QWidget):
+class JointMonitorWidget(QWidget):
     """A widget that displays multiple joint states with progress bars."""
 
     def __init__(self, parent=None):

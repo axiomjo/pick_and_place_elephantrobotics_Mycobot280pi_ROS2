@@ -88,6 +88,9 @@ class MonolithicExecutorNode(Node):
             return False
         self.mc.send_coords(list(coords), speed, 1)  # mode 1: joint interpolation
 
+        """
+        
+        BUTUH CARA LEBIH BAIK DARIPADA BLOCKING GINI
         # Poll until robot reaches target
         while rclpy.ok():
             try:
@@ -98,7 +101,9 @@ class MonolithicExecutorNode(Node):
             except Exception as e:
                 self.get_logger().error(f"Move polling error: {e}")
                 return False
-
+        """
+        
+        
     def set_rgb(self, r, g, b):
         if self.mc:
             self.mc.set_color(r, g, b)

@@ -7,15 +7,16 @@ This panel is ONLY a container for:
 3. displaying joint angles widget 
 It no longer displays the camera feed itself.
 """
-from PyQt5.QtWidgets import QWidget, QVBoxLayout
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 
 # Import the child widget from the same directory
-from .grcn_joint_monitor import JointMonitor
-from .grcn_detected_objects_monitor import DetectedObjectMonitorWidget
-from .grcn_perspective_editor import PerspectiveEditorWidget
+
+from .components.monitors.grcn_detected_objects_monitor import DetectedObjectMonitorWidget
+from .components.monitors.grcn_joint_monitor import JointMonitorWidget
+from .components.editors.grcn_perspective_editor import PerspectiveEditorWidget
 
 class MonitorPanel(QWidget):
-    """A widget that arranges monitoring and control widgets in a specific layout."""
+    """A widget that arranges monitoring and perspective control widgets in a specific layout."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -29,11 +30,12 @@ class MonitorPanel(QWidget):
         top_row_layout = QHBoxLayout()
 
         # 3. Instantiate and add the top-left and top-right widgets.
-        self.annotated_camera = AnnotatedCameraPanel(self)
-        self.joint_monitor = JointMonitor(self)
+        self.annotated_camera = DetectedObjectMonitorWidget(self)
+        self.joint_monitor = JointMonitorWidget(self)
         
+        top_row_layout.addWidget(self.joint_monitor)
         top_row_layout.addWidget(self.annotated_camera) # Added to the left
-        top_row_layout.addWidget(self.joint_monitor)   # Added to the right
+           
 
         # 4. Instantiate and configure the bottom widget.
         self.perspective_editor = PerspectiveEditorWidget(self)

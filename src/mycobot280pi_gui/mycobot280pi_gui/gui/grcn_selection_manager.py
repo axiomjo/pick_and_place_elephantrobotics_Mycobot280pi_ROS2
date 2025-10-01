@@ -1,48 +1,51 @@
-"""
-grcn_selection_manager.py - Handles selection events in the working plane.
+# File: grcn_selection_manager.py (Versi Refactored)
 
-This module updates the GUI (status bar + dock panel) whenever a user
-selects or deselects items in the working plane.
-"""
+from PyQt5.QtCore import QObject, pyqtSignal
 
-from .widgets.grcn_draggable_item import DraggableItem
-
-
-class SelectionManager:
-    """Manages GUI updates based on selected items in the working plane."""
+# ### LANGKAH 1: PASTIKAN CLASS MEWARISI QObject ###
+class SelectionManager(QObject):
+    
+    # ### LANGKAH 2: DEFINISIKAN SINYAL DENGAN BENAR ###
+    # Sinyal ini akan menjadi satu-satunya "output" dari manager ini.
+    selection_changed = pyqtSignal(object)
 
     def __init__(self, main_window):
-        """
-        :param main_window: Reference to the QMainWindow (for access to status bar, dock panel, working plane).
-        """
+        # Inisialisasi QObject
+        super().__init__()
+        
         self.main_window = main_window
         self.logger = main_window.logger
+        self.selected_item = None
 
-    # -------------------------------------------------------------------------
-    # Selection Handling
-    # -------------------------------------------------------------------------
+    
+    # Method ini adalah "pintu masuk" baru untuk manager ini.
+    def set_selected_item(self, item):
+        """
+        Slot publik. Dipanggil dari luar (oleh scene) saat item dipilih.
+        Tugasnya adalah mencatat item dan mengumumkan perubahan.
+        """
+        self.selected_item = item
+        
+        # (Opsional) Anda tetap bisa memperbarui status bar dari sini
+        if item and hasattr(item, 'get_pose'):
+            x, y, _, _, _, rz = item.get_pose()
+            self.main_window.statusBar().showMessage(f"Selected item at ({x:.1f}, {y:.1f}) with rotation {rz:.1f}°")
+        
+       
+        # Umumkan ke seluruh aplikasi bahwa item baru telah dipilih.
+        self.selection_changed.emit(self.selected_item)
 
-    def update_status_bar_with_selection(self):
-        """Updates the status bar and dock panel when the selection changes."""
-        selected_items = self.main_window.working_plane.working_plane_scene.selectedItems()
 
-        if not selected_items:
-            self.main_window.statusBar().showMessage("No item selected.")
-            self.main_window.dock_panel.update_rotation_widgets(is_item_selected=False)
-            return
+    def clear_selection(self):
+        """Slot publik untuk membersihkan seleksi."""
+        if self.selected_item:
+            # Beritahu item grafisnya sendiri bahwa ia tidak lagi dipilih
+            self.selected_item.setSelected(False)
+        self.selected_item = None
+        self.main_window.statusBar().showMessage("Selection cleared.")
 
-        item = selected_items[0]
-        if isinstance(item, DraggableItem):
-            pos = item.mapToScene(item.boundingRect().center())
-            rot = item.rotation()
-            message = (
-                f"Selected ID: {item.object_id} | "
-                f"Pos: ({pos.x():.1f}, {pos.y():.1f}) | "
-                f"Rot: {rot:.1f}°"
-            )
-            self.main_window.statusBar().showMessage(message)
-            self.main_window.dock_panel.update_rotation_widgets(
-                is_item_selected=True,
-                rotation_value=rot
-            )
+        # Umumkan juga saat tidak ada yang dipilih
+        self.selection_changed.emit(None)
 
+    def get_selected_item(self):
+        return self.selected_item

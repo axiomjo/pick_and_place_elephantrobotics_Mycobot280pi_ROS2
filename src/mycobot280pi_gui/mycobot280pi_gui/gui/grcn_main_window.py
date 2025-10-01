@@ -15,9 +15,9 @@ from PyQt5.QtCore import Qt
 from ..roscomm.grcn_ros_facade import ROSCommunication
 
 from .widgets.grcn_monitor_panel import MonitorPanel
-from .widgets.grcn_working_plane import WorkingPlane
-from .widgets.grcn_control_panel import ControlPanel
-from .widgets.grcn_dock_panel import DockPanel
+from .widgets.grcn_workspace_panel import WorkspacePlane
+from .widgets.grcn_action_panel import ActionPanel
+from .widgets.grcn_command_panel import CommandPanel
 
 # Managers
 from .grcn_app_state import AppState, AppStateManager
@@ -73,9 +73,9 @@ class MainWindow(QMainWindow):
 
         # Create widgets
         self.monitor_panel = MonitorPanel()
-        self.working_plane = WorkingPlane()
-        self.control_panel = ControlPanel()
-        self.dock_panel = DockPanel()
+        self.working_plane = WorkspacePlane()
+        self.control_panel = ActionPanel()
+        self.dock_panel = CommandPanel()
 
         
 
@@ -85,8 +85,8 @@ class MainWindow(QMainWindow):
         right_layout.addWidget(self.control_panel)
 
         main_layout = QHBoxLayout(central_widget)
-        main_layout.addWidget(self.monitor_panel, 1)
-        main_layout.addLayout(right_layout, 2)
+        main_layout.addWidget(self.monitor_panel)
+        main_layout.addLayout(right_layout)
 
         # Dock widget
         self.dock_widget = QDockWidget("Controls & Cutouts", self)

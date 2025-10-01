@@ -1,15 +1,8 @@
-
 """
 Defines the DraggableItem class for the QGraphicsScene.
 
-This class represents a single, interactive object on the WorkingPlane.
-It is a QGraphicsPixmapItem, not a QWidget, and is designed to be added
-to a QGraphicsScene.
-
-Key features:
-- It can be moved and selected by the user.
-- It stores the original ROS message data for the detected object.
-- It provides custom visual feedback (a colored border) based on its state.
+Refactored to match the OneDetectedObject.msg definition. It uses x, y from the
+message and applies sensible defaults for the missing 3D pose data (z, rx, ry, rz).
 """
 
 from PyQt5.QtWidgets import QGraphicsPixmapItem, QGraphicsItem
@@ -19,62 +12,76 @@ from PyQt5.QtCore import Qt
 # Type hinting for the constructor
 from mycobot280pi_interfaces.msg import OneDetectedObject
 
-
 class DraggableItem(QGraphicsPixmapItem):
-    """A QGraphicsPixmapItem that can be moved, selected, and rotated."""
+    """A QGraphicsPixmapItem that can be moved, selected, rotated, and reports its 6D pose."""
 
     def __init__(self, pixmap: QPixmap, detected_object: OneDetectedObject, parent=None):
         super().__init__(pixmap, parent)
         
-        # Store the original data from the vision node
         self.detected_object = detected_object
         self.object_id = detected_object.id
         
-        # State flag to track if the user has interacted with this item
+        # ### PERUBAHAN UTAMA DI SINI ###
+        # Kita sekarang menggunakan nilai default untuk data yang tidak ada di pesan ROS.
+        
+        # Nilai default untuk Z (misalnya, ketinggian aman di atas meja)
+        DEFAULT_Z = 48.0 
+        # Nilai default untuk rotasi (misalnya, gripper menghadap lurus ke bawah)
+        DEFAULT_RX = 180.0
+        DEFAULT_RY = 0.0
+        # Untuk RZ, kita bisa mulai dari 0 atau dari data lain jika ada
+        DEFAULT_RZ = 0.0
+
+        # Simpan komponen pose 3D statis (menggunakan nilai default)
+        self.pose_z = DEFAULT_Z
+        self.pose_rx = DEFAULT_RX
+        self.pose_ry = DEFAULT_RY
+
+        # Atur pose 2D awal dari pesan ROS
+        # Kita asumsikan center_point memiliki atribut .x dan .y
+        self.setPos(detected_object.center_point.x, detected_object.center_point.y)
+        self.setRotation(DEFAULT_RZ)
+        
         self.was_moved = False
         
-        # Enable item interactivity
         self.setFlags(
             QGraphicsItem.ItemIsMovable |
-            QGraphicsItem.ItemIsSelectable
+            QGraphicsItem.ItemIsSelectable |
+            QGraphicsItem.ItemSendsGeometryChanges
         )
         
-        # Set a helpful cursor for better user experience
         self.setCursor(Qt.PointingHandCursor)
-        
-        # Initialize the pen for drawing the border
-        self.border_pen = QPen(Qt.transparent)
-        self.border_pen.setWidth(4)
-        
-        # Set the origin for transformations (like rotation) to the item's center
+        self.border_pen = QPen(Qt.transparent); self.border_pen.setWidth(4)
         self.setTransformOriginPoint(self.boundingRect().center())
+
+    def get_pose(self):
+        """
+        Mengembalikan pose 6D lengkap dari item ini.
+        """
+        x = self.x()
+        y = self.y()
+        rz = self.rotation()
+        
+        z = self.pose_z
+        rx = self.pose_rx
+        ry = self.pose_ry
+        
+        return x, y, z, rx, ry, rz
+
+    # --- Method-method Anda yang lain tidak berubah ---
         
     def paint(self, painter: QPainter, option, widget):
-        """
-        Overrides the default paint method to draw a border when the
-        item is selected or has been moved.
-        """
-        # First, draw the original pixmap
         super().paint(painter, option, widget)
-        
-        # Then, draw a border on top based on the item's state
         painter.setPen(self.border_pen)
         if self.was_moved:
-            self.border_pen.setColor(QColor("#4CAF50")) # Green for moved
+            self.border_pen.setColor(QColor("#4CAF50"))
             painter.drawRect(self.boundingRect())
         elif self.isSelected():
-            self.border_pen.setColor(QColor("#FFC107")) # Amber/Gold for selected
+            self.border_pen.setColor(QColor("#FFC107"))
             painter.drawRect(self.boundingRect())
     
     def mouseReleaseEvent(self, event):
-        """
-        Overrides the mouse release event to update the 'was_moved' state.
-        """
-        # Call the parent method to ensure default behavior (like stopping movement)
         super().mouseReleaseEvent(event)
-        
-        # If this is the first time the item has been moved, set the flag
         if not self.was_moved:
             self.was_moved = True
-            # Force a repaint to show the new 'moved' (green) border
             self.update()

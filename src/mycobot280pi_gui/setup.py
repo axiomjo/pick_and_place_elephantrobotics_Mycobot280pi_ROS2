@@ -4,7 +4,7 @@
 
 import os
 from glob import glob
-from setuptools import setup
+from setuptools import find_packages, setup
 
 package_name = 'mycobot280pi_gui'
 
@@ -13,13 +13,7 @@ setup(
     version='0.0.1',
     # Since the Python package has the same name as the ROS package and contains
     # sub-packages, we explicitly list them all.
-    packages=[
-        package_name,
-        f'{package_name}.gui',
-        f'{package_name}.gui.widgets',
-        f'{package_name}.roscomm',
-        f'{package_name}.roscomm.handlers'
-    ],
+    packages=find_packages(exclude=['test']),
     
     data_files=[
         # Standard ROS 2 marker file
