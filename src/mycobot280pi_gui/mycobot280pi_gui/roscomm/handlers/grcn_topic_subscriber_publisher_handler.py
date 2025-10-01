@@ -20,7 +20,7 @@ from mycobot280pi_interfaces.msg import Point2D, Point2DArray, ManyDetectedObjec
 TOPIC_UNDISTORTED_IMAGE = '/vision/msg_undistorted_image'
 TOPIC_DETECTED_OBJECTS = '/vision/msg_detected_objects'
 TOPIC_ANNOTATED_IMAGE = '/vision/msg_annotated_image'
-TOPIC_JOINT_ANGLES = '/robot/msg_joint_angles'
+TOPIC_JOINT_ANGLES = '/robot/msg_joint_angle_states'
 TOPIC_FOUR_POINTS = '/gui/msg_four_perspective_points'
 
 

@@ -14,7 +14,7 @@ from PyQt5.QtCore import Qt
 # --- Local imports ---
 from ..roscomm.grcn_ros_facade import ROSCommunication
 
-from .widgets.grcn_camera_panel import CameraPanel
+from .widgets.grcn_monitor_panel import MonitorPanel
 from .widgets.grcn_working_plane import WorkingPlane
 from .widgets.grcn_control_panel import ControlPanel
 from .widgets.grcn_dock_panel import DockPanel
@@ -72,11 +72,11 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
 
         # Create widgets
-        self.camera_panel = CameraPanel()
+        self.monitor_panel = MonitorPanel()
         self.working_plane = WorkingPlane()
         self.control_panel = ControlPanel()
         self.dock_panel = DockPanel()
-        
+
         
 
         # Layout (camera left, working plane + controls right)
@@ -85,7 +85,7 @@ class MainWindow(QMainWindow):
         right_layout.addWidget(self.control_panel)
 
         main_layout = QHBoxLayout(central_widget)
-        main_layout.addWidget(self.camera_panel, 1)
+        main_layout.addWidget(self.monitor_panel, 1)
         main_layout.addLayout(right_layout, 2)
 
         # Dock widget

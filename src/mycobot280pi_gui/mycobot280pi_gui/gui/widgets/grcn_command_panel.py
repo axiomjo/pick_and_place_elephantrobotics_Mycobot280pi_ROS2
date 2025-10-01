@@ -1,4 +1,6 @@
 """
+REFACTOR JADI WIDGETS TIAP COMMAND
+
 Defines the DockPanel widget.
 
 This widget resides in the dockable area of the main window and serves three
@@ -173,7 +175,7 @@ class DockPanel(QWidget):
 
     # --- Public Methods (Slots) ---
 
-    @pyqtSlot(ManyDetectedObjects)
+    
     def update_object_count(self, objects_msg: ManyDetectedObjects):
         """
         Public slot that receives detected objects data from MainWindow.
@@ -191,7 +193,7 @@ class DockPanel(QWidget):
         text_item.setDefaultTextColor(Qt.white)
         self.cutout_scene.addItem(text_item)
 
-    @pyqtSlot(bool, float)
+    
     def update_rotation_widgets(self, is_item_selected: bool, rotation_value: float = 0):
         """
         Public slot to enable/disable rotation controls and set their value.

@@ -23,7 +23,7 @@ def connect_signals(main_window):
         main_window.camera_panel.perspective_editor.update_frame
     )
     main_window.ros_comm.annotated_image_received.connect(main_window.camera_panel.update_camera_view)
-    main_window.ros_comm.joint_state_received.connect(main_window.camera_panel.update_joint_display)
+    main_window.ros_comm.joint_state_received.connect(main_window.joint_angles_display_panel.update_joint_display)
 
     # -------------------------------------------------------------------------
     # Control Panel → Managers

@@ -73,14 +73,6 @@ def generate_launch_description():
             emulate_tty=True
         ),
         
-        # dummy_executor_node
-        Node(
-            package='mycobot280pi_dummy',
-            executable='dummy_executor_node',
-            name='dummy_executor_node',
-            output='screen',
-            emulate_tty=True
-        )
-            
+        
         
     ])

@@ -241,11 +241,91 @@ extra_ints: []
 
 
 dst...
+
+```
+# OK EXECUTOR NODE UDH WARAS! MY WHOLE SYSTEM CAN RUN! tinggal nge-tweak kosmetics?
+
+btw, **HOME_COORDS**  
+>>> mc.send_angles([0,0,0,0,0,0],10)  
+>>> mc.get_coords()  
+[49.9, -64.3, 410.5, -90.26, -0.26, -89.73]  
+
+**orientasi nunduk**
+RX=180,  
+RY= 0,   
+rz = rotasi mboh  
+
+
+**discrepancy send sama get?**
+>>> mc.send_coords([186, 64, 40, 180, 0, -90],10)
+>>> mc.get_coords()
+[186.4, 63.3, 38.5, 179.96, -0.24, -89.99]
+
+# btw, pymycobotnya beneran langsung jalanin hal laen klo ada yg dianggil wkwkwkwk
+yea coz.. ITS NON BLOCKING WHAAAAAAAA keren bgt devsnya. asli.
+
+# just in case, perlu manual control pymycobot lewat terminal
+```
+python3
+
+>>> from pymycobot.mycobot import MyCobot
+>>> from pymycobot import PI_PORT, PI_BAUD
+>>> import RPi.GPIO
+>>> mc = MyCobot(PI_PORT, PI_BAUD)
+
 ```
 
+# AKU FRUSTASI SM INI ROBOT 
+BERAPA SIH LIMITNYA???? MANA KLO GAMAU GABILANG, kan susah liatnya HWHWHQHWHQQHQHWXDSJNJDFSJKWQELSl 
+
+capek, pingin bikin poster sama ppt sama buku T-T
+
+ssh -Y er@169.254.0.1
+
+source /opt/ros/galactic/setup.bash
+source TA_JosephineD_2025/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/install/setup.bash
+
+source TA_JosephineD_2025/investigating_robot_ws/install/setup.bash
+
+# udh nemu height yg ideal.
+
+# lagi nambahin joint angles di gui
 
 
-
+# BLEURGHHH WIDGETSKU GAK MASUK AKAL, refactor lagi. baru ntar nambahin.
+```
+widgets/
+├── __init__.py
+│
+├── grcn_command_panel.py          # PANEL: Bottom action buttons
+├── grcn_control_panel.py          # PANEL: Assembles right-side controls
+├── grcn_monitor_panel.py          # PANEL: Assembles left-side monitors
+└── grcn_workspace_panel.py        # PANEL: The main central 2D plane
+│
+├── components/
+│   ├── __init__.py
+│   │
+│   ├── monitors/
+│   │   ├── __init__.py
+│   │   ├── grcn_annotated_camera_panel.py
+│   │   ├── grcn_detected_objects_monitor.py
+│   │   └── grcn_joint_monitor.py
+│   │
+│   ├── controls/
+│   │   ├── __init__.py
+│   │   ├── grcn_led_control.py
+│   │   ├── grcn_rotation_control.py
+│   │   └── grcn_vacuum_control.py
+│   │
+│   ├── editors/
+│   │   ├── __init__.py
+│   │   └── grcn_perspective_editor.py
+│   │
+│   └── graphics/
+│       ├── __init__.py
+│       ├── grcn_draggable_item.py
+│       └── grcn_point_handle.py
+```
 
 
 

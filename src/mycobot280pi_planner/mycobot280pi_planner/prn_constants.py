@@ -10,8 +10,8 @@ SERVICE_SIMPLE_COMMAND = '/planner/srv_simple_command'
 WAIT_TIMEOUT_SEC = 5.0 # Max time to wait for execution feedback
 
 # --- Kinematic and Planning Constants ---
-PLANE_HEIGHT_CLEARANCE = 50.0  # Height for safe travel over the object/table
-PICK_HEIGHT_Z = 1.0            # Height to descend to for grasping
+PLANE_HEIGHT_CLEARANCE = 100.0  # Height for safe travel over the object/table
+PICK_HEIGHT_Z = 50.0            # Height to descend to for grasping
 RX_DOWN = 180.0                # Tool pitch (downward-facing)
 RY_DOWN = 0.0
 DEFAULT_SPEED = 50
