@@ -3,7 +3,7 @@
 BRO WE DONE???  
 on branch `ngurus_executor`  
 
-![](ASSET_README/ssGUI_FINALLLLLL.png)
+![](ASSET_README/ss_2oktfinal.png)
 
 ----
 tambahin simplecommands, bukti action jalan
