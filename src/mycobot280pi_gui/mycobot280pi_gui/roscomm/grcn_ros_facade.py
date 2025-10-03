@@ -24,8 +24,8 @@ import numpy as np
 from .grcn_ros_node import ROSOrchestratorNode
 
 # Import message types required for pyqtSignal definitions
-from sensor_msgs.msg import JointState
-from mycobot280pi_interfaces.msg import ManyDetectedObjects
+
+from mycobot280pi_interfaces.msg import ManyDetectedObjects,JointAnglesArray
 
 
 class ROSCommunication(QObject):
@@ -36,7 +36,7 @@ class ROSCommunication(QObject):
     undistorted_image_received = pyqtSignal(np.ndarray)
     annotated_image_received = pyqtSignal(np.ndarray)
     detected_objects_received = pyqtSignal(ManyDetectedObjects)
-    joint_state_received = pyqtSignal(JointState)
+    joint_angles_received = pyqtSignal(JointAnglesArray)
     simple_command_response_received = pyqtSignal(bool, str) 
     action_feedback = pyqtSignal(str)
     action_result = pyqtSignal(bool, str)

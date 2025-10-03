@@ -168,7 +168,6 @@ string[] extra_strings     # For any extra string parameters
 float32[] extra_floats     # For any extra float parameters
 int32[] extra_ints         # For any extra int parameters
 ```
-# pada akhirnya, proyek ini kerasa useless krn cuma bisa dipake di robot ini n bentar lagi juga ditinggalin krn softwarenya obsolete. aku capek. tapi klo gaada proyek ini, aku bisa ga TA. it happens a lot in my uni life tbh. things exist, for my benefit, and none for others. im glad for it. and im sad for it. but i know He provides it all, just for me. it reminds me of my old thought. and it is a direct answer to it. i ... am loved and cared for :'D ! very very much!
 
 # YK service serverku daritadi broken knp? lagi2 nyoba implementasiin sebuah fungsionalitas yg gaada di galactic
 remind me buat kasih difference between ros distributions. mostly what doesnt exist ti galactic tapi ada di versi ros lain. bikin tabel or smth. agak ngeselin tbh
@@ -351,7 +350,32 @@ KAN RESE
 
 
 
+ros2 run robot_state_publisher robot_state_publisher \
+  --ros-args -p robot_description:="$(cat /home/er/TA_JosephineD_2025/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_urdf/urdf/mycobot_280_pi/mycobot280pi_with_pump_edited_to_match_mycobot280pi_urdf.urdf)"
 
+
+
+# LAN nya for the first time ever, unavailable.
+enp2s0          ethernet  unavailable   --            
+
+trus kucoba pasang ke monitor kecil, ganyala blas.
+
+# ASTAGA, TAU KNP? AKU KEBALIK MASANG POWER SAMA GND VACUUM PUMP NYA.
+# PAS DICOPOT, robotnya WARAS WE, 
+
+
+
+# BROOOO aku baru tau klo mycobot nyediain 
+mc.sync_send_coords(coords,speed, mode, timeout=15) #YG BLOCKING
+mc.send_coords(coords,speed,mode) # mode = 0 = ANGULAR mode, dia ngabil rute paling efisien gerak, makanya aneh. bisa jatoh2.  
+mc.send_coords(coords,speed,mode) # mode = 1 = LINEAR mode. dia literally kyyk bikin garis lurus dari skrg ke posisi target.  
+mc.get_error_information() # buat cek movenya error ga. aku sih dapet 32 klo tujuan send_coords gamasukakal  
+mc.clear_error_information() #buat kosongin jadi 0 lagi. 
+
+# BISA EDIT GO HOME BUTTON di GUI!
+# EDIT PLANNER NODE BUAT PLANNING SEQUENCE PAKE yg sync!
+# EDIT EXECUTOR NODE SUPAYA BISA NERIMA COMMAND_TYPE BARU INI!
+# BIKIN KOMUNIKASI DARI EXECUTOR NODE KE GUI BUAT CEK COMMANDNYA ERROR GA SUPAYA ADA USER FEEDBACK (ini.... kyk complicated soro seh, tapi klo gaada ini, buwingung kok g jalan2.)
 
 
 

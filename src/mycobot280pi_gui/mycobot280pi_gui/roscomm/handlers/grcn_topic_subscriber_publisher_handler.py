@@ -13,8 +13,8 @@ from cv_bridge import CvBridge
 import numpy as np
 
 # Import all required message types
-from sensor_msgs.msg import Image, JointState
-from mycobot280pi_interfaces.msg import Point2D, Point2DArray, ManyDetectedObjects
+from sensor_msgs.msg import Image
+from mycobot280pi_interfaces.msg import Point2D, Point2DArray, ManyDetectedObjects, JointAnglesArray
 
 # --- Constants for topic names ---
 TOPIC_UNDISTORTED_IMAGE = '/vision/msg_undistorted_image'
@@ -66,7 +66,7 @@ class TopicHandler:
             qos_profile=10
         )
         self._node.create_subscription(
-            msg_type=JointState,
+            msg_type=JointAnglesArray,
             topic=TOPIC_JOINT_ANGLES,
             callback=self._joints_cb,
             qos_profile=10
@@ -103,6 +103,6 @@ class TopicHandler:
         """Callback for detected objects. Forwards the message directly."""
         self._facade.detected_objects_received.emit(msg)
 
-    def _joints_cb(self, msg: JointState):
-        """Callback for joint states. Forwards the message directly."""
-        self._facade.joint_state_received.emit(msg)
+    def _joints_cb(self, msg: JointAnglesArray):
+        """Callback for joint angles. Forwards the message directly."""
+        self._facade.joint_angles_received.emit(msg)

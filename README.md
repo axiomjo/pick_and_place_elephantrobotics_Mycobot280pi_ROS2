@@ -1,5 +1,11 @@
 [LAST EDITED: 2 OKT 2025 06:45]
 
+most updated state.  
+on branch `begin_IMPLEMENTING_GO_HOME`  
+
+![](ASSET_README/ss_3OKT_GUIWARAS.png)
+
+---
 BRO WE DONE???  
 on branch `ngurus_executor`  
 

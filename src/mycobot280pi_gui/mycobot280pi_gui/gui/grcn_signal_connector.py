@@ -45,6 +45,8 @@ def connect_signals(main_window: 'MainWindow'):
     ros_comm.annotated_image_received.connect(main_window.cache_annotated_image)
     ros_comm.undistorted_image_received.connect(monitor_panel.perspective_editor.update_frame)
     ros_comm.annotated_image_received.connect(annotated_camera.update_camera_view)
+    ros_comm.joint_angles_received.connect(joint_monitor.update_joint_display)
+    
 
     # -------------------------------------------------------------------------
     # Control Panel → Managers
