@@ -95,9 +95,8 @@ class PlannerLogic:
         plane_height = 50.0
         RX_DOWN = 180.0
         RY_DOWN = 0.0
+        
         SPEED = 50
-
-        success = False # Flag to track overall success
 
         try:
             # --- Step 1: Move to pick position ---
@@ -133,21 +132,16 @@ class PlannerLogic:
             if not self._send_and_wait_for_feedback_blocking(cmd, goal_handle):
                 return False
 
-            # If execution reaches here, all steps succeeded
-            success = True
+            self.state = "idle"
             feedback_callback(f"Finished processing object {obj.id}")
             
             return True # Return True to indicate success
 
         except Exception as e:
             self.node.get_logger().error(f"An exception occurred during PnP logic: {e}")
-            return False # Return False to indicate failure
-            
-        finally:
-            # *** The critical fix: Always reset state in finally block ***
-            self.state = "idle" 
-            self.node.get_logger().info(f"PnP state reset to '{self.state}'. Success: {success}")
-            
+            self.state = "idle"
+            return False # Return False to indicate failure      
+
     def manual_command_callback(self, msg):
         self.node.get_logger().info(f"Forwarding manual command: {msg.command_type}")
         if self.command_pub:

@@ -349,6 +349,19 @@ KAN RESE
 # aku gapaham .xacro .urdf itu apaan hiks
 
 
+# um. rviz cuma waras klo dijalanin di mycobot. ohwell.
+
+# joint angles sama joint states masih g waras
+
+# planner node kacau
+
+# pick n place gagal.
+
+
+# MUNDUR KE PLANNER # HR YLL
+mau balik ke planner lawas?
+
+HABIS INI AKU MO APUS PACKAGE PLANNER TRUS KUCOPAS VERSI YG LAWAS
 
 
 
