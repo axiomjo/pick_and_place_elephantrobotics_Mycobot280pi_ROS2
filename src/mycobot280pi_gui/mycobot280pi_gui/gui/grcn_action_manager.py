@@ -5,7 +5,7 @@ grcn_action_manager.py - Handles GUI-side orchestration of ROS 2 actions.
 from PyQt5.QtWidgets import QMessageBox
 from mycobot280pi_interfaces.msg import ManyDetectedObjects, Point2DArray, Point2D
 
-from .widgets.grcn_draggable_item import DraggableItem
+from .widgets.components.graphics.grcn_draggable_item import DraggableItem
 from .grcn_app_state import AppState
 
 

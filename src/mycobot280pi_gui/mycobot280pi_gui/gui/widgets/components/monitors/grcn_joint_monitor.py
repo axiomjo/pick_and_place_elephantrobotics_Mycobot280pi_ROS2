@@ -1,5 +1,5 @@
 """
-Defines the JointMonitorWidget, a widget for visualizing robot joint angles that uses the interface JointStates [ ROS builtin]. yes. its not a typo.
+Defines the JointMonitorWidget, a widget for visualizing robot joint angles that uses the interface JointAnglesArray. 
 This widget creates a series of labels and progress bars to show the state
 of each joint in a human-readable format. It is a "dumb" component that
 receives data via a public slot.
@@ -9,12 +9,14 @@ import math
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QProgressBar
 from PyQt5.QtCore import pyqtSlot
 
-# Type hinting for the slot method
-from sensor_msgs.msg import JointState
+from mycobot280pi_interfaces.msg import JointAnglesArray
+
 
 # Define a safe operating range for the joints in degrees for visualization
 JOINT_MIN_DEG = -170
 JOINT_MAX_DEG = 170
+
+
 
 class JointMonitorWidget(QWidget):
     """A widget that displays multiple joint states with progress bars."""
@@ -59,28 +61,39 @@ class JointMonitorWidget(QWidget):
         }
 
     
-    def update_joint_display(self, joint_state_msg: JointState):
-        """Public slot to update all joint displays from a JointState message."""
-        joint_names = joint_state_msg.name
-        joint_positions_rad = joint_state_msg.position
+    def update_joint_display(self, joint_angle_msg: JointAnglesArray):
+        """Public slot to update all joint displays from a JointAnglesArray message."""
+        # 1. Extract the list of 6 angles (in degrees, as per your publisher's description)
+        latest_angles = joint_angle_msg.joint_angles
+        
+        # Define default names (matching the initialization)
+        # You can replace this list with the actual joint names if you know them.
+        default_joint_names = [f"Joint {i}" for i in range(1, 7)]
 
-        for i in range(len(joint_names)):
-            name = joint_names[i]
-            position_rad = joint_positions_rad[i]
+        # 2. Iterate through the angles using index (i) and value (angle_deg)
+        # We only iterate up to the number of angles received OR the number of widgets
+        num_joints = min(len(latest_angles), 6) # Assume max 6 joints
+
+        for i in range(num_joints):
+            angle_deg = latest_angles[i]
             
-            # Use the index to map to our placeholder widgets
-            placeholder_key = f"joint_{i+1}"
+            # Map the 0-based index to the 1-based placeholder key (joint_1, joint_2, etc.)
+            placeholder_key = f"joint_{i + 1}"
 
             if placeholder_key in self.joint_widgets:
                 widgets = self.joint_widgets[placeholder_key]
-                position_deg = math.degrees(position_rad)
                 
-                # Update the name label with the actual name from the message
-                widgets['name_label'].setText(f"{name}:")
+                # Update the name label (optional, but good if the publisher only sends data)
+                widgets['name_label'].setText(f"{default_joint_names[i]}:")
                 
                 # Update the numerical value label
-                widgets['value'].setText(f"{position_deg:.1f}°")
+                widgets['value'].setText(f"{angle_deg:.1f}°")
                 
                 # Map the degree value to the progress bar's range and update it
-                bar_value = int(position_deg - JOINT_MIN_DEG)
+                # The bar value must be adjusted by the minimum joint limit (e.g., -170)
+                bar_value = int(angle_deg - JOINT_MIN_DEG)
                 widgets['bar'].setValue(bar_value)
+
+            else:
+                self.get_logger().warn(f"No widget found for {placeholder_key}. Check setup.")
+                break # Stop if we can't find a widget

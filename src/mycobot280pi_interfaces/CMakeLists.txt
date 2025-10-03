@@ -37,6 +37,7 @@ endif()
     "msg/Point2D.msg"
     "msg/Point2DArray.msg"
     "msg/SimpleCommands.msg"
+    "msg/JointAnglesArray.msg"
   )
 
   set(srv_files

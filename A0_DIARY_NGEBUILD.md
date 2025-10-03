@@ -327,15 +327,26 @@ widgets/
 
 
 
+# perkara executor yg kadang bisa kadang engga
+OH TERNYATA KRN SATU ROBOT CUMA BOLEH SATU INSTANCE mc.
+jadi... aku gbisa mecah fungsi itu jadi dua node...
+jadiin satu di executor lol
+
+# perkara camera usb yg portnya ga konsisten
+v4l2-ctl --list-devices
+
+# barusan, robot gw malfunctionnnnnn
 
 
 
 
 
+# AKU BENCI NGETIK DI MYCOBOT ARGGHHHHHHHHHH
+apaan coba? MASA GEDIT KADANG BIA KADANG GABIISA
+KAN RESE
 
 
-
-
+# aku gapaham .xacro .urdf itu apaan hiks
 
 
 

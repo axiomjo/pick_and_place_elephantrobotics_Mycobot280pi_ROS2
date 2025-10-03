@@ -20,8 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'robot_executor_node = mycobot280pi_robot.rmen_main_ros_node:main',
-            'monolithic_robot_executor_node = mycobot280pi_robot.ren_monolithic_main_ros_node:main',
+            'robot_executor_node = mycobot280pi_robot.ren_main_ros_node:main',
         ],
     },
 )

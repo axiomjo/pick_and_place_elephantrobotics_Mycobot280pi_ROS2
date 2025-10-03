@@ -6,9 +6,11 @@ Defines the ActionPanel, a dedicated widget for the main action buttons.
 
 # Impor QGridLayout
 from PyQt5.QtWidgets import QWidget, QPushButton, QGridLayout
+from PyQt5.QtCore import pyqtSignal
 
 class ActionPanel(QWidget):
     """A container widget that holds all the main control buttons."""
+    go_home_clicked = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -25,7 +27,9 @@ class ActionPanel(QWidget):
         self.delete_btn = QPushButton("Delete Selected")
         self.rotate_counter_clockwise_btn = QPushButton("Rotate CCW")
         self.rotate_clockwise_btn = QPushButton("Rotate CW")
-        
+        self.go_home_btn = QPushButton("GO HOME")
+        self.go_home_btn.setStyleSheet("background-color: #E74C3C; color: green;")
+
         # Disable buttons that should only be enabled by the state machine
  
         self.emergency_btn.setEnabled(False)
@@ -43,6 +47,10 @@ class ActionPanel(QWidget):
         layout.addWidget(self.add_object_btn, 1, 1)     # Baris 1, Kolom 1
         layout.addWidget(self.rotate_counter_clockwise_btn, 1, 2) # Baris 1, Kolom 2
         layout.addWidget(self.rotate_clockwise_btn, 1, 3)     # Baris 1, Kolom 3
+
+        # Baris 2: Tombol GO HOME dan Send
+        # Kita letakkan GO HOME di pojok kiri bawah
+        layout.addWidget(self.go_home_btn, 2, 0)
 
 
         # ### DIUBAH: Cara baru untuk menambahkan spasi fleksibel ###
