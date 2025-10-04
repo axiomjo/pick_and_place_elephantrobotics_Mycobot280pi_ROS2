@@ -378,8 +378,21 @@ mc.clear_error_information() #buat kosongin jadi 0 lagi.
 # BIKIN KOMUNIKASI DARI EXECUTOR NODE KE GUI BUAT CEK COMMANDNYA ERROR GA SUPAYA ADA USER FEEDBACK (ini.... kyk complicated soro seh, tapi klo gaada ini, buwingung kok g jalan2.)
 
 
+btw, aku nambahin alias di terimal mycobot WKWKWKWKWK
+
+alias pymycobotterminal="python3 -i -c 'from pymycobot.mycobot import MyCobot; from pymycobot import PI_PORT, PI_BAUD; import RPi.GPIO; mc = MyCobot(PI_PORT, PI_BAUD)'"
+
+alias rosonly='source /opt/ros/galactic/setup.bash'
+
+alias bothrosandinstall='source /opt/ros/galactic/setup.bash && cd ~ && source TA_JosephineD_2025/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/install/setup.bash
+
+alias toworkspace='cd TA_JosephineD_2025/pick_and_place_elephantrobotics_Mycobot280pi_ROS2'
 
 
+
+
+# ini habis nambahin launchfile di gui supaya bisa manual ngasih input X:=angka_berapa_si_/dev/videoX
+ternyata launchfile gg juga, bisa nerima input
 
 
 

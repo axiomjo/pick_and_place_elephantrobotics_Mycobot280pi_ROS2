@@ -25,7 +25,7 @@ from .grcn_signal_connector import connect_signals
 from .grcn_plane_manager import PlaneManager
 from .grcn_selection_manager import SelectionManager
 from .grcn_action_manager import ActionManager
-from .grcn_service_manager import ServiceManager
+from .grcn_commands_manager import ServiceManager
 
 
 class MainWindow(QMainWindow):

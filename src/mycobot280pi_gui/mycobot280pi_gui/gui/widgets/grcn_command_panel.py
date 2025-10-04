@@ -18,6 +18,7 @@ class CommandPanel(QWidget):
 
     # Sinyal untuk mengirim perintah pose lengkap ke robot
     send_coords_command = pyqtSignal(float, float, float, float, float, float, int)
+    send_home_command = pyqtSignal(bool)
     
     # Sinyal untuk perintah sederhana lainnya
     send_rgb_command = pyqtSignal(int, int, int)
@@ -112,6 +113,14 @@ class CommandPanel(QWidget):
         self.send_coords_btn.clicked.connect(self._emit_coords_signal)
         layout.addWidget(self.send_coords_btn, len(widget_configs), 0, 1, 3)
 
+        self.go_home_btn = QPushButton("GO HOME")
+        self.go_home_btn.setStyleSheet("background-color: #E74C3C; color: green;")
+        self.go_home_btn.clicked.connect(self._emit_home_signal)
+        
+        # Gunakan baris berikutnya setelah SEND FULL POSE
+        layout.addWidget(self.go_home_btn, len(widget_configs) + 1, 0, 1, 3) 
+
+
         layout.setColumnStretch(1, 1)
         group.setLayout(layout)
         return group
@@ -161,15 +170,22 @@ class CommandPanel(QWidget):
             vals['Speed']
         )
 
+    def _emit_home_signal(self):
+        """Mengirim sinyal angka konstan"""
+        self.send_home_command.emit(0)
+
+
     # ... (method _emit_rgb_signal dan _emit_vacuum_signal Anda tetap sama) ...
     def _emit_rgb_signal(self):
         try:
             r = int(self.r_input.text()); g = int(self.g_input.text()); b = int(self.b_input.text())
             if 0 <= r <= 255 and 0 <= g <= 255 and 0 <= b <= 255: self.send_rgb_command.emit(r, g, b)
         except ValueError: pass
+
     def _emit_vacuum_signal(self, command_key: str):
         pin1, pin2 = self.VACUUM_MAP.get(command_key, (1, 1))
         self.send_vacuum_command.emit(command_key, pin1, pin2)
+        
 
     def _set_synced_value(self, name, value):
         """

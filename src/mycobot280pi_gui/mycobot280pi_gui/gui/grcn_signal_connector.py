@@ -85,8 +85,8 @@ def connect_signals(main_window: 'MainWindow'):
     dock_panel.send_rgb_command.connect(service_mgr.handle_rgb_command)
     dock_panel.send_vacuum_command.connect(service_mgr.handle_vacuum_command)
     dock_panel.send_coords_command.connect(service_mgr.handle_coords_command)
+    dock_panel.send_home_command.connect(service_mgr.handle_home_command)
    
-    selection_mgr.selection_changed.connect(dock_panel.update_target_sliders_from_selection)
     selection_mgr.selection_changed.connect(dock_panel.update_target_sliders_from_selection)
 
     

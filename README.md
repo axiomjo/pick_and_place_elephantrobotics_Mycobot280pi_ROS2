@@ -1,7 +1,18 @@
 [LAST EDITED: 2 OKT 2025 06:45]
 
-most updated state.  
+
+
+
 on branch `begin_IMPLEMENTING_GO_HOME`  
+
+GUI aslinya ga intuitif pol LOL tp gpp mvpnya udah kok
+![](ASSET_README/ss_4OKT_GOHOMEDONE.png)
+
+
+habis ini mau bikin branch baru buat ngebenerin arsitektur planner sama executor hahahaha.
+
+---
+most updated state.  
 
 ![](ASSET_README/ss_3OKT_GUIWARAS.png)
 
