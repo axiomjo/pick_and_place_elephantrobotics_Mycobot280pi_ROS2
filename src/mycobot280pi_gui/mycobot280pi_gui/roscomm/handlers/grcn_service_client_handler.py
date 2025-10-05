@@ -8,7 +8,7 @@ from mycobot280pi_interfaces.srv import Mycobot280PiSimpleCommandsMadeSure
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from PyQt5.QtCore import QObject # Used for the facade type hint
 
-
+ACTION_COMMAND_PRIMITIVES = '/gui/act_command_primitives'
 class ServiceClientHandler:
     """
     Manages the single ROS 2 Service Client connection for all simple commands:
@@ -33,7 +33,7 @@ class ServiceClientHandler:
         # Create the SINGLE Service Client
         self.simple_command_client = self.node.create_client(
             Mycobot280PiSimpleCommandsMadeSure,
-            '/planner/srv_simple_command',
+            ACTION_COMMAND_PRIMITIVES,
             qos_profile=qos_profile
         )
         self.node.get_logger().info('Unified Simple Command Service Client created.')

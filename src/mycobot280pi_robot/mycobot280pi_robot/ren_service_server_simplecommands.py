@@ -1,3 +1,5 @@
+from .prn_service_server import PlannerServiceServer
+
 # prn_service_server.py
 
 import rclpy

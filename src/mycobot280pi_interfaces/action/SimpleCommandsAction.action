@@ -1,0 +1,24 @@
+# Interface type: mycobot280pi_interfaces/action/SimpleCommandsAction
+# Filepath: src/mycobot280pi_interfaces/action/SimpleCommandsAction.action
+# GOAL
+string command_type         # e.g. "move", "vacuum_on", "vacuum_off", "vacuum_weak", "set_rgb", "set_joint_angles", etc.
+
+# For movement commands
+float32[] coords           # [x, y, z, rx, ry, rz] for move commands (optional)
+float32[] joint_angles     # For direct joint control (optional)
+int32 speed                # Movement speed (optional)
+
+# For RGB commands
+int32 r                    # Red value (0-255)
+int32 g                    # Green value (0-255)
+int32 b                    # Blue value (0-255)
+
+---
+# Result
+bool success
+string message
+
+---
+# Feedback
+string current_state
+

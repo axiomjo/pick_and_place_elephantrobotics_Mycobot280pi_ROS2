@@ -9,7 +9,6 @@ from mycobot280pi_interfaces.msg import ManyDetectedObjects, SimpleCommands
 
 from .prn_planning_logic import PlannerLogic
 from .prn_action_server import PlannerActionServer
-from .prn_service_server import PlannerServiceServer
 
 TOPIC_PRIMITIVE_COMMAND = '/planner/msg_primitive_command'
 

@@ -21,6 +21,8 @@ setup(
     entry_points={
         'console_scripts': [
             'planner_robot_node = mycobot280pi_planner.prn_main_ros_node:main',
+            'okt3_planner_robot_node = mycobot280pi_planner.monolithic_prn_main_ros_node:main',
+
         ],
     },
 )
