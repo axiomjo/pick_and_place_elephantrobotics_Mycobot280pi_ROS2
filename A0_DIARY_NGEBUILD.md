@@ -395,6 +395,14 @@ alias toworkspace='cd TA_JosephineD_2025/pick_and_place_elephantrobotics_Mycobot
 ternyata launchfile gg juga, bisa nerima input
 
 
+# yk, ku kembali ke desain ros awal yg ga kuambil krn susah tapi ternyata perlu wkwkwkwk
+
+daripada gui ke planner buat simple commands,
+mending langsung ke executioner wkwkwkwkwkw
+
+jadi konsepnya rippling action. jadi klo user cancel action di gui, gui nerusin ke planner, trus planner cancel action ke executioner.
+
+
 
 
 

@@ -32,22 +32,8 @@ class PlannerRobotNode(Node):
 
         # 2. Bangun antarmuka komunikasi (server) dan berikan akses ke logic
         self.action_server = PlannerActionServer(self, self.logic, action_callback_group)
-        self.service_server = PlannerServiceServer(self, self.logic)
 
-        # 3. Buat semua publisher dan subscriber yang dikelola oleh node ini
-        
-       
 
-        # Publisher untuk mengirimkan perintah primitif ke executor
-        self.command_pub = self.create_publisher(
-            SimpleCommands,
-            TOPIC_PRIMITIVE_COMMAND,
-            10
-        )
-        
-        self.logic.set_command_publisher(self.command_pub)
-
-        
         self.get_logger().info("PlannerRobotNode is up and running. 🧠")
         
     

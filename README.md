@@ -12,7 +12,7 @@ GUI aslinya ga intuitif pol LOL tp gpp mvpnya udah kok
 habis ini mau bikin branch baru buat ngebenerin arsitektur planner sama executor hahahaha.
 
 ---
-most updated state.  
+
 
 ![](ASSET_README/ss_3OKT_GUIWARAS.png)
 
