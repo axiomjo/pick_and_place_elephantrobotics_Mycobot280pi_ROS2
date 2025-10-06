@@ -109,7 +109,7 @@ class ServiceManager:
         self.logger.info(msg)
 
         self.ros_comm.call_simple_command(
-            command_type="send_angles",
+            command_type="move_joints",
             coords=FIXED_HOME_ANGLES,
             speed=MAX_SPEED
         )

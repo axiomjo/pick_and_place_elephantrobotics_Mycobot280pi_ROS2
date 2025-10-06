@@ -1,4 +1,3 @@
-# File: <your_package_name>/mycobot_primitive_action_server.py
 
 from rclpy.node import Node
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
@@ -7,7 +6,7 @@ from mycobot280pi_interfaces.action import SimpleCommandsAction
 
 ACTION_COMMAND_PRIMITIVES = '/planner/act_command_primitives'
 
-class MycobotPrimitiveActionServer:
+class PrimitivesActionServer:
     """
     Manages the Action Server interface for long-running robot commands.
     It calls the core execution logic on the main node.

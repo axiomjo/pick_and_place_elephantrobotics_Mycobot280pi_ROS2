@@ -18,7 +18,7 @@ class CommandPanel(QWidget):
 
     # Sinyal untuk mengirim perintah pose lengkap ke robot
     send_coords_command = pyqtSignal(float, float, float, float, float, float, int)
-    send_home_command = pyqtSignal(bool)
+    send_home_command = pyqtSignal()
     
     # Sinyal untuk perintah sederhana lainnya
     send_rgb_command = pyqtSignal(int, int, int)
@@ -172,7 +172,7 @@ class CommandPanel(QWidget):
 
     def _emit_home_signal(self):
         """Mengirim sinyal angka konstan"""
-        self.send_home_command.emit(0)
+        self.send_home_command.emit()
 
 
     # ... (method _emit_rgb_signal dan _emit_vacuum_signal Anda tetap sama) ...

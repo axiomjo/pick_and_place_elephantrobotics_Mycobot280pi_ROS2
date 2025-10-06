@@ -129,6 +129,13 @@ def generate_launch_description():
             output='screen',
             emulate_tty=True
         ),
+
+        Node(
+            package='rviz2',
+            executable='rviz2',
+            name='rviz2',
+            output='screen',
+        ),
         
         
     ])

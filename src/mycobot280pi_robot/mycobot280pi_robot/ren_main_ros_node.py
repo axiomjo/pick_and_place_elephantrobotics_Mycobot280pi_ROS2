@@ -8,14 +8,11 @@ import RPi.GPIO as GPIO
 from pymycobot import MyCobot, PI_PORT, PI_BAUD 
 
 # Import handler modules
-from .mycobot_status_publisher import MycobotStatusPublisher
-from .mycobot_simple_service_server import MycobotSimpleServiceServer 
-from .mycobot_primitive_action_server import MycobotPrimitiveActionServer 
-from .mycobot_hardware_wrapper import MycobotHardwareWrapper 
+from .ren_publisher_joint_states_angles import StateAnglesPublisher
+from .ren_service_server_simple_command import SimpleCommandServiceServer 
+from .ren_action_server_command_primitive import PrimitivesActionServer 
+from .ren_hardware_wrapper import MycobotHardwareWrapper 
 
-# NOTE: The VacuumPumpV2Controller class should be defined in its own file (or 
-# inside mycobot_hardware_wrapper.py) as decided in the final architecture.
-# We assume all imported files are available.
 
 class RobotExecutorNode(Node):
     """
@@ -29,9 +26,9 @@ class RobotExecutorNode(Node):
         self.hardware = MycobotHardwareWrapper(self.get_logger())
         
         # --- 2. Initialize ROS Components (Handlers) ---
-        self.publisher = MycobotStatusPublisher(self, self.hardware.get_joint_angles)
-        self.service_server = MycobotSimpleServiceServer(self, self.hardware.execute_command)
-        self.action_server = MycobotPrimitiveActionServer(self, self.hardware.execute_command)
+        self.publisher = StateAnglesPublisher(self, self.hardware.get_joint_angles)
+        self.service_server = SimpleCommandServiceServer(self, self.hardware.execute_command)
+        self.action_server = PrimitivesActionServer(self, self.hardware.execute_command)
 
         self.get_logger().info("MyCobot Driver Node Orchestrator ready.")
 
@@ -69,3 +66,4 @@ def main(args=None):
 
 if __name__ == "__main__":
     main()
+

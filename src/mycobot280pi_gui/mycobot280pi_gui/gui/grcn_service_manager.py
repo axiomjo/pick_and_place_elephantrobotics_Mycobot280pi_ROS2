@@ -102,24 +102,18 @@ class ServiceManager:
 
     def handle_home_command(self):
         """Membuat dan mengirim pesan ROS untuk perintah GO HOME."""
-        FIXED_HOME_ANGLES = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        FIXED_HOME_ANGLES = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0] 
         MAX_SPEED = 100
-        msg = f"➡️ Sending GO_HOME command | coords={coords}, speed=50"
+        msg = f"➡️ Sending GO_HOME command | angles={FIXED_HOME_ANGLES}, speed={MAX_SPEED}"
         self.main_window.statusBar().showMessage(msg, 4000)
         self.logger.info(msg)
 
-        cmd_msg = SimpleCommands()
-        cmd_msg.command_type = "send_angles"
-        cmd_msg.joint_angles = FIXED_HOME_ANGLES
-        cmd_msg.speed = MAX_SPEED  
-
-        if self.ros_comm.primitive_command_pub:
-            self.ros_comm.primitive_command_pub.publish(cmd_msg)
-        else:
-            err_msg = "❌ Primitive command publisher not available!"
-            self.main_window.logger.error(err_msg)
-            self.main_window.statusBar().showMessage(err_msg, 4000)
-
+       
+        self.ros_comm.call_simple_command(
+            command_type="move_joints",
+            joint_angles=FIXED_HOME_ANGLES,
+            speed=MAX_SPEED
+        )
     # -------------------------------------------------------------------------
     # ROS → GUI (Response Handling)
     # -------------------------------------------------------------------------

@@ -27,6 +27,10 @@ from .grcn_ros_node import ROSOrchestratorNode
 
 from mycobot280pi_interfaces.msg import ManyDetectedObjects,JointAnglesArray
 
+def ensure_list(value):
+    """Return [] if value is None, otherwise return value itself."""
+    return [] if value is None else value
+
 
 class ROSCommunication(QObject):
     """The Facade class that bridges the GUI with the ROS backend."""

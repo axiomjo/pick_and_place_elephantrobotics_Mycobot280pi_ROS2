@@ -8,7 +8,7 @@ from mycobot280pi_interfaces.msg import JointAnglesArray
 
 TOPIC_JOINT_ANGLES = '/robot/msg_joint_angles'
 
-class MycobotStatusPublisher:
+class StateAnglesPublisher:
     """
     Manages the status publisher interface, fetching and publishing 
     joint state data periodically.
