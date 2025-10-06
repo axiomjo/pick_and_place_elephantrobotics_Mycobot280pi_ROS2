@@ -23,8 +23,8 @@ from mycobot280pi_interfaces.action import SimpleCommandsAction as CommandPrimit
 
 # --- ROS Topics and Services ---
 TOPIC_JOINT_ANGLES = '/robot/msg_joint_angles'
-SERVICE_SIMPLE_COMMAND = '/planner/srv_simple_command' # NEW
-ACTION_COMMAND_PRIMITIVES = '/gui/act_command_primitives' # NEW
+SERVICE_SIMPLE_COMMAND= '/gui/srv_simple_command'
+ACTION_COMMAND_PRIMITIVES = '/planner/act_command_primitives' 
 
 
 # ==================================================================

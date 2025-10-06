@@ -31,7 +31,7 @@ class ROSOrchestratorNode(Node):
             facade: A reference to the ROSCommunication (facade) instance,
                     which is passed down to the handlers so they can emit its signals.
         """
-        super().__init__('grcn_gui_orchestrator_node')
+        super().__init__('gui_robot_control_node')
         self.get_logger().info("ROS Orchestrator Node is initializing...")
         
         # Create an instance of each handler, passing the necessary context

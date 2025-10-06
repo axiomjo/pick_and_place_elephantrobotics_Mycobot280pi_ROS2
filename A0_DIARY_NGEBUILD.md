@@ -409,6 +409,20 @@ tapi klo gaada error itu, aku gabakal ngeh sama error2 lain sih. i think i neede
 # ini buku blom kelar. sy brain fog. lagi pingin nyelesain, tapi lagi lamban bgt jalan pikirannya rn. kyk setengah sadar. agak pusing sih. aku perlu nyelesain ini.
 ok, bby jo. see u tmr i g.
 
+# tau darimana arti error mappings? official docs wkwkwkwkwk au aja yg gapaham pas dulu baca hahaha
+https://docs.elephantrobotics.com/docs/mycobot_280_pi_en/3-FunctionsAndApplications/6.developmentGuide/python/2_API.html  
+
+1.3 get_error_information()
+function： Obtaining robot error information
+
+Return value：
+
+0: No error message.
+1 ~ 6: The corresponding joint exceeds the limit position.
+16 ~ 19: Collision protection.
+32: Kinematics inverse solution has no solution.
+33 ~ 34: Linear motion has no adjacent solution.
+
 
 
 

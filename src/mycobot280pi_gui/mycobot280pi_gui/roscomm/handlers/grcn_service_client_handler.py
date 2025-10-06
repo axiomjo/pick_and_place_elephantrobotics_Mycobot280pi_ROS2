@@ -8,7 +8,8 @@ from mycobot280pi_interfaces.srv import Mycobot280PiSimpleCommandsMadeSure
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from PyQt5.QtCore import QObject # Used for the facade type hint
 
-ACTION_COMMAND_PRIMITIVES = '/gui/act_command_primitives'
+SERVICE_SIMPLE_COMMAND= '/gui/srv_simple_command'
+
 class ServiceClientHandler:
     """
     Manages the single ROS 2 Service Client connection for all simple commands:
@@ -33,7 +34,7 @@ class ServiceClientHandler:
         # Create the SINGLE Service Client
         self.simple_command_client = self.node.create_client(
             Mycobot280PiSimpleCommandsMadeSure,
-            ACTION_COMMAND_PRIMITIVES,
+            SERVICE_SIMPLE_COMMAND,
             qos_profile=qos_profile
         )
         self.node.get_logger().info('Unified Simple Command Service Client created.')
@@ -107,6 +108,7 @@ class ServiceClientHandler:
         """
         try:
             response = future.result()
+            
             if response is not None:
                 self.node.get_logger().info(
                     f"Command Response: Success={response.success}, Message='{response.message}'"
@@ -119,6 +121,6 @@ class ServiceClientHandler:
                 self.facade.simple_command_response_received.emit(False, error_msg)
                 
         except Exception as e:
-            error_msg = f'Service call exception: {e}'
+            error_msg = f'Service client call exception: {e}'
             self.node.get_logger().error(error_msg)
-            self.facade.simple_command_response.emit(False, error_msg)
+            self.facade.simple_command_response_received.emit(False, error_msg)

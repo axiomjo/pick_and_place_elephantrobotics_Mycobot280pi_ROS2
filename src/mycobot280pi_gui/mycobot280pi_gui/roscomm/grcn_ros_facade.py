@@ -89,10 +89,7 @@ class ROSCommunication(QObject):
         
         Note: The command_type is mandatory, all other parameters default to safe values.
         """
-        def ensure_list(value):
-            """Return [] if value is None, otherwise return value itself."""
-            return [] if value is None else value
-
+        
         # Always safe: never None
         coords = ensure_list(coords)
         joint_angles = ensure_list(joint_angles)
