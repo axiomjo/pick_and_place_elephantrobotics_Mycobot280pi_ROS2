@@ -1,7 +1,7 @@
 from .widgets.components.graphics.grcn_draggable_item import DraggableItem
 
 from PyQt5.QtCore import pyqtSlot # Import for signal handling
-from mycobot280pi_interfaces.msg import SimpleCommands  # <-- Needed for handle_go_home
+from mycobot280pi_interfaces.msg import SimpleCommands  
 
 class ServiceManager:
     """Manages sending service requests and handling responses for ALL simple commands."""
@@ -102,15 +102,15 @@ class ServiceManager:
 
     def handle_home_command(self):
         """Membuat dan mengirim pesan ROS untuk perintah GO HOME."""
-        FIXED_HOME_ANGLES = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        FIXED_HOME_ANGLES = [0, 0, 0, 0, 0, 0]
         MAX_SPEED = 100
-        msg = f"➡️ Sending GO_HOME command | coords={FIXED_HOME_ANGLES}, speed=MAX_SPEED"
+        msg = f"➡️ Sending GO_HOME command | angles={FIXED_HOME_ANGLES}, speed=MAX_SPEED"
         self.main_window.statusBar().showMessage(msg, 4000)
         self.logger.info(msg)
 
         self.ros_comm.call_simple_command(
             command_type="move_joints",
-            coords=FIXED_HOME_ANGLES,
+            joint_angles=FIXED_HOME_ANGLES,
             speed=MAX_SPEED
         )
 
