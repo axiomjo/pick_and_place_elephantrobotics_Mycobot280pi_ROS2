@@ -210,7 +210,7 @@ class MyCobotDriverNode(Node):
     def _execute_command_logic(self, command_type, coords=None, angles=None, speed=50, r=0, g=0, b=0, logger=None):
         if not self.mc:
            self.logger.error("MyCobot not connected.")
-            return False, "MyCobot not connected."
+           return False, "MyCobot not connected."
 
         success = False
         try:

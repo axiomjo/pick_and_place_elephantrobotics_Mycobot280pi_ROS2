@@ -8,12 +8,9 @@ from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.action import ActionServer, ActionClient, CancelResponse, GoalResponse
 from rclpy.action.client import ClientGoalHandle
 
-# NOTE: Placeholder imports for interfaces (You must define these in your ROS package)
-# Assuming these are available from 'mycobot280pi_interfaces'
 from mycobot280pi_interfaces.msg import ManyDetectedObjects, SimpleCommands
 from mycobot280pi_interfaces.action import ProcessWorkspace
-# NOTE: Placeholder for the new Primitive Command Action Interface
-from mycobot280pi_interfaces.action import SimpleCommandsAction as CommandPrimitives
+from mycobot280pi_interfaces.action import SimpleCommandsAction 
 
 
 # ====================================================================
@@ -22,8 +19,7 @@ from mycobot280pi_interfaces.action import SimpleCommandsAction as CommandPrimit
 
 # --- ROS Topics and Services ---
 TOPIC_PRIMITIVE_COMMAND = '/planner/msg_primitive_command'
-TOPIC_EXECUTOR_FEEDBACK = '/executor/system_service_feedback'
-ACTION_COMPLEX_COMMAND = '/planner/act_complex_command'
+ACTION_COMPLEX_COMMAND = '/gui/act_complex_command'
 ACTION_COMMAND_PRIMITIVES = '/planner/act_command_primitives' # NEW Action Client
 
 # --- Logic Constants ---
@@ -31,21 +27,14 @@ WAIT_TIMEOUT_SEC = 5.0 # Max time to wait for execution feedback
 
 # --- Kinematic and Planning Constants ---
 PLANE_HEIGHT_CLEARANCE = 100.0  # Height for safe travel over the object/table
-PICK_HEIGHT_Z = 50.0            # Height to descend to for grasping
+PICK_HEIGHT_Z = 40.0            # Height to descend to for grasping
 RX_DOWN = 180.0                 # Tool pitch (downward-facing)
 RY_DOWN = 0.0
-DEFAULT_SPEED = 50
+DEFAULT_SPEED = 100
 
 # A default "home" pose for the robot
 HOME_POSE = [135.0, 145.0, -30.0, 180.0, 0.0, 0.0]
 
-# --- State Feedback Colors (R, G, B) ---
-COLOR_CLEARANCE = (0, 0, 255)      
-COLOR_APPROACH = (255, 165, 0)     
-COLOR_GRASP = (0, 255, 0)          
-COLOR_RELEASE = (255, 0, 0)        
-COLOR_HOME = (255, 255, 255)       
-COLOR_ERROR = (255, 0, 0)          
 
 
 # ====================================================================
@@ -57,55 +46,86 @@ class PrimitiveActionClient:
         self.node = node
         self._action_client = ActionClient(
             node, 
-            CommandPrimitives, # Type: mycobot280pi_interfaces/action/SimpleCommandsAction
+            SimpleCommandsAction,
             ACTION_COMMAND_PRIMITIVES,
             callback_group=callback_group
         )
+        # Variabel untuk menyimpan Goal Handle dari goal yang sedang berjalan
+        self.current_goal_handle = None 
         self.node.get_logger().info("Primitive Action Client is ready.")
 
-    def send_primitive_command(self, simple_cmd_msg):
+    def send_primitive_command(self, primitive_cmd_act:SimpleCommandsAction):
         """
-        Sends a primitive command as an action goal and waits for the result (blocking).
-        :param simple_cmd_msg: A SimpleCommands object (or similar structure)
+        Sends a primitive command action goal and waits for the result (blocking).
+        :param primitive_cmd_act: A SimpleCommandsAction 
         :return: Tuple (success: bool, message: str)
         """
         self.node.get_logger().info(f"Waiting for primitive action server: {ACTION_COMMAND_PRIMITIVES}...")
         if not self._action_client.wait_for_server(timeout_sec=WAIT_TIMEOUT_SEC):
-            return False, "Primitive Action Server not available."
+            self.node.get_logger().error("Primitive Action Server tidak tersedia!")
+            return False, "Primitive Action Server not available.", None
 
-        # Map SimpleCommands fields to the action goal (assuming the goal is similar)
-        goal_msg = CommandPrimitives.Goal()
-        goal_msg.command_type = simple_cmd_msg.command_type
-        goal_msg.coords = simple_cmd_msg.coords
-        goal_msg.joint_angles = simple_cmd_msg.joint_angles # Include for completeness
-        goal_msg.speed = simple_cmd_msg.speed
-        goal_msg.r = simple_cmd_msg.r
-        goal_msg.g = simple_cmd_msg.g
-        goal_msg.b = simple_cmd_msg.b
-        goal_msg.vacuum_pin1_level = simple_cmd_msg.vacuum_pin1_level
-        goal_msg.vacuum_pin2_level = simple_cmd_msg.vacuum_pin2_level
+        # Map SimpleCommandsAction fields to the action goal (assuming the goal is similar)
+        goal_msg = SimpleCommandsAction.Goal()
+        
+        goal_msg.command_type = primitive_cmd_act.command_type
+        goal_msg.coords = primitive_cmd_act.coords
+        goal_msg.joint_angles = primitive_cmd_act.joint_angles 
+        goal_msg.speed = primitive_cmd_act.speed
+        goal_msg.r = primitive_cmd_act.r
+        goal_msg.g = primitive_cmd_act.g
+        goal_msg.b = primitive_cmd_act.b
+        goal_msg.vacuum_pin1_level = primitive_cmd_act.vacuum_pin1_level
+        goal_msg.vacuum_pin2_level = primitive_cmd_act.vacuum_pin2_level
 
         self.node.get_logger().info(f"Sending primitive goal: {goal_msg.command_type}")
         
         # Send goal and wait for acceptance (synchronous call using rclpy Future)
-        future = self._action_client.send_goal_async(goal_msg)
-        rclpy.spin_until_future_complete(self.node, future)
-        
-        goal_handle: ClientGoalHandle = future.result()
+        send_goal_future = self._action_client.send_goal_async(goal_msg)
+        rclpy.spin_until_future_complete(self.node, send_goal_future)
+        goal_handle = send_goal_future.result()
         
         if not goal_handle.accepted:
-            return False, "Primitive goal rejected by server."
-            
+            self.node.get_logger().error("PLANNER said Primitive goal rejected by EXECUTOR action server.")
+            return False, "PLANNER said Primitive goal rejected by EXECUTOR action server.", None
+        
+        self.current_goal_handle = goal_handle    
         self.node.get_logger().info('Primitive goal accepted. Waiting for result...')
 
         # Wait for the final result
-        result_future = goal_handle.get_result_async()
-        rclpy.spin_until_future_complete(self.node, result_future)
+        get_result_future = goal_handle.get_result_async()
+        rclpy.spin_until_future_complete(self.node, get_result_future)
         
-        result = result_future.result().result
+        result_response = get_result_future.result()
+        result_data = result_response.result
         
-        return result.success, result.message
+        self.current_goal_handle = None
+        
+        return result_data.success, result_data.message, goal_handle
 
+    def cancel_current_goal(self):
+        """
+        Mengirim sinyal pembatalan ke goal Action primitif yang saat ini aktif.
+        """
+        if self.current_goal_handle is None:
+            self.node.get_logger().info("ok... tapi aslinya di PLANNER, GAADA Goal primitif apa apayang bisa dibatalkan.")
+            return True # Berhasil membatalkan (karena tidak ada yang berjalan)
+        
+        self.node.get_logger().warn(f"Mengirim Cancellation Request untuk Goal ID: {self.current_goal_handle.goal_id}")
+        
+        # 1. Kirim Cancellation Request
+        cancel_future = self._action_client.cancel_goal_async(self.current_goal_handle)
+        
+        # 2. Blok dan tunggu konfirmasi
+        rclpy.spin_until_future_complete(self.node, cancel_future)
+        
+        # Cek konfirmasi. Jika goal sukses dikirim, berarti pembatalan sedang diproses oleh Executor.
+        if cancel_future.result():
+            self.node.get_logger().warn("Cancellation Request diterima oleh Executor.")
+            return True
+        else:
+            self.node.get_logger().error("Gagal mengirim Cancellation Request.")
+            return False
 
 # ====================================================================
 # --- 3. Planning Logic (prn_planning_logic.py) ---
@@ -116,79 +136,149 @@ class PlannerLogic:
         self.node = node
         # Initialize the new primitive action client
         self.primitive_client = PrimitiveActionClient(self.node, callback_group)
+        self.current_primitive_goal_handle = None 
 
-    def _execute_primitive_step(self, cmd: SimpleCommands, description: str, feedback_callback):
-        """Uses the action client to execute a primitive command and blocks until completion."""
+    def _execute_primitive_step(self, cmd_data: dict, description: str, feedback_callback, complex_goal_handle):
+        """Menerima objek SimpleCommands langsung, meneruskannya ke Action Client"""
         feedback_callback(f"Executing step: {description}")
-        success, message = self.primitive_client.send_primitive_command(cmd)
-        
+
+        # 1. Cek Cancellation (sama seperti sebelumnya)
+        if complex_goal_handle.is_cancel_requested:
+            self.primitive_client.cancel_current_goal()
+            return False, "CANCELLED"
+
+        success, message, new_goal_handle = self.primitive_client.send_primitive_command(cmd_data)
+        self.current_primitive_goal_handle = new_goal_handle  # Simpan handle untuk pembatalan di masa depan
+
         if not success:
             self.node.get_logger().error(f"Primitive command FAILED: {description}. Message: {message}")
             feedback_callback(f"ERROR: {description} failed. {message}")
         else:
             self.node.get_logger().info(f"Primitive command SUCCEEDED: {description}")
-            
-        return success
+
+        return success, message
 
     def pick_and_place_object(self, obj, obj_target, obj_orientation, feedback_callback, goal_handle):
-        """
-        Blocking pick and place sequence, using action client for each primitive.
-        Returns False immediately on failure or cancellation.
-        """
-        
         feedback_callback(f"Starting pick and place for object {obj.id}")
-        
-        # Helper to check for cancellation before each step
-        def check_cancel():
-            if goal_handle.is_cancel_requested:
-                feedback_callback("Sequence CANCELLED.")
-                return True
-            return False
 
         # Define the sequence of primitive commands
         steps = [
-            # 1. Move above pick position
-            (SimpleCommands(
-                command_type="move", coords=[obj.center_point.x, obj.center_point.y, PLANE_HEIGHT_CLEARANCE, RX_DOWN, RY_DOWN, 0.0], speed=DEFAULT_SPEED
-            ), "move above pick position"),
+            # 0. RGB: BLUE (Preparing / Home)
+            (SimpleCommandsAction.Goal(
+                command_type="set_rgb",
+                r=0, g=0, b=255
+            ), "set RGB to blue (ready/home)"),
 
-            # 2. Descend to pick height
-            (SimpleCommands(
-                command_type="move", coords=[obj.center_point.x, obj.center_point.y, PICK_HEIGHT_Z, RX_DOWN, RY_DOWN, 0.0], speed=DEFAULT_SPEED
-            ), "descend to pick position"),
-            
-            # 3. Activate vacuum
-            (SimpleCommands(command_type="vacuum_on"), "activate vacuum"),
+            # 1. GO HOME (Initial State)
+            (SimpleCommandsAction.Goal(
+                command_type="move_joints",
+                joint_angles=[0, 0, 0, 0, 0, 0],
+                speed=100
+            ), "return to home position (angles 0)"),
 
-            # 4. Move above place position
-            (SimpleCommands(
-                command_type="move", coords=[obj_target.x, obj_target.y, PLANE_HEIGHT_CLEARANCE, RX_DOWN, RY_DOWN, float(obj_orientation)], speed=DEFAULT_SPEED
-            ), "move above place position"),
+            # 2. RGB: YELLOW (Approaching object)
+            (SimpleCommandsAction.Goal(
+                command_type="set_rgb",
+                r=255, g=255, b=0
+            ), "set RGB to yellow (approaching object)"),
 
-            # 5. Descend to place height
-            (SimpleCommands(
-                command_type="move", coords=[obj_target.x, obj_target.y, PICK_HEIGHT_Z, RX_DOWN, RY_DOWN, float(obj_orientation)], speed=DEFAULT_SPEED
-            ), "descend to place position"),
-            
-            # 6. Deactivate vacuum
-            (SimpleCommands(command_type="vacuum_off"), "deactivate vacuum"),
+            # 3. GOTO ABOVE OBJECT (Z=70)
+            (SimpleCommandsAction.Goal(
+                command_type="move_blockingmode",
+                coords=[obj.center_point.x, obj.center_point.y, 70.0, RX_DOWN, RY_DOWN, 0.0],
+                speed=100
+            ), "move above object (Z=70, RZ=0)"),
 
-            # 7. Return to home
-            (SimpleCommands(command_type="move", coords=HOME_POSE, speed=DEFAULT_SPEED), "return to home position"),
+            # 4. RGB: RED (Picking)
+            (SimpleCommandsAction.Goal(
+                command_type="set_rgb",
+                r=255, g=0, b=0
+            ), "set RGB to red (picking object)"),
+
+            # 5. ACTIVATE VACUUM STRONG
+            (SimpleCommandsAction.Goal(
+                command_type="vacuum_strong",
+            ), "activate vacuum strong"),
+
+            # 6. DESCEND TO OBJECT HEIGHT (Z=40)
+            (SimpleCommandsAction.Goal(
+                command_type="move_blockingmode",
+                coords=[obj.center_point.x, obj.center_point.y, 40.0, RX_DOWN, RY_DOWN, 0.0],
+                speed=50
+            ), "descend exactly to object (Z=40)"),
+
+            # 7. LIFT UP to safe place
+            (SimpleCommandsAction.Goal(
+                command_type="move_joints",
+                joint_angles=[0, 0, 0, 0, 0, 0],
+                speed=100
+            ), "return to home position (angles 0)"),
+
+            # 8. RGB: GREEN (Placing)
+            (SimpleCommandsAction.Goal(
+                command_type="set_rgb",
+                r=0, g=255, b=0
+            ), "set RGB to green (placing object)"),
+
+            # 9. MOVE TO ABOVE PLACE POSITION (Z=70)
+            (SimpleCommandsAction.Goal(
+                command_type="move_blockingmode",
+                coords=[obj_target.x, obj_target.y, 70.0, RX_DOWN, RY_DOWN, float(obj_orientation)],
+                speed=100
+            ), "move to above place position (Z=70, RZ=User)"),
+
+            # 10. DESCEND TO PLACE POSITION (Z=40)
+            (SimpleCommandsAction.Goal(
+                command_type="move_blockingmode",
+                coords=[obj_target.x, obj_target.y, 40.0, RX_DOWN, RY_DOWN, float(obj_orientation)],
+                speed=50
+            ), "descend to final placement height (Z=40)"),
+
+            # 11. DEACTIVATE VACUUM
+            (SimpleCommandsAction.Goal(
+                command_type="vacuum_off",
+            ), "deactivate vacuum"),
+
+            # 12. LIFT UP (Z=70)
+            (SimpleCommandsAction.Goal(
+                command_type="move_blockingmode",
+                coords=[obj_target.x, obj_target.y, 70.0, RX_DOWN, RY_DOWN, float(obj_orientation)],
+                speed=DEFAULT_SPEED
+            ), "lift up after place (Z=70)"),
+
+            # 13. RGB: BLUE (Return to idle)
+            (SimpleCommandsAction.Goal(
+                command_type="set_rgb",
+                r=0, g=0, b=255
+            ), "set RGB to blue (done/idle)")
         ]
-        
+
+        sequence_successful = True
+    
         for cmd, description in steps:
-            if check_cancel():
-                # Note: The logic handles cancellation, but the executor must handle 
-                # cancelling the current primitive action call if needed.
-                # For simplicity here, we rely on the goal_handle.is_cancel_requested check.
-                return False 
-            if not self._execute_primitive_step(cmd, description, feedback_callback):
-                return False # Failed, stop the sequence
-
-        feedback_callback(f"Finished pick and place for object {obj.id}")
-        return True # Sequence succeeded
-
+            if goal_handle.is_cancel_requested:
+                feedback_callback("Sequence CANCELLED.")
+                sequence_successful = False
+                break
+            
+            # Cek Eksekusi (Apakah Action primitif berhasil?)
+            # Kita panggil _execute_primitive_step, yang akan mengembalikan (True, False)
+            success, message = self._execute_primitive_step(
+                cmd, description, feedback_callback, goal_handle
+            )
+            
+            if not success:
+                sequence_successful = False
+                break # Hentikan loop segera jika langkah gagal
+            
+        # --- PENGEMBALIAN AKHIR ---
+        if sequence_successful:
+            feedback_callback(f"Finished pick and place for object {obj.id}")
+            return True
+        else:
+            # Jika loop dihentikan oleh break (entah cancel atau failure)
+            # Catatan: Feedback cancel/failure sudah dipublikasikan di _execute_primitive_step.
+            return False
 
 # ====================================================================
 # --- 4. Complex Action Server (prn_action_server.py) ---
@@ -213,12 +303,12 @@ class PlannerActionServer:
 
     def goal_callback(self, goal_request):
         """Always accept new goals (planner is now stateless)."""
-        self.node.get_logger().info('Received new goal request. Accepting.')
+        self.node.get_logger().info('PLANNER Received new goal request from GUI. Accepting.')
         return GoalResponse.ACCEPT
 
     def cancel_callback(self, goal_handle):
         """Always allow cancellation."""
-        self.node.get_logger().info('Received cancel request. Allowing.')
+        self.node.get_logger().info('PLANNER Received cancel request from GUI. Allowing.')
         return CancelResponse.ACCEPT
 
     def execute_callback(self, goal_handle):
@@ -281,8 +371,6 @@ class PlannerRobotNode(Node):
         
         # Create ReentrantCallbackGroups for parallel processing
         action_callback_group = ReentrantCallbackGroup()
-        # This group is used by both the PlannerLogic's PrimitiveActionClient
-        # and the PlannerActionServer's feedback publisher.
         logic_client_callback_group = ReentrantCallbackGroup() 
 
         # 1. Initialize Planner Logic (Brain)

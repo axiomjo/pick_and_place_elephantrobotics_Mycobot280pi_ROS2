@@ -403,6 +403,11 @@ mending langsung ke executioner wkwkwkwkwkw
 jadi konsepnya rippling action. jadi klo user cancel action di gui, gui nerusin ke planner, trus planner cancel action ke executioner.
 
 
+# aku frustasi "indentation error di robot_executor_node. line 162 mulu, gatau apaan, kuliat pake vscode juga gajelas, mboh mumet 
+tapi klo gaada error itu, aku gabakal ngeh sama error2 lain sih. i think i neededd that.
+
+# ini buku blom kelar. sy brain fog. lagi pingin nyelesain, tapi lagi lamban bgt jalan pikirannya rn. kyk setengah sadar. agak pusing sih. aku perlu nyelesain ini.
+ok, bby jo. see u tmr i g.
 
 
 

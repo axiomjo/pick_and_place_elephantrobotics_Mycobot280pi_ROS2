@@ -5,7 +5,8 @@ This version is self-contained, including its own controls for rotation.
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGraphicsView, QGraphicsScene, QFrame,
-    QLabel, QSlider, QDoubleSpinBox, QGraphicsTextItem, QGraphicsEllipseItem, QGraphicsRectItem
+    QLabel, QSlider, QDoubleSpinBox, QGraphicsTextItem, QGraphicsEllipseItem, QGraphicsRectItem,   
+    QGraphicsPathItem
 )
 from PyQt5.QtGui import (
     QTransform, QColor, QBrush, QPen, QPainterPath, QFont
@@ -114,15 +115,70 @@ class WorkspacePlane(QWidget):
     
     def draw_mycobot280pi_working_plane(self):
         """Draws the static elements representing the robot base and work area."""
-        # Working area (280 mm radius, semi-transparent)
+        
         circle_radius = 280.0
-        circle_item = QGraphicsEllipseItem(-circle_radius, -circle_radius,
-                                           2 * circle_radius, 2 * circle_radius)
+        circle_item = QGraphicsEllipseItem(-circle_radius, -circle_radius, 2 * circle_radius, 2 * circle_radius)
         semi_transparent_color = QColor(173, 216, 230, 50)
         circle_item.setBrush(QBrush(semi_transparent_color))
         circle_item.setPen(QPen(Qt.NoPen))
         circle_item.setZValue(0)
         self.working_plane_scene.addItem(circle_item)
+        
+        OUTER_RADIUS = 250
+        INNER_RADIUS = 150
+        
+
+        # 1. Definisikan Cincin Luar (Radius 250mm)
+        # Ini adalah lingkaran penuh, yang akan menjadi batas luar area kerja.
+        outer_circle = QPainterPath()
+        outer_circle.addEllipse(-OUTER_RADIUS, -OUTER_RADIUS, 2 * OUTER_RADIUS, 2 * OUTER_RADIUS)
+
+        # 2. Definisikan Lingkaran Dalam (Radius 150mm)
+        # Ini adalah area yang HARUS DIKECUALIKAN dari cincin luar.
+        inner_circle = QPainterPath()
+        inner_circle.addEllipse(-INNER_RADIUS, -INNER_RADIUS, 2 * INNER_RADIUS, 2 * INNER_RADIUS)
+
+        # 3. Definisikan Area Halangan (Area di Belakang Robot)
+        # Membuat bentuk persegi panjang untuk area di belakang robot yang tidak terjangkau (misalnya dari X=-250 hingga X=-50)
+        # Anda bisa menyesuaikan batas ini agar sesuai dengan jangkauan bahu myCobot.
+        block_width = 250.0  # Lebar total pemblokiran
+        block_height = 500.0 # Lebih tinggi dari radius
+        
+        # Koordinat X pemblokiran
+        X_START_BLOCK = -OUTER_RADIUS 
+        X_END_BLOCK = -50.0  # Misalnya, memblokir dari X=-250 hingga X=-50
+
+        block_area = QPainterPath()
+        block_area.addRect(X_START_BLOCK, -block_height/2,  # Mulai dari X=-250
+                           X_END_BLOCK - X_START_BLOCK, block_height)
+
+        # 4. Kombinasikan Path: Bentuk Cincin Penuh
+        # Memotong (subtract) lingkaran dalam dari lingkaran luar.
+        ring_path = outer_circle.subtracted(inner_circle)
+
+        # 5. Gabungkan Path: Bentuk Cincin "C" Parsial
+        # Memotong area belakang (block_area) dari cincin penuh.
+        c_shape_path = ring_path.subtracted(block_area)
+
+
+        # 6. Buat QGraphicsPathItem dan terapkan styling
+        path_item = QGraphicsPathItem(c_shape_path)
+        semi_transparent_color = QColor(173, 216, 230, 80) # Dibuat sedikit lebih solid (80)
+        path_item.setBrush(QBrush(semi_transparent_color))
+        path_item.setPen(QPen(Qt.NoPen))
+        path_item.setZValue(0)
+
+        # 7. Tambahkan ke scene
+        self.working_plane_scene.addItem(path_item)
+        
+        # Tambahkan lingkaran abu-abu untuk area di tengah (Inner Area)
+        # Tetap tambahkan lingkaran di tengah untuk mewakili area yang tidak terjangkau di sekitar base
+        base_block_item = QGraphicsEllipseItem(-INNER_RADIUS, -INNER_RADIUS, 2 * INNER_RADIUS, 2 * INNER_RADIUS)
+        base_block_item.setBrush(QBrush(QColor(192, 192, 192, 150))) # Abu-abu yang sedikit solid
+        base_block_item.setPen(QPen(Qt.NoPen))
+        base_block_item.setZValue(1) # ZValue lebih tinggi agar di atas C-Shape
+        self.working_plane_scene.addItem(base_block_item)      
+            
 
         # --- baseplate ----
         rect_width = 110
