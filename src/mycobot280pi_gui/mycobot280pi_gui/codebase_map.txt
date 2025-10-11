@@ -1,0 +1,2626 @@
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/grcn_gui_main_entry.py
+============================================================
+
+### IMPORTS ###
+import sys
+import rclpy
+from PyQt5.QtWidgets import QApplication
+from mycobot280pi_gui.gui.grcn_main_window import MainWindow
+
+### FULL CONTENT ###
+
+"""
+Main entry point for the GUI node.
+
+This script's ONLY job is to initialize rclpy, initialize the QApplication,
+create an instance of the MainWindow, and start the event loop.
+"""
+
+import sys
+import rclpy
+from PyQt5.QtWidgets import QApplication
+
+# Import MainWindow from its new location within the 'gui' sub-package
+from mycobot280pi_gui.gui.grcn_main_window import MainWindow
+
+
+def main(args=None):
+    """Main function that will be executed by the ROS 2 entry point."""
+    # Initialize rclpy once in the main thread
+    rclpy.init(args=args)
+    
+    # Create the Qt application
+    app = QApplication(sys.argv)
+    
+    # Create an instance of our main window.
+    # Note that we no longer pass anything to its constructor.
+    window = MainWindow()
+    window.show()
+    
+    # Run the application's event loop and capture the exit code
+    exit_code = app.exec_()
+    
+    # Exit the script with the appropriate code
+    sys.exit(exit_code)
+
+
+if __name__ == '__main__':
+    main()
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/__init__.py
+============================================================
+
+### IMPORTS ###
+(No primary imports found)
+
+### FULL CONTENT ###
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/roscomm/grcn_ros_node.py
+============================================================
+
+### IMPORTS ###
+from rclpy.node import Node
+from PyQt5.QtCore import QObject
+from .handlers.grcn_topic_subscriber_publisher_handler import TopicHandler
+from .handlers.grcn_service_client_handler import ServiceClientHandler
+from .handlers.grcn_action_client_handler import ActionClientHandler
+
+### FULL CONTENT ###
+
+"""
+Defines the ROSOrchestratorNode class.
+
+This class is the central rclpy.Node for the application. It does not handle
+any specific ROS communication logic itself. Instead, its sole responsibility
+is to act as an orchestrator:
+- It creates instances of all specialized handler classes (Topic, Service, Action).
+- It provides the necessary context (itself as a Node instance and a reference
+  to the facade for signal emitting) to each handler.
+- It is the node that gets spun by the executor in the background thread.
+"""
+
+from rclpy.node import Node
+from PyQt5.QtCore import QObject
+
+# Import the specialized handlers from the 'handlers' sub-package
+from .handlers.grcn_topic_subscriber_publisher_handler import TopicHandler
+from .handlers.grcn_service_client_handler import ServiceClientHandler
+from .handlers.grcn_action_client_handler import ActionClientHandler
+
+
+class ROSOrchestratorNode(Node):
+    """The central ROS node that creates and manages all communication handlers."""
+
+    def __init__(self, facade: QObject):
+        """
+        Initializes the node and all its specialized handlers.
+        
+        Args:
+            facade: A reference to the ROSCommunication (facade) instance,
+                    which is passed down to the handlers so they can emit its signals.
+        """
+        super().__init__('gui_robot_control_node')
+        self.get_logger().info("ROS Orchestrator Node is initializing...")
+        
+        # Create an instance of each handler, passing the necessary context
+        self.topic_handler = TopicHandler(self, facade)
+        self.service_handler = ServiceClientHandler(self, facade)
+        self.action_handler = ActionClientHandler(self, facade)
+        
+        self.get_logger().info("All ROS handlers have been successfully created.")
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/roscomm/grcn_ros_facade.py
+============================================================
+
+### IMPORTS ###
+from rclpy.executors import MultiThreadedExecutor
+import threading
+from PyQt5.QtCore import QObject, pyqtSignal
+import numpy as np
+from .grcn_ros_node import ROSOrchestratorNode
+from mycobot280pi_interfaces.msg import ManyDetectedObjects,JointAnglesArray
+
+### FULL CONTENT ###
+
+"""
+Defines the ROSCommunication class, which acts as a Façade.
+
+This class is the single, clean entry point for the GUI to interact with the
+entire ROS backend. It hides the complexity of the underlying nodes, handlers,
+and threading.
+
+Key Responsibilities:
+- Inherits from QObject to provide thread-safe PyQt signals to the GUI.
+- Owns and manages the lifecycle of the main ROS node (ROSOrchestratorNode).
+- Spins the ROS node in a separate, non-blocking background thread.
+- Exposes a high-level, clean API (public methods) for the GUI to call.
+- Delegates the actual ROS work from its public methods to the specialized
+  handlers (TopicHandler, ServiceClientHandler, etc.).
+"""
+
+from rclpy.executors import MultiThreadedExecutor
+import threading
+from PyQt5.QtCore import QObject, pyqtSignal
+import numpy as np
+
+# Import the orchestrator node from its new file
+from .grcn_ros_node import ROSOrchestratorNode
+
+# Import message types required for pyqtSignal definitions
+
+from mycobot280pi_interfaces.msg import ManyDetectedObjects,JointAnglesArray
+
+def ensure_list(value):
+    """Return [] if value is None, otherwise return value itself."""
+    return [] if value is None else value
+
+
+class ROSCommunication(QObject):
+    """The Facade class that bridges the GUI with the ROS backend."""
+
+    # --- Signals for ROS -> GUI Communication ---
+    # These signals are emitted from the ROS thread and safely received by the GUI thread.
+    undistorted_image_received = pyqtSignal(np.ndarray)
+    annotated_image_received = pyqtSignal(np.ndarray)
+    detected_objects_received = pyqtSignal(ManyDetectedObjects)
+    joint_angles_received = pyqtSignal(JointAnglesArray)
+    simple_command_response_received = pyqtSignal(bool, str) 
+    action_feedback = pyqtSignal(str)
+    action_result = pyqtSignal(bool, str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        
+        # 1. The Facade creates its internal ROS node orchestrator.
+        #    It passes 'self' so that the handlers can get a reference
+        #    to this facade and emit its signals.
+        self._ros_node = ROSOrchestratorNode(self)
+        
+        # 2. The threading model remains the same: a MultiThreadedExecutor
+        #    runs in a background thread to spin the node.
+        self.executor = MultiThreadedExecutor()
+        self.executor.add_node(self._ros_node)
+        self.ros_thread = threading.Thread(target=self.executor.spin)
+        self.ros_thread.daemon = True # Ensures thread exits when main app exits
+        self.ros_thread.start()
+        
+        self.get_logger().info("ROS Communication Facade is ready.")
+
+    # --- Public API Methods for GUI -> ROS Communication ---
+    # The MainWindow will call these simple methods.
+    
+    def get_logger(self):
+        """Provides the GUI with access to the ROS logger."""
+        return self._ros_node.get_logger()
+    
+    def publish_four_points(self, points: np.ndarray):
+        """Delegate point publishing to the TopicHandler."""
+        self._ros_node.topic_handler.publish_perspective_points(points)
+
+    def call_simple_command(self, 
+                            command_type: str,
+                            coords: list = None, 
+                            joint_angles: list = None,
+                            speed: int = 0, 
+                            r: int = 0, 
+                            g: int = 0, 
+                            b: int = 0, 
+                            vacuum_pin1_level: int = 0, 
+                            vacuum_pin2_level: int = 0, 
+                            extra_strings: list = None, 
+                            extra_floats: list = None, 
+                            extra_ints: list = None):
+        
+        """
+        Delegate unified simple command service call to the ServiceClientHandler.
+        
+        Note: The command_type is mandatory, all other parameters default to safe values.
+        """
+        
+        # Always safe: never None
+        coords = ensure_list(coords)
+        joint_angles = ensure_list(joint_angles)
+        extra_strings = ensure_list(extra_strings)
+        extra_floats = ensure_list(extra_floats)
+        extra_ints = ensure_list(extra_ints) 
+        
+        # Delegate the call to the ServiceClientHandler instance
+        self._ros_node.service_handler.call_simple_command(
+            command_type, 
+            coords, 
+            joint_angles,
+            speed, 
+            r, 
+            g, 
+            b, 
+            vacuum_pin1_level, 
+            vacuum_pin2_level, 
+            extra_strings, 
+            extra_floats, 
+            extra_ints
+        )
+        
+
+        
+    def send_complex_goal(self, objects_to_move, target_positions, target_orientation):
+        """Delegate complex goal action call to the ActionClientHandler."""
+        self._ros_node.action_handler.send_goal(objects_to_move, target_positions, target_orientation)
+
+    def cancel_complex_goal(self):
+        """Delegate goal cancellation to the ActionClientHandler."""
+        self._ros_node.action_handler.cancel_goal()
+
+    def shutdown(self):
+        """Handles the clean shutdown of the ROS components."""
+        self.get_logger().info("Shutting down ROS executor and node...")
+        self.executor.shutdown()
+        self._ros_node.destroy_node()
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/roscomm/__init__.py
+============================================================
+
+### IMPORTS ###
+(No primary imports found)
+
+### FULL CONTENT ###
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/roscomm/handlers/grcn_action_client_handler.py
+============================================================
+
+### IMPORTS ###
+import rclpy.node
+from PyQt5.QtCore import QObject
+from rclpy.action import ActionClient
+import threading
+from mycobot280pi_interfaces.action import ProcessWorkspace
+from action_msgs.msg import GoalStatus
+
+### FULL CONTENT ###
+
+"""
+Defines the ActionClientHandler class.
+
+This class encapsulates all logic for interacting with a specific ROS 2 Action Client.
+It follows the Single Responsibility Principle, where its only job is to manage
+the lifecycle of an action: sending goals, processing feedback, handling results,
+and managing cancellations.
+
+It is created by the ROSOrchestratorNode and is provided with a node instance
+and a facade reference.
+"""
+
+import rclpy.node
+from PyQt5.QtCore import QObject
+from rclpy.action import ActionClient
+import threading
+
+# Import the specific action and its related messages
+from mycobot280pi_interfaces.action import ProcessWorkspace
+from action_msgs.msg import GoalStatus
+
+ACTION_COMPLEX_COMMAND = '/planner/act_complex_command'
+
+
+class ActionClientHandler:
+    """Manages all interactions with the ProcessWorkspace action client."""
+
+    def __init__(self, node: rclpy.node.Node, facade: QObject):
+        """
+        Initializes the action client handler.
+        
+        Args:
+            node: The ROSOrchestratorNode instance to create the client on.
+            facade: The ROSCommunication facade instance to emit signals.
+        """
+        self._node = node
+        self._facade = facade
+        
+        self._action_client = ActionClient(
+            node=self._node,
+            action_type=ProcessWorkspace,
+            action_name=ACTION_COMPLEX_COMMAND
+        )
+        
+        # A lock is crucial to prevent race conditions when accessing the goal handle
+        # from different callbacks or threads.
+        self._goal_handle_lock = threading.Lock()
+        self._active_goal_handle = None
+
+    def send_goal(self, objects_to_move, target_positions, target_orientation):
+        """Constructs and sends a goal to the action server."""
+        if not self._action_client.wait_for_server(timeout_sec=2.0):
+            self._node.get_logger().error('Action server not available!')
+            self._facade.action_result.emit(False, 'Action server not available')
+            return
+            
+        goal_msg = ProcessWorkspace.Goal()
+        goal_msg.objects_to_move = objects_to_move
+        goal_msg.objects_target_position = target_positions
+        goal_msg.objects_target_orientation = target_orientation
+        
+        self._node.get_logger().info('Sending complex action goal...')
+        
+        # Send the goal asynchronously and add callbacks to handle the response
+        send_goal_future = self._action_client.send_goal_async(
+            goal_msg,
+            feedback_callback=self._feedback_callback
+        )
+        send_goal_future.add_done_callback(self._goal_response_callback)
+
+    def cancel_goal(self):
+        """Sends a cancellation request for the currently active goal."""
+        with self._goal_handle_lock:
+            if self._active_goal_handle is None:
+                self._node.get_logger().warn('No active goal to cancel.')
+                return
+
+            # Check the status against the GoalStatus enum
+            status = self._active_goal_handle.status
+            if status == GoalStatus.STATUS_ACCEPTED or status == GoalStatus.STATUS_EXECUTING:
+                self._node.get_logger().info('Cancelling the active goal...')
+                cancel_future = self._active_goal_handle.cancel_goal_async()
+                cancel_future.add_done_callback(self._cancel_done_callback)
+            else:
+                self._node.get_logger().warn(f"Goal is not in an active state (current status: {status}), cannot cancel.")
+       
+    # --- Private Action Callbacks ---
+
+    def _goal_response_callback(self, future):
+        """Handles the server's response to the goal submission."""
+        goal_handle = future.result() 
+        if not goal_handle.accepted:
+            self._node.get_logger().info('Goal was rejected by the server.')
+            self._facade.action_result.emit(False, 'Goal rejected')
+            return
+
+        self._node.get_logger().info('Goal was accepted by the server.')
+        
+        with self._goal_handle_lock:
+            self._active_goal_handle = goal_handle
+        
+        # Request the final result of the action
+        result_future = goal_handle.get_result_async()
+        result_future.add_done_callback(self._result_callback)
+
+    def _feedback_callback(self, feedback_msg):
+        """Receives and processes feedback messages during action execution."""
+        feedback = feedback_msg.feedback.current_state
+        self._facade.action_feedback.emit(feedback)
+
+    def _result_callback(self, future):
+        """Receives and processes the final result of the action."""
+        try:
+            result = future.result().result
+            self._node.get_logger().info(f'Action finished with result: {result.message}')
+            self._facade.action_result.emit(result.success, result.message)
+        except Exception as e:
+            self._node.get_logger().error(f'Exception while getting action result: {e}')
+            self._facade.action_result.emit(False, f'Exception: {e}')
+        finally:
+            # Clear the active goal handle once the action is done
+            with self._goal_handle_lock:
+                self._active_goal_handle = None
+   
+    def _cancel_done_callback(self, future):
+        """Logs the result of the cancellation request."""
+        cancel_response = future.result()
+        if len(cancel_response.goals_canceling) > 0:
+            self._node.get_logger().info('Goal cancellation request was successful.')
+        else:
+            self._node.get_logger().warn('Goal cancellation failed (goal may have already finished).')
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/roscomm/handlers/__init__.py
+============================================================
+
+### IMPORTS ###
+(No primary imports found)
+
+### FULL CONTENT ###
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/roscomm/handlers/grcn_service_client_handler.py
+============================================================
+
+### IMPORTS ###
+import rclpy
+from rclpy.node import Node
+from rclpy.task import Future
+from mycobot280pi_interfaces.srv import Mycobot280PiSimpleCommandsMadeSure
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
+from PyQt5.QtCore import QObject # Used for the facade type hint
+
+### FULL CONTENT ###
+# roscomm/handlers/grcn_service_client_handler.py
+
+import rclpy
+from rclpy.node import Node
+from rclpy.task import Future
+# Import the specific service type
+from mycobot280pi_interfaces.srv import Mycobot280PiSimpleCommandsMadeSure 
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
+from PyQt5.QtCore import QObject # Used for the facade type hint
+
+SERVICE_SIMPLE_COMMAND= '/gui/srv_simple_command'
+
+class ServiceClientHandler:
+    """
+    Manages the single ROS 2 Service Client connection for all simple commands:
+    /planner/srv_simple_command (Type: Mycobot280PiSimpleCommandsMadeSure).
+    
+    This handler encapsulates the logic for building and sending the unified request.
+    """
+    
+    def __init__(self, node_host: Node, facade_ref: QObject):
+        """
+        Initializes the service client using the provided host node and facade reference.
+        """
+        self.node = node_host
+        self.facade = facade_ref
+        
+        qos_profile = QoSProfile(
+            reliability=ReliabilityPolicy.RELIABLE,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1
+        )
+        
+        # Create the SINGLE Service Client
+        self.simple_command_client = self.node.create_client(
+            Mycobot280PiSimpleCommandsMadeSure,
+            SERVICE_SIMPLE_COMMAND,
+            qos_profile=qos_profile
+        )
+        self.node.get_logger().info('Unified Simple Command Service Client created.')
+
+
+    def call_simple_command(self, 
+                            command_type: str, 
+                            coords: list = None, 
+                            joint_angles: list = None,
+                            speed: int = 0, 
+                            r: int = 0, 
+                            g: int = 0, 
+                            b: int = 0, 
+                            vacuum_pin1_level: int = 0, 
+                            vacuum_pin2_level: int = 0, 
+                            extra_strings: list = None, 
+                            extra_floats: list = None, 
+                            extra_ints: list = None):
+        """
+        Builds and sends the request to the /planner/srv_simple_command service.
+        This method is called by the ROSCommunication facade.
+        """
+        # Ensure non-None defaults for list fields
+        def ensure_list(value):
+            """Return [] if value is None, otherwise return value itself."""
+            return [] if value is None else value
+
+        # Always safe: never None
+        coords = ensure_list(coords)
+        joint_angles = ensure_list(joint_angles)
+        extra_strings = ensure_list(extra_strings)
+        extra_floats = ensure_list(extra_floats)
+        extra_ints = ensure_list(extra_ints)
+        
+        # 2. Build the request using the unified service type
+        request = Mycobot280PiSimpleCommandsMadeSure.Request()
+        
+        # Core Command Type
+        request.command_type = command_type
+        
+        # Movement Parameters
+        request.coords = [float(c) for c in coords]
+        request.joint_angles = [float(j) for j in joint_angles]
+        request.speed = speed
+        
+        # RGB Parameters
+        request.r = r
+        request.g = g
+        request.b = b
+        
+        # Vacuum Parameters
+        request.vacuum_pin1_level = int(vacuum_pin1_level)
+        request.vacuum_pin2_level = int(vacuum_pin2_level)
+        
+        # Extensibility Parameters
+        request.extra_strings = extra_strings
+        request.extra_floats = [float(f) for f in extra_floats]
+        request.extra_ints = extra_ints
+        
+        self.node.get_logger().info(f'gui is calling service for: {command_type}')
+        
+        # 3. Call the service and attach the callback
+        self.future = self.simple_command_client.call_async(request)
+        self.future.add_done_callback(self._simple_command_response_callback)
+
+
+    def _simple_command_response_callback(self, future: Future):
+        """
+        Callback executed by the ROS executor when the service response arrives.
+        It routes the response back to the GUI via the facade's signal.
+        """
+        try:
+            response = future.result()
+            
+            if response is not None:
+                self.node.get_logger().info(
+                    f"Command Response: Success={response.success}, Message='{response.message}'"
+                )
+                # Route the response back to the GUI via the facade's signal
+                self.facade.simple_command_response_received.emit(response.success, response.message)
+            else:
+                error_msg = 'Service call failed or was interrupted (No result).'
+                self.node.get_logger().error(error_msg)
+                self.facade.simple_command_response_received.emit(False, error_msg)
+                
+        except Exception as e:
+            error_msg = f'Service client call exception: {e}'
+            self.node.get_logger().error(error_msg)
+            self.facade.simple_command_response_received.emit(False, error_msg)
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/roscomm/handlers/grcn_topic_subscriber_publisher_handler.py
+============================================================
+
+### IMPORTS ###
+import rclpy.node
+from PyQt5.QtCore import QObject
+from cv_bridge import CvBridge
+import numpy as np
+from sensor_msgs.msg import Image
+from mycobot280pi_interfaces.msg import Point2D, Point2DArray, ManyDetectedObjects, JointAnglesArray
+
+### FULL CONTENT ###
+
+"""
+Defines the TopicHandler class.
+
+This class encapsulates all logic for ROS 2 topic communication, including
+all publishers and subscribers for the application. It acts as the central
+point for incoming and outgoing topic-based data streams.
+"""
+
+import rclpy.node
+from PyQt5.QtCore import QObject
+from cv_bridge import CvBridge
+import numpy as np
+
+# Import all required message types
+from sensor_msgs.msg import Image
+from mycobot280pi_interfaces.msg import Point2D, Point2DArray, ManyDetectedObjects, JointAnglesArray
+
+# --- Constants for topic names ---
+TOPIC_UNDISTORTED_IMAGE = '/vision/msg_undistorted_image'
+TOPIC_DETECTED_OBJECTS = '/vision/msg_detected_objects'
+TOPIC_ANNOTATED_IMAGE = '/vision/msg_annotated_image'
+TOPIC_JOINT_ANGLES = '/robot/msg_joint_angles'
+TOPIC_FOUR_POINTS = '/gui/msg_four_perspective_points'
+
+
+class TopicHandler:
+    """Manages all publishers and subscribers for the node."""
+
+    def __init__(self, node: rclpy.node.Node, facade: QObject):
+        """
+        Initializes all publishers and subscribers.
+        
+        Args:
+            node: The ROSOrchestratorNode instance to create topics on.
+            facade: The ROSCommunication facade instance to emit signals.
+        """
+        self._node = node
+        self._facade = facade
+        self._bridge = CvBridge()
+        
+        # --- Publishers ---
+        self._points_pub = self._node.create_publisher(
+            msg_type=Point2DArray,
+            topic=TOPIC_FOUR_POINTS,
+            qos_profile=10
+        )
+        
+        # --- Subscribers ---
+        self._node.create_subscription(
+            msg_type=Image,
+            topic=TOPIC_UNDISTORTED_IMAGE,
+            callback=self._undistorted_cb,
+            qos_profile=10
+        )
+        self._node.create_subscription(
+            msg_type=Image,
+            topic=TOPIC_ANNOTATED_IMAGE,
+            callback=self._annotated_cb,
+            qos_profile=10
+        )
+        self._node.create_subscription(
+            msg_type=ManyDetectedObjects,
+            topic=TOPIC_DETECTED_OBJECTS,
+            callback=self._objects_cb,
+            qos_profile=10
+        )
+        self._node.create_subscription(
+            msg_type=JointAnglesArray,
+            topic=TOPIC_JOINT_ANGLES,
+            callback=self._joints_cb,
+            qos_profile=10
+        )
+    # --- Public Methods (called by the Facade) ---
+
+    def publish_perspective_points(self, points: np.ndarray):
+        """Constructs and publishes a Point2DArray message."""
+        msg = Point2DArray()
+        for x, y in points:
+            msg.points.append(Point2D(x=float(x), y=float(y)))
+        self._points_pub.publish(msg)
+        self._node.get_logger().debug(f"Published {len(points)} perspective points.")
+
+    # --- Private Subscriber Callbacks ---
+
+    def _undistorted_cb(self, msg: Image):
+        """Callback for the raw, undistorted image. Converts to CV2 format."""
+        try:
+            cv_img = self._bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+            self._facade.undistorted_image_received.emit(cv_img)
+        except Exception as e:
+            self._node.get_logger().warn(f"Failed undistorted image conversion: {e}")
+
+    def _annotated_cb(self, msg: Image):
+        """Callback for the annotated image. Converts to CV2 format."""
+        try:
+            cv_img = self._bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+            self._facade.annotated_image_received.emit(cv_img)
+        except Exception as e:
+            self._node.get_logger().warn(f"Failed annotated image conversion: {e}")
+
+    def _objects_cb(self, msg: ManyDetectedObjects):
+        """Callback for detected objects. Forwards the message directly."""
+        self._facade.detected_objects_received.emit(msg)
+
+    def _joints_cb(self, msg: JointAnglesArray):
+        """Callback for joint angles. Forwards the message directly."""
+        self._facade.joint_angles_received.emit(msg)
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/grcn_plane_manager.py
+============================================================
+
+### IMPORTS ###
+from PyQt5.QtGui import QTransform
+from .utils import create_cutout_pixmap
+from .widgets.components.graphics.grcn_draggable_item import DraggableItem
+from .grcn_app_state import AppState
+
+### FULL CONTENT ###
+"""
+grcn_plane_manager.py - Handles working plane operations for the GUI.
+"""
+
+from PyQt5.QtGui import QTransform
+
+from .utils import create_cutout_pixmap
+from .widgets.components.graphics.grcn_draggable_item import DraggableItem
+from .grcn_app_state import AppState
+
+
+class PlaneManager:
+    """Manages the working plane contents and object placement."""
+
+    def __init__(self, main_window):
+        self.main_window = main_window
+        self.logger = main_window.logger
+
+    def reset_plane(self):
+        """Clears the working plane and sets state back to IDLE."""
+        self.main_window.working_plane.reset_scene()
+        self.main_window.app_state_mgr.set_state(AppState.IDLE)
+        self.main_window.statusBar().showMessage("Plane has been reset. Ready for new plan.")
+
+    def add_new_objects_from_cutouts(self):
+        """Adds new draggable items from the latest cached ROS image + objects."""
+        if self.main_window.app_state_mgr.state != AppState.IDLE:
+            self.main_window.statusBar().showMessage(
+                "Cannot add objects while an action is running or finished.", 3000
+            )
+            return
+
+        if (
+            self.main_window.latest_objects_msg is None
+            or self.main_window.latest_annotated_image is None
+        ):
+            self.logger.warn("Add objects called, but data is not ready yet.")
+            self.main_window.statusBar().showMessage("Data not available to add objects.")
+            return
+
+        image_to_process = self.main_window.latest_annotated_image
+        img_height, img_width, _ = image_to_process.shape
+        cam_center_x = img_width / 2.0
+        cam_center_y = img_height / 2.0
+
+        current_object_count = len(self.main_window.working_plane.items_on_plane)
+
+        for obj in self.main_window.latest_objects_msg.objects:
+            try:
+                pixmap = create_cutout_pixmap(image_to_process, obj)
+                if pixmap.isNull():
+                    continue
+
+                transform = QTransform()
+                transform.scale(1, -1)
+                flipped_pixmap = pixmap.transformed(transform)
+                if flipped_pixmap.isNull():
+                    continue
+
+                item = DraggableItem(pixmap=flipped_pixmap, detected_object=obj)
+
+                scene_x = obj.center_point.x - cam_center_x
+                scene_y = -(obj.center_point.y - cam_center_y)
+
+                final_x = scene_x - (flipped_pixmap.width() / 2)
+                final_y = scene_y - (flipped_pixmap.height() / 2)
+
+                item.setPos(final_x, final_y)
+                self.main_window.working_plane.working_plane_scene.addItem(item)
+                self.main_window.working_plane.items_on_plane.append(item)
+
+            except Exception as e:
+                self.logger.error(f"Error processing object ID {obj.id}: {e}", exc_info=True)
+                self.main_window.statusBar().showMessage(
+                    f"Error processing object ID {obj.id}. See logs.", 5000
+                )
+
+        new_items_count = len(self.main_window.working_plane.items_on_plane) - current_object_count
+        self.main_window.statusBar().showMessage(f"Added {new_items_count} new objects to the plane.")
+
+    def delete_selected(self):
+        """Removes selected draggable items from the working plane."""
+        selected_items = self.main_window.working_plane.working_plane_scene.selectedItems()
+
+        for item in selected_items:
+            self.main_window.working_plane.working_plane_scene.removeItem(item)
+            if item in self.main_window.working_plane.items_on_plane:
+                self.main_window.working_plane.items_on_plane.remove(item)
+
+        if selected_items:
+            self.main_window.statusBar().showMessage(f"Deleted {len(selected_items)} item(s).")
+        else:
+            self.main_window.statusBar().showMessage("No items selected to delete.")
+
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/__init__.py
+============================================================
+
+### IMPORTS ###
+(No primary imports found)
+
+### FULL CONTENT ###
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/grcn_commands_manager.py
+============================================================
+
+### IMPORTS ###
+from .widgets.components.graphics.grcn_draggable_item import DraggableItem
+from PyQt5.QtCore import pyqtSlot # Import for signal handling
+from mycobot280pi_interfaces.msg import SimpleCommands
+
+### FULL CONTENT ###
+from .widgets.components.graphics.grcn_draggable_item import DraggableItem
+
+from PyQt5.QtCore import pyqtSlot # Import for signal handling
+from mycobot280pi_interfaces.msg import SimpleCommands  
+
+class ServiceManager:
+    """Manages sending service requests and handling responses for ALL simple commands."""
+
+    def __init__(self, main_window, ros_comm):
+        """
+        :param main_window: Reference to the QMainWindow (for status bar updates).
+        :param ros_comm: Reference to ROSCommunication facade.
+        """
+        self.main_window = main_window
+        self.ros_comm = ros_comm
+        self.logger = ros_comm.get_logger()
+
+        # Connect ROS signals to our handlers
+        self.ros_comm.simple_command_response_received.connect(self._on_response)
+
+    # -------------------------------------------------------------------------
+    # GUI → ROS (Send Service Request for MOVE/OLD BUTTON)
+    # -------------------------------------------------------------------------
+
+    def send_service_request(self):
+        """Sends a MOVE command service request for the selected DraggableItem (from Control Panel's old button)."""
+        selected_items = self.main_window.working_plane.working_plane_scene.selectedItems()
+
+        if not selected_items or not isinstance(selected_items[0], DraggableItem):
+            self.main_window.statusBar().showMessage("⚠️ No valid item selected for MOVE command.", 3000)
+            return
+
+        item = selected_items[0]
+        center_pos = item.mapToScene(item.boundingRect().center())
+        rot = item.rotation()
+
+        coords = [center_pos.x(), center_pos.y(), 60.0, 180.0, 0.0, rot]
+
+        msg = f"➡️ Sending OLD MOVE command | coords={coords}, speed=80"
+        self.main_window.statusBar().showMessage(msg, 4000)
+        self.logger.info(msg)
+
+        self.ros_comm.call_simple_command(
+            command_type="move",
+            coords=coords, 
+            speed=80, 
+            joint_angles=[], 
+        )
+
+    # -------------------------------------------------------------------------
+    # GUI → ROS (NEW Dock Panel Command Handlers)
+    # -------------------------------------------------------------------------
+
+    def handle_rotation_command(self, rz_angle: float):
+        """Handles RZ rotation command from the DockPanel."""
+        msg = f"➡️ Sending RZ_ROTATION command | rz_angle={rz_angle}"
+        self.main_window.statusBar().showMessage(msg, 4000)
+        self.logger.info(msg)
+
+        self.ros_comm.call_simple_command(
+            command_type="set_rz_angle",
+            coords=[0.0, 0.0, 0.0, 0.0, 0.0, rz_angle]
+        )
+
+    def handle_rgb_command(self, r: int, g: int, b: int):
+        """Handles RGB command from the DockPanel."""
+        msg = f"➡️ Sending SET_RGB command | (R={r}, G={g}, B={b})"
+        self.main_window.statusBar().showMessage(msg, 4000)
+        self.logger.info(msg)
+
+        self.ros_comm.call_simple_command(
+            command_type="set_rgb",
+            r=r,
+            g=g,
+            b=b
+        )
+
+    def handle_vacuum_command(self, cmd_type: str, pin1: int, pin2: int):
+        """Handles Vacuum command from the DockPanel."""
+        msg = f"➡️ Sending VACUUM command | type={cmd_type}, pin1={pin1}, pin2={pin2}"
+        self.main_window.statusBar().showMessage(msg, 4000)
+        self.logger.info(msg)
+
+        self.ros_comm.call_simple_command(
+            command_type=cmd_type,
+            vacuum_pin1_level=pin1,
+            vacuum_pin2_level=pin2
+        )
+
+    def handle_coords_command(self, x: float, y: float, z: float, rx: float, ry: float, rz: float, speed: int):
+        """Handles MOVE command from the DockPanel."""
+        full_coords = [x, y, z, rx, ry, rz]
+        msg = f"➡️ Sending MOVE command | coords={full_coords}, speed={speed}"
+        self.main_window.statusBar().showMessage(msg, 4000)
+        self.logger.info(msg)
+
+        self.ros_comm.call_simple_command(
+            command_type="move",
+            coords=full_coords,
+            speed=speed
+        )
+
+    def handle_home_command(self):
+        """Membuat dan mengirim pesan ROS untuk perintah GO HOME."""
+        FIXED_HOME_ANGLES = [0, 0, 0, 0, 0, 0]
+        MAX_SPEED = 100
+        msg = f"➡️ Sending GO_HOME command | angles={FIXED_HOME_ANGLES}, speed=MAX_SPEED"
+        self.main_window.statusBar().showMessage(msg, 4000)
+        self.logger.info(msg)
+
+        self.ros_comm.call_simple_command(
+            command_type="move_joints",
+            joint_angles=FIXED_HOME_ANGLES,
+            speed=MAX_SPEED
+        )
+
+    # -------------------------------------------------------------------------
+    # ROS → GUI (Response Handling)
+    # -------------------------------------------------------------------------
+
+    def _on_response(self, success: bool, message: str):
+        """Handles the response from the simple command service and updates status."""
+        if success:
+            status = f"✅ Command SUCCESS | {message}"
+        else:
+            status = f"❌ Command FAILED | {message}"
+
+        self.main_window.statusBar().showMessage(status, 4000)
+        self.logger.info(status)
+
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/grcn_main_window.py
+============================================================
+
+### IMPORTS ###
+from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QDockWidget, QMessageBox
+from PyQt5.QtCore import Qt
+from ..roscomm.grcn_ros_facade import ROSCommunication
+from .widgets.grcn_monitor_panel import MonitorPanel
+from .widgets.grcn_workspace_panel import WorkspacePlane
+from .widgets.grcn_action_panel import ActionPanel
+from .widgets.grcn_command_panel import CommandPanel
+from .grcn_app_state import AppState, AppStateManager
+from .grcn_signal_connector import connect_signals
+from .grcn_plane_manager import PlaneManager
+from .grcn_selection_manager import SelectionManager
+from .grcn_action_manager import ActionManager
+from .grcn_commands_manager import ServiceManager
+
+### FULL CONTENT ###
+"""
+grcn_main_window.py - Main application window for the MyCobot 280 Pi GUI.
+
+Acts as the central director:
+- Builds and assembles UI components.
+- Instantiates managers (state, plane, action, service, selection).
+- Connects signals via grcn_signal_connector.
+- Maintains cached ROS messages/images.
+"""
+
+from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QDockWidget, QMessageBox
+from PyQt5.QtCore import Qt
+
+# --- Local imports ---
+from ..roscomm.grcn_ros_facade import ROSCommunication
+
+from .widgets.grcn_monitor_panel import MonitorPanel
+from .widgets.grcn_workspace_panel import WorkspacePlane
+from .widgets.grcn_action_panel import ActionPanel
+from .widgets.grcn_command_panel import CommandPanel
+
+# Managers
+from .grcn_app_state import AppState, AppStateManager
+from .grcn_signal_connector import connect_signals
+from .grcn_plane_manager import PlaneManager
+from .grcn_selection_manager import SelectionManager
+from .grcn_action_manager import ActionManager
+from .grcn_commands_manager import ServiceManager
+
+
+class MainWindow(QMainWindow):
+    """The main application window, orchestrating all UI components and ROS communication."""
+
+    def __init__(self):
+        super().__init__()
+
+        # 1. Initialize ROS backend
+        self.ros_comm = ROSCommunication()
+        self.logger = self.ros_comm.get_logger()
+
+        self.setWindowTitle("MyCobot 280 Pi GUI")
+        self.resize(1400, 900)
+
+        # --- Cached data from ROS ---
+        self.latest_objects_msg = None
+        self.latest_annotated_image = None
+
+        # --- Build UI ---
+        self.setup_ui()
+
+        # --- Instantiate managers ---
+        self.app_state_mgr = AppStateManager(self)
+        self.plane_mgr = PlaneManager(self)
+        self.selection_mgr = SelectionManager(self)
+        self.action_mgr = ActionManager(self, self.ros_comm)
+        self.service_mgr = ServiceManager(self, self.ros_comm)
+
+        # --- Wire signals ---
+        connect_signals(self)
+
+        # --- Initialize application state ---
+        self.app_state_mgr.set_state(AppState.IDLE)
+        self.statusBar().showMessage("GUI is Ready.")
+
+    # -------------------------------------------------------------------------
+    # UI Setup
+    # -------------------------------------------------------------------------
+
+    def setup_ui(self):
+        """Instantiates all panel widgets and assembles the layout."""
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+
+        # Create widgets
+        self.monitor_panel = MonitorPanel()
+        self.working_plane = WorkspacePlane()
+        self.control_panel = ActionPanel()
+        self.dock_panel = CommandPanel()
+
+        
+
+        # Layout (camera left, working plane + controls right)
+        right_layout = QVBoxLayout()
+        right_layout.addWidget(self.working_plane)
+        right_layout.addWidget(self.control_panel)
+
+        main_layout = QHBoxLayout(central_widget)
+        main_layout.addWidget(self.monitor_panel)
+        main_layout.addLayout(right_layout)
+
+        # Dock widget
+        self.dock_widget = QDockWidget("Controls & Cutouts", self)
+        self.dock_widget.setWidget(self.dock_panel)
+        
+        self.dock_widget.setFeatures(
+            QDockWidget.DockWidgetFeatures(
+                QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetFloatable 
+            )
+        )
+        
+        self.addDockWidget(Qt.RightDockWidgetArea, self.dock_widget)
+
+    # -------------------------------------------------------------------------
+    # Cached ROS Data
+    # -------------------------------------------------------------------------
+
+    def cache_detected_objects(self, objects_msg):
+        """Caches the latest detected objects message."""
+        self.latest_objects_msg = objects_msg
+        if self.dock_panel and self.latest_annotated_image is not None:
+            self.dock_panel.update_object_count(objects_msg)
+
+    def cache_annotated_image(self, cv_image):
+        """Caches the latest annotated image."""
+        self.latest_annotated_image = cv_image
+        # GUI updates happen via direct signal connections
+
+    # -------------------------------------------------------------------------
+    # Shutdown
+    # -------------------------------------------------------------------------
+
+    def closeEvent(self, event):
+        """Ensures clean shutdown of ROS node when the window is closed."""
+        self.logger.info("Shutdown signal received, closing ROS components...")
+        self.ros_comm.shutdown()
+        event.accept()
+
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/utils.py
+============================================================
+
+### IMPORTS ###
+import cv2
+from PyQt5.QtGui import QImage, QPixmap
+from mycobot280pi_interfaces.msg import OneDetectedObject
+import numpy as np
+
+### FULL CONTENT ###
+
+"""
+General purpose utility functions for the GUI package.
+
+This file contains helper functions that can be used by various GUI components
+but do not belong to any single widget class.
+"""
+
+import cv2
+from PyQt5.QtGui import QImage, QPixmap
+from mycobot280pi_interfaces.msg import OneDetectedObject
+import numpy as np
+
+# Vacuum Pin Mapping: (pin1_level (white wire), pin2_level (yellow wire))
+VACUUM_MAP = {
+    "vacuum_strong": (0, 1),
+    "vacuum_weak":   (0, 0),
+    "vacuum_off":    (1, 0),
+    # "vacuum_off_alt": (1, 1), # Optional, if you want a dedicated command for 11
+}
+
+def create_cutout_pixmap(source_image: np.ndarray, obj: OneDetectedObject) -> QPixmap:
+    """
+    Crops a source OpenCV image based on a detected object's bounding box data.
+
+    Args:
+        source_image: The full OpenCV image (in BGR format).
+        obj: A OneDetectedObject ROS message containing the object's metadata.
+
+    Returns:
+        A QPixmap of the cropped object, ready for display in Qt. Returns an
+        empty QPixmap if the bounding box is invalid.
+    """
+    # 1. Reconstruct the bounding box from the message fields
+    w = obj.width
+    h = obj.height
+    x = int(obj.center_point.x - w / 2.0)
+    y = int(obj.center_point.y - h / 2.0)
+    
+    # 2. Add boundary checks for robustness
+    img_h, img_w, _ = source_image.shape
+    if w <= 0 or h <= 0 or x < 0 or y < 0 or (x + w) > img_w or (y + h) > img_h:
+        # Return an empty pixmap if the box is invalid or out of bounds
+        return QPixmap()
+
+    # 3. Crop the image using the calculated box
+    cutout_cv = source_image[y:y+h, x:x+w]
+    
+    if cutout_cv.size == 0:
+        return QPixmap() # Return empty pixmap if crop result is empty
+
+    # 4. Convert the OpenCV image (BGR) to a QPixmap (RGB)
+    try:
+        rgb_cutout = cv2.cvtColor(cutout_cv, cv2.COLOR_BGR2RGB)
+        h2, w2, ch = rgb_cutout.shape
+        bytes_per_line = ch * w2
+        qt_img = QImage(rgb_cutout.data, w2, h2, bytes_per_line, QImage.Format_RGB888)
+        
+        return QPixmap.fromImage(qt_img)
+    except cv2.error:
+        # Handle potential errors during color conversion if the cutout is malformed
+        return QPixmap()
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/grcn_action_manager.py
+============================================================
+
+### IMPORTS ###
+from PyQt5.QtWidgets import QMessageBox
+from mycobot280pi_interfaces.msg import ManyDetectedObjects, Point2DArray, Point2D
+from .widgets.components.graphics.grcn_draggable_item import DraggableItem
+from .grcn_app_state import AppState
+
+### FULL CONTENT ###
+"""
+grcn_action_manager.py - Handles GUI-side orchestration of ROS 2 actions.
+"""
+
+from PyQt5.QtWidgets import QMessageBox
+from mycobot280pi_interfaces.msg import ManyDetectedObjects, Point2DArray, Point2D
+
+from .widgets.components.graphics.grcn_draggable_item import DraggableItem
+from .grcn_app_state import AppState
+
+
+class ActionManager:
+    """Manages starting, canceling, and handling feedback/results of actions."""
+
+    def __init__(self, main_window, ros_comm):
+        self.main_window = main_window
+        self.ros_comm = ros_comm
+        self.logger = ros_comm.get_logger()
+
+        self.ros_comm.action_feedback.connect(self._on_feedback)
+        self.ros_comm.action_result.connect(self._on_result)
+
+    def start_action(self):
+        """Collects moved items and sends a complex action goal to ROS."""
+        moved_items = [
+            item for item in self.main_window.working_plane.items_on_plane if item.was_moved
+        ]
+
+        if not moved_items:
+            QMessageBox.warning(
+                self.main_window, "Error", "No items have been moved to a new target position."
+            )
+            return
+
+        self.main_window.statusBar().showMessage("Preparing action goal for moved items...")
+
+        objects_to_move = ManyDetectedObjects()
+        target_positions = Point2DArray()
+        target_orientations = []
+
+        for item in moved_items:
+            objects_to_move.objects.append(item.detected_object)
+
+            new_pos_scene = item.scenePos()
+            target_pt = Point2D()
+            target_pt.x = new_pos_scene.x()
+            target_pt.y = new_pos_scene.y()
+            target_positions.points.append(target_pt)
+            target_orientations.append(int(item.rotation()))
+
+        self.ros_comm.send_complex_goal(objects_to_move, target_positions, target_orientations)
+
+        self.main_window.app_state_mgr.set_state(AppState.BUSY)
+
+    def cancel_action(self):
+        """Cancels the ongoing complex action via ROS."""
+        self.logger.info("Cancel button clicked.")
+        self.ros_comm.cancel_complex_goal()
+
+    def _on_feedback(self, current_state: str):
+        """Displays live feedback in the GUI status bar."""
+        self.main_window.statusBar().showMessage(f"Action Progress: {current_state}")
+
+    def _on_result(self, success: bool, message: str):
+        """Handles the final result of the action and updates GUI state."""
+        self.main_window.statusBar().showMessage(f"Action Finished: {message}", 5000)
+        self.main_window.app_state_mgr.set_state(AppState.FINISHED)
+
+        if success:
+            QMessageBox.information(self.main_window, "Action Success", message)
+        else:
+            QMessageBox.warning(self.main_window, "Action Failed / Cancelled", message)
+
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/grcn_signal_connector.py
+============================================================
+
+### IMPORTS ###
+from __future__ import annotations
+from typing import TYPE_CHECKING
+from .grcn_main_window import MainWindow
+
+### FULL CONTENT ###
+"""
+grcn_signal_connector.py - Centralizes all PyQt signal-slot connections.
+
+This module is responsible for wiring up the entire application. It connects:
+- ROS facade signals for data updates to the appropriate GUI widgets.
+- User interactions from control panels to the logic in the managers.
+- Signals and slots between different UI components to keep them synchronized.
+
+This decoupled approach makes the individual components more modular and easier
+to test and maintain.
+"""
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .grcn_main_window import MainWindow
+
+
+def connect_signals(main_window: 'MainWindow'):
+    """
+    Wires up all signals and slots for the application.
+
+    :param main_window: The main QMainWindow instance which holds references
+                        to all managers and UI panel widgets.
+    """
+    # --- Create aliases for managers and panels to improve readability ---
+    ros_comm = main_window.ros_comm
+    action_mgr = main_window.action_mgr
+    service_mgr = main_window.service_mgr
+    plane_mgr = main_window.plane_mgr
+    selection_mgr = main_window.selection_mgr
+
+    monitor_panel = main_window.monitor_panel
+    control_panel = main_window.control_panel
+    dock_panel = main_window.dock_panel
+    working_plane = main_window.working_plane
+    
+    annotated_camera = main_window.monitor_panel.annotated_camera
+    joint_monitor = main_window.monitor_panel.joint_monitor
+    
+    # -------------------------------------------------------------------------
+    # ROS → GUI (data updates)
+    # -------------------------------------------------------------------------
+    ros_comm.detected_objects_received.connect(main_window.cache_detected_objects)
+    ros_comm.annotated_image_received.connect(main_window.cache_annotated_image)
+    ros_comm.undistorted_image_received.connect(monitor_panel.perspective_editor.update_frame)
+    ros_comm.annotated_image_received.connect(annotated_camera.update_camera_view)
+    ros_comm.joint_angles_received.connect(joint_monitor.update_joint_display)
+    
+
+    # -------------------------------------------------------------------------
+    # Control Panel → Managers
+    # -------------------------------------------------------------------------
+    control_panel.analyze_btn.clicked.connect(action_mgr.start_action)
+    control_panel.emergency_btn.clicked.connect(action_mgr.cancel_action)
+    control_panel.reset_btn.clicked.connect(plane_mgr.reset_plane)
+    control_panel.add_object_btn.clicked.connect(plane_mgr.add_new_objects_from_cutouts)
+    control_panel.delete_btn.clicked.connect(plane_mgr.delete_selected)
+
+    # -------------------------------------------------------------------------
+    # Control Panel (rotation) → Working Plane
+    # -------------------------------------------------------------------------
+    control_panel.rotate_clockwise_btn.clicked.connect(working_plane.rotate_clockwise)
+    control_panel.rotate_counter_clockwise_btn.clicked.connect(working_plane.rotate_counter_clockwise)
+
+    # -------------------------------------------------------------------------
+    # Peer UI Component Connections
+    # -------------------------------------------------------------------------
+    # Working Plane selection changes update the status bar (via selection manager)
+    working_plane.working_plane_scene.item_selected.connect(selection_mgr.set_selected_item)
+    working_plane.working_plane_scene.selection_cleared.connect(selection_mgr.clear_selection) 
+
+
+    # -------------------------------------------------------------------------
+    # GUI → ROS (publishing user input)
+    # -------------------------------------------------------------------------
+    # Changes to the perspective points in the editor are published via ROS
+    monitor_panel.perspective_editor.perspective_points_changed.connect(
+        ros_comm.publish_four_points
+    )
+
+    # -------------------------------------------------------------------------
+    # Dock Panel → Service Manager (Custom Commands)
+    # -------------------------------------------------------------------------
+    dock_panel.send_rgb_command.connect(service_mgr.handle_rgb_command)
+    dock_panel.send_vacuum_command.connect(service_mgr.handle_vacuum_command)
+    dock_panel.send_coords_command.connect(service_mgr.handle_coords_command)
+    dock_panel.send_home_command.connect(service_mgr.handle_home_command)
+   
+    selection_mgr.selection_changed.connect(dock_panel.update_target_sliders_from_selection)
+
+    
+    main_window.logger.info("Signal connections established.")
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/grcn_app_state.py
+============================================================
+
+### IMPORTS ###
+from enum import Enum
+
+### FULL CONTENT ###
+"""
+grcn_app_state.py - Application state management for the GUI.
+
+Defines:
+- AppState enum (IDLE, BUSY, FINISHED)
+- AppStateManager to update GUI based on current state
+"""
+
+from enum import Enum
+
+
+class AppState(Enum):
+    IDLE = 1
+    BUSY = 2
+    FINISHED = 3
+
+
+class AppStateManager:
+    """Handles transitions between AppStates and updates the GUI accordingly."""
+
+    def __init__(self, main_window):
+        """
+        :param main_window: Reference to the QMainWindow (to access control panel + status bar).
+        """
+        self.main_window = main_window
+        self.logger = main_window.logger
+        self.state = AppState.IDLE
+
+    def set_state(self, new_state: AppState):
+        """Switches the application state and updates UI controls."""
+        self.state = new_state
+        self.logger.info(f"--- Application state changed to: {self.state.name} ---")
+
+        is_busy = (self.state == AppState.BUSY)
+
+        # Disable object editing while busy
+        self.main_window.control_panel.add_object_btn.setDisabled(is_busy)
+        self.main_window.control_panel.delete_btn.setDisabled(is_busy)
+        self.main_window.control_panel.reset_btn.setDisabled(is_busy)
+        self.main_window.control_panel.rotate_clockwise_btn.setDisabled(is_busy)
+        self.main_window.control_panel.rotate_counter_clockwise_btn.setDisabled(is_busy)
+
+        # Manage analyze/cancel button states
+        if self.state == AppState.IDLE:
+            self.main_window.control_panel.analyze_btn.setEnabled(True)
+            self.main_window.control_panel.emergency_btn.setEnabled(False)
+        elif self.state == AppState.BUSY:
+            self.main_window.control_panel.analyze_btn.setEnabled(False)
+            self.main_window.control_panel.emergency_btn.setEnabled(True)
+        elif self.state == AppState.FINISHED:
+            self.main_window.control_panel.analyze_btn.setEnabled(False)
+            self.main_window.control_panel.emergency_btn.setEnabled(False)
+            self.main_window.control_panel.reset_btn.setEnabled(True)
+
+        # Status bar hint
+        self.main_window.statusBar().showMessage(f"State: {self.state.name}")
+
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/widgets/grcn_action_panel.py
+============================================================
+
+### IMPORTS ###
+from PyQt5.QtWidgets import QWidget, QPushButton, QGridLayout
+from PyQt5.QtCore import pyqtSignal
+
+### FULL CONTENT ###
+#!/usr/bin/env python3
+
+"""
+Defines the ActionPanel, a dedicated widget for the main action buttons.
+"""
+
+# Impor QGridLayout
+from PyQt5.QtWidgets import QWidget, QPushButton, QGridLayout
+from PyQt5.QtCore import pyqtSignal
+
+class ActionPanel(QWidget):
+    """A container widget that holds all the main control buttons."""
+    
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # ### DIUBAH: Gunakan QGridLayout ###
+        layout = QGridLayout(self)
+
+        # Create all the button instances
+
+        self.add_object_btn = QPushButton("Add New Objects")
+        self.reset_btn = QPushButton("Reset Plane")
+        self.analyze_btn = QPushButton("Start Pick & Place")
+        self.emergency_btn = QPushButton("Cancel Action")
+        self.delete_btn = QPushButton("Delete Selected")
+        self.rotate_counter_clockwise_btn = QPushButton("Rotate CCW")
+        self.rotate_clockwise_btn = QPushButton("Rotate CW")
+
+        # Disable buttons that should only be enabled by the state machine
+ 
+        self.emergency_btn.setEnabled(False)
+
+        # ### DIUBAH: Tambahkan tombol ke grid (baris, kolom) ###
+        
+        # Baris 0: Tombol Aksi Utama
+        # Kita buat tombol Start lebih besar dengan membuatnya memakan 2 kolom (colSpan=2)
+        layout.addWidget(self.analyze_btn, 0, 0, 1, 2) # Baris 0, Kolom 0, memakan 1 baris, 2 kolom
+        layout.addWidget(self.emergency_btn, 0, 2)      # Baris 0, Kolom 2
+        layout.addWidget(self.delete_btn, 0, 3)         # Baris 0, Kolom 3
+
+        # Baris 1: Tombol Utilitas
+        layout.addWidget(self.reset_btn, 1, 0)          # Baris 1, Kolom 0
+        layout.addWidget(self.add_object_btn, 1, 1)     # Baris 1, Kolom 1
+        layout.addWidget(self.rotate_counter_clockwise_btn, 1, 2) # Baris 1, Kolom 2
+        layout.addWidget(self.rotate_clockwise_btn, 1, 3)     # Baris 1, Kolom 3
+
+       
+
+        # ### DIUBAH: Cara baru untuk menambahkan spasi fleksibel ###
+        # Beri ruang ekstra pada kolom antara tombol aksi dan utilitas jika ada ruang lebih
+        layout.setColumnStretch(4, 1) # Memberi "stretch" pada kolom ke-4 (indeks dari 0)
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/widgets/grcn_workspace_panel.py
+============================================================
+
+### IMPORTS ###
+from PyQt5.QtWidgets import (
+from PyQt5.QtGui import (
+from PyQt5.QtCore import Qt, QRectF, pyqtSignal, pyqtSlot
+from .components.graphics.grcn_draggable_item import DraggableItem
+
+### FULL CONTENT ###
+"""
+Defines the WorkspacePlane widget, the main interactive 2D canvas.
+This version is self-contained, including its own controls for rotation.
+"""
+
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QGraphicsView, QGraphicsScene, QFrame,
+    QLabel, QSlider, QDoubleSpinBox, QGraphicsTextItem, QGraphicsEllipseItem, QGraphicsRectItem,   
+    QGraphicsPathItem
+)
+from PyQt5.QtGui import (
+    QTransform, QColor, QBrush, QPen, QPainterPath, QFont
+)
+from PyQt5.QtCore import Qt, QRectF, pyqtSignal, pyqtSlot
+
+# Pastikan path import ini benar
+from .components.graphics.grcn_draggable_item import DraggableItem
+
+class InteractiveGraphicsScene(QGraphicsScene):
+    item_selected = pyqtSignal(object)
+    selection_cleared = pyqtSignal()
+    def __init__(self, parent=None):
+        super().__init__(parent)
+    def mousePressEvent(self, event):
+        super().mousePressEvent(event)
+        selected_items = self.selectedItems()
+        if len(selected_items) == 1: self.item_selected.emit(selected_items[0])
+        elif len(selected_items) == 0: self.selection_cleared.emit()
+
+
+class WorkspacePlane(QWidget):
+    item_selected = pyqtSignal(object)
+    selection_cleared = pyqtSignal()
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(5)
+        
+        self.working_plane_scene = InteractiveGraphicsScene(self)
+        self.view = QGraphicsView(self.working_plane_scene)
+        self.working_plane_scene.setSceneRect(QRectF(-300, -300, 600, 600))
+        
+        self.working_plane_scene.item_selected.connect(self._on_item_selected)
+        self.working_plane_scene.selection_cleared.connect(self._on_selection_cleared)
+        
+        self.items_on_plane = []
+        
+        transform = QTransform(); transform.scale(1, -1)
+        self.view.setTransform(transform)
+        
+        # ### INI ADALAH STRUKTUR YANG BENAR ###
+        # 1. Tambahkan view (kanvas) ke layout
+        main_layout.addWidget(self.view, 1)
+
+        # 2. Buat dan tambahkan panel kontrol di bawahnya
+        rotation_controls = self._create_rotation_controls()
+        main_layout.addWidget(rotation_controls)
+        
+        # 3. Baru gambar isinya
+        self.draw_mycobot280pi_working_plane()
+        self.draw_axes_with_ticks()
+
+        self._on_selection_cleared()
+    
+    def _create_rotation_controls(self):
+        control_container = QWidget()
+        layout = QHBoxLayout(control_container)
+        layout.setContentsMargins(5, 0, 5, 0)
+
+        self.visual_rz_slider = QSlider(Qt.Horizontal)
+        self.visual_rz_spinbox = QDoubleSpinBox()
+
+        self.visual_rz_spinbox.setRange(-180.0, 180.0); self.visual_rz_slider.setRange(-180, 180)
+        self.visual_rz_spinbox.setSuffix(" °")
+        self.visual_rz_spinbox.setDecimals(1)
+
+        self.visual_rz_slider.valueChanged.connect(self.visual_rz_spinbox.setValue)
+        self.visual_rz_spinbox.valueChanged.connect(self.visual_rz_slider.setValue)
+        self.visual_rz_spinbox.valueChanged.connect(self.set_selected_item_rotation)
+
+        layout.addWidget(QLabel("Interactive Rotation (RZ):"))
+        layout.addWidget(self.visual_rz_slider, 1)
+        layout.addWidget(self.visual_rz_spinbox)
+
+        return control_container
+
+    def _set_synced_rotation_value(self, angle):
+        self.visual_rz_spinbox.blockSignals(True)
+        self.visual_rz_slider.blockSignals(True)
+        self.visual_rz_spinbox.setValue(angle)
+        self.visual_rz_spinbox.blockSignals(False)
+        self.visual_rz_slider.blockSignals(False)
+        
+    @pyqtSlot(object)
+    def _on_item_selected(self, item):
+        self.visual_rz_slider.setEnabled(True)
+        self.visual_rz_spinbox.setEnabled(True)
+        self._set_synced_rotation_value(item.rotation())
+        self.item_selected.emit(item)
+
+    @pyqtSlot()
+    def _on_selection_cleared(self):
+        self.visual_rz_slider.setEnabled(False)
+        self.visual_rz_spinbox.setEnabled(False)
+        self.selection_cleared.emit()
+    
+    @pyqtSlot(float)
+    def set_selected_item_rotation(self, angle: float):
+        selected_items = self.working_plane_scene.selectedItems()
+        for item in selected_items:
+            if isinstance(item, DraggableItem):
+                item.setRotation(float(angle))
+    
+    def draw_mycobot280pi_working_plane(self):
+        """Draws the static elements representing the robot base and work area."""
+        
+        circle_radius = 280.0
+        circle_item = QGraphicsEllipseItem(-circle_radius, -circle_radius, 2 * circle_radius, 2 * circle_radius)
+        semi_transparent_color = QColor(173, 216, 230, 50)
+        circle_item.setBrush(QBrush(semi_transparent_color))
+        circle_item.setPen(QPen(Qt.NoPen))
+        circle_item.setZValue(0)
+        self.working_plane_scene.addItem(circle_item)
+        
+        OUTER_RADIUS = 250
+        INNER_RADIUS = 150
+        
+
+        # 1. Definisikan Cincin Luar (Radius 250mm)
+        # Ini adalah lingkaran penuh, yang akan menjadi batas luar area kerja.
+        outer_circle = QPainterPath()
+        outer_circle.addEllipse(-OUTER_RADIUS, -OUTER_RADIUS, 2 * OUTER_RADIUS, 2 * OUTER_RADIUS)
+
+        # 2. Definisikan Lingkaran Dalam (Radius 150mm)
+        # Ini adalah area yang HARUS DIKECUALIKAN dari cincin luar.
+        inner_circle = QPainterPath()
+        inner_circle.addEllipse(-INNER_RADIUS, -INNER_RADIUS, 2 * INNER_RADIUS, 2 * INNER_RADIUS)
+
+        # 3. Definisikan Area Halangan (Area di Belakang Robot)
+        # Membuat bentuk persegi panjang untuk area di belakang robot yang tidak terjangkau (misalnya dari X=-250 hingga X=-50)
+        # Anda bisa menyesuaikan batas ini agar sesuai dengan jangkauan bahu myCobot.
+        block_width = 250.0  # Lebar total pemblokiran
+        block_height = 500.0 # Lebih tinggi dari radius
+        
+        # Koordinat X pemblokiran
+        X_START_BLOCK = -OUTER_RADIUS 
+        X_END_BLOCK = -50.0  # Misalnya, memblokir dari X=-250 hingga X=-50
+
+        block_area = QPainterPath()
+        block_area.addRect(X_START_BLOCK, -block_height/2,  # Mulai dari X=-250
+                           X_END_BLOCK - X_START_BLOCK, block_height)
+
+        # 4. Kombinasikan Path: Bentuk Cincin Penuh
+        # Memotong (subtract) lingkaran dalam dari lingkaran luar.
+        ring_path = outer_circle.subtracted(inner_circle)
+
+        # 5. Gabungkan Path: Bentuk Cincin "C" Parsial
+        # Memotong area belakang (block_area) dari cincin penuh.
+        c_shape_path = ring_path.subtracted(block_area)
+
+
+        # 6. Buat QGraphicsPathItem dan terapkan styling
+        path_item = QGraphicsPathItem(c_shape_path)
+        semi_transparent_color = QColor(173, 216, 230, 80) # Dibuat sedikit lebih solid (80)
+        path_item.setBrush(QBrush(semi_transparent_color))
+        path_item.setPen(QPen(Qt.NoPen))
+        path_item.setZValue(0)
+
+        # 7. Tambahkan ke scene
+        self.working_plane_scene.addItem(path_item)
+        
+        # Tambahkan lingkaran abu-abu untuk area di tengah (Inner Area)
+        # Tetap tambahkan lingkaran di tengah untuk mewakili area yang tidak terjangkau di sekitar base
+        base_block_item = QGraphicsEllipseItem(-INNER_RADIUS, -INNER_RADIUS, 2 * INNER_RADIUS, 2 * INNER_RADIUS)
+        base_block_item.setBrush(QBrush(QColor(192, 192, 192, 150))) # Abu-abu yang sedikit solid
+        base_block_item.setPen(QPen(Qt.NoPen))
+        base_block_item.setZValue(1) # ZValue lebih tinggi agar di atas C-Shape
+        self.working_plane_scene.addItem(base_block_item)      
+            
+
+        # --- baseplate ----
+        rect_width = 110
+        rect_height = 150
+        corner_radius =  7.5
+        
+        rectangle_item = QGraphicsRectItem((-rect_width / 2), (-rect_height / 2), rect_width, rect_height)
+        rectangle_item.setRect(QRectF((-rect_width / 2), (-rect_height / 2), rect_width, rect_height))
+
+        path = QPainterPath()
+        path.addRoundedRect(QRectF((-rect_width / 2), (-rect_height / 2), rect_width, rect_height), corner_radius, corner_radius)
+        
+        rounded_rect_item = self.working_plane_scene.addPath(path)
+        rounded_rect_item.setBrush(QBrush(QColor("#DFDFDF")))
+        rounded_rect_item.setPen(QPen(Qt.NoPen))
+        rounded_rect_item.setZValue(1)
+        
+        # --- robot base & base face ---
+        robotbase_radius = 45
+        robotbase_item = QGraphicsEllipseItem(-robotbase_radius, -robotbase_radius, 2 * robotbase_radius, 2 * robotbase_radius)
+        
+        robotbase_item.setBrush(QBrush(QColor("#C3C3C3")))
+        robotbase_item.setPen(QPen(Qt.NoPen))
+        robotbase_item.setZValue(2) # Ensure it's on top of the rounded rectangle
+        
+        self.working_plane_scene.addItem(robotbase_item)
+        
+        face_width = 20
+        face_height = 60
+
+        face_item = QGraphicsRectItem((-face_width / 2 - 45), (-face_height / 2 ), face_width, face_height)
+        
+        face_item.setBrush(QBrush(QColor("#C3C3C3")))
+        face_item.setPen(QPen(Qt.NoPen))
+        face_item.setZValue(2)
+        
+        self.working_plane_scene.addItem(face_item)
+        
+
+
+    # ### DIKEMBALIKAN: Kembali ke loop for yang lebih jelas dan stabil ###
+    def draw_axes_with_ticks(self):
+        grid_range = 300
+        pen_grid = QPen(QColor(220, 220, 220), 1, Qt.SolidLine)
+        for x in range(-grid_range, grid_range + 1, 10): self.working_plane_scene.addLine(x, -grid_range, x, grid_range, pen_grid).setZValue(-10)
+        for y in range(-grid_range, grid_range + 1, 10): self.working_plane_scene.addLine(-grid_range, y, grid_range, y, pen_grid).setZValue(-10)
+
+        pen_x_axis = QPen(Qt.red, 2)
+        pen_y_axis = QPen(Qt.blue, 2)
+        self.working_plane_scene.addLine(-grid_range, 0, grid_range, 0, pen_x_axis).setZValue(5)
+        self.working_plane_scene.addLine(0, -grid_range, 0, grid_range, pen_y_axis).setZValue(5)
+
+        tick_size = 5
+        for val in range(-grid_range, grid_range + 1, 50):
+            if val == 0: continue
+            self.working_plane_scene.addLine(val, -tick_size, val, tick_size, pen_x_axis).setZValue(6)
+            self.working_plane_scene.addLine(-tick_size, val, tick_size, val, pen_y_axis).setZValue(6)
+    
+        font = QFont("Arial", 8)
+        text_transform = QTransform().scale(1, -1)
+        for val in range(-grid_range + 50, grid_range, 50):
+            if val == 0: continue
+            text_x = QGraphicsTextItem(str(val)); text_x.setFont(font); text_x.setDefaultTextColor(Qt.red); text_x.setPos(val-15, -10)
+            text_x.setTransform(text_transform); text_x.setZValue(7); self.working_plane_scene.addItem(text_x)
+            text_y = QGraphicsTextItem(str(val)); text_y.setFont(font); text_y.setDefaultTextColor(Qt.blue); text_y.setPos(-40, val + 7)
+            text_y.setTransform(text_transform); text_y.setZValue(7); self.working_plane_scene.addItem(text_y)
+            
+        origin = self.working_plane_scene.addEllipse(-3, -3, 6, 6, QPen(Qt.red), QBrush(Qt.red)); origin.setZValue(8)
+        
+        font_big = QFont("Arial", 20, QFont.Bold)
+        x_label = QGraphicsTextItem("X"); x_label.setFont(font_big); x_label.setDefaultTextColor(Qt.red); x_label.setPos(grid_range , 20)
+        x_label.setTransform(text_transform); x_label.setZValue(9); self.working_plane_scene.addItem(x_label)
+        x_label_neg = QGraphicsTextItem("−X"); x_label_neg.setFont(font_big); x_label_neg.setDefaultTextColor(Qt.red); x_label_neg.setPos(-grid_range - 50, 20)
+        x_label_neg.setTransform(text_transform); x_label_neg.setZValue(9); self.working_plane_scene.addItem(x_label_neg)
+        y_label = QGraphicsTextItem("Y"); y_label.setFont(font_big); y_label.setDefaultTextColor(Qt.blue); y_label.setPos(-15, grid_range + 50)
+        y_label.setTransform(text_transform); y_label.setZValue(9); self.working_plane_scene.addItem(y_label)
+        y_label_neg = QGraphicsTextItem("−Y"); y_label_neg.setFont(font_big); y_label_neg.setDefaultTextColor(Qt.blue); y_label_neg.setPos(- 20, -grid_range)
+        y_label_neg.setTransform(text_transform); y_label_neg.setZValue(9); self.working_plane_scene.addItem(y_label_neg)
+
+    def reset_scene(self):
+        for item in self.items_on_plane: self.working_plane_scene.removeItem(item)
+        self.items_on_plane.clear()
+        
+        
+    def rotate_clockwise(self):
+        """Memutar seluruh TAMPILAN (view) searah jarum jam."""
+        self.view.rotate(15)
+
+    def rotate_counter_clockwise(self):
+        """Memutar seluruh TAMPILAN (view) berlawanan arah jarum jam."""
+        self.view.rotate(-15)
+
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/widgets/__init__.py
+============================================================
+
+### IMPORTS ###
+(No primary imports found)
+
+### FULL CONTENT ###
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/widgets/grcn_command_panel.py
+============================================================
+
+### IMPORTS ###
+from PyQt5.QtWidgets import (
+from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot
+from mycobot280pi_interfaces.msg import ManyDetectedObjects
+
+### FULL CONTENT ###
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QLabel, QGraphicsScene, QGraphicsView,
+    QSlider, QDoubleSpinBox, QSpinBox, QGroupBox, QGridLayout, 
+    QPushButton, QLineEdit, QHBoxLayout,QGraphicsTextItem
+)
+from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot
+
+# Hapus atau sesuaikan import ini jika tidak digunakan lagi di file ini
+from mycobot280pi_interfaces.msg import ManyDetectedObjects
+
+class CommandPanel(QWidget):
+    """
+    Panel kontrol untuk menampilkan info, memanipulasi pose visual,
+    dan mengirim perintah ke robot.
+    """
+    
+    # --- SINYAL UNTUK DIHUBUNGKAN KE LUAR ---
+
+    # Sinyal untuk mengirim perintah pose lengkap ke robot
+    send_coords_command = pyqtSignal(float, float, float, float, float, float, int)
+    send_home_command = pyqtSignal()
+    
+    # Sinyal untuk perintah sederhana lainnya
+    send_rgb_command = pyqtSignal(int, int, int)
+    send_vacuum_command = pyqtSignal(str, int, int)
+    
+    VACUUM_MAP = {
+        "vacuum_strong": (0, 1),
+        "vacuum_weak":   (0, 0),
+        "vacuum_off":    (1, 0),
+    }
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # Inisialisasi dictionary untuk menyimpan referensi ke widget
+        self.sliders = {}
+        self.spinboxes = {}
+
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(5, 5, 5, 5)
+
+        # --- Section 1: Display Info (Cutouts) ---
+        main_layout.addWidget(QLabel("Detected Object Cutouts:"))
+        self.cutout_scene = QGraphicsScene()
+        self.cutout_view = QGraphicsView(self.cutout_scene)
+        self.cutout_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.cutout_view.setStyleSheet("background-color: #333;")
+        main_layout.addWidget(self.cutout_view, 1) # Beri stretch factor
+        
+        # --- Section 2: Target Pose (Grup Slider Utama) ---
+        # Kita gabungkan semua slider menjadi satu grup yang rapi
+        target_pose_group = self._create_target_pose_group()
+        main_layout.addWidget(target_pose_group)
+        
+        # --- Section 3: Perintah Langsung Lainnya ---
+        service_cmd_group = self._create_service_command_group()
+        main_layout.addWidget(service_cmd_group)
+
+        main_layout.addStretch(1)
+        
+        # Awalnya, nonaktifkan semua slider sampai ada objek yang dipilih
+        self.update_target_sliders_from_selection(None)
+
+    def _create_target_pose_group(self):
+        group = QGroupBox("Target Pose & Speed")
+        layout = QGridLayout()
+
+        widget_configs = [
+            {'name': 'X',  'unit': 'mm', 'range': (-280.0, 280.0), 'decimals': 1, 'type': 'double'},
+            {'name': 'Y',  'unit': 'mm', 'range': (-280.0, 280.0), 'decimals': 1, 'type': 'double'},
+            {'name': 'Z',  'unit': 'mm', 'range': (45.0, 400.0),   'decimals': 1, 'type': 'double'},
+            {'name': 'RX', 'unit': '°',  'range': (-180.0, 180.0), 'decimals': 1, 'type': 'double'},
+            {'name': 'RY', 'unit': '°',  'range': (-180.0, 180.0), 'decimals': 1, 'type': 'double'},
+            {'name': 'RZ', 'unit': '°',  'range': (-180.0, 180.0), 'decimals': 1, 'type': 'double'},
+            {'name': 'Speed','unit': '%', 'range': (10, 100),       'decimals': 0, 'type': 'int'},
+        ]
+
+        for i, config in enumerate(widget_configs):
+            name = config['name']
+            min_val, max_val = config['range']
+            
+            label = QLabel(f"{name}:")
+            slider = QSlider(Qt.Horizontal)
+            
+            if config['type'] == 'double':
+                spinbox = QDoubleSpinBox()
+                spinbox.setDecimals(config['decimals'])
+                scale = 10**config['decimals']
+                slider.setRange(int(min_val * scale), int(max_val * scale))
+                slider.valueChanged.connect(lambda val, s=spinbox, sc=scale: s.setValue(val / sc))
+                spinbox.valueChanged.connect(lambda val, s=slider, sc=scale: s.setValue(int(val * sc)))
+            else: # 'int'
+                spinbox = QSpinBox()
+                slider.setRange(min_val, max_val)
+                slider.valueChanged.connect(spinbox.setValue)
+                spinbox.valueChanged.connect(slider.setValue)
+
+            spinbox.setRange(min_val, max_val)
+            spinbox.setSingleStep(0.1 if config['type'] == 'double' else 1)
+            spinbox.setSuffix(f" {config['unit']}")
+            
+            
+          
+            self.sliders[name] = slider
+            self.spinboxes[name] = spinbox
+            
+            layout.addWidget(label, i, 0)
+            layout.addWidget(slider, i, 1)
+            layout.addWidget(spinbox, i, 2)
+            
+        self.send_coords_btn = QPushButton("SEND FULL POSE TO ROBOT")
+        self.send_coords_btn.clicked.connect(self._emit_coords_signal)
+        layout.addWidget(self.send_coords_btn, len(widget_configs), 0, 1, 3)
+
+        self.go_home_btn = QPushButton("GO HOME")
+        self.go_home_btn.setStyleSheet("background-color: #E74C3C; color: green;")
+        self.go_home_btn.clicked.connect(self._emit_home_signal)
+        
+        # Gunakan baris berikutnya setelah SEND FULL POSE
+        layout.addWidget(self.go_home_btn, len(widget_configs) + 1, 0, 1, 3) 
+
+
+        layout.setColumnStretch(1, 1)
+        group.setLayout(layout)
+        return group
+    
+    def _create_service_command_group(self):
+        # Method ini sudah bagus, tidak perlu diubah
+        # ... (salin-tempel method _create_service_command_group Anda di sini) ...
+        cmd_group = QGroupBox("Immediate Robot Commands")
+        vbox = QVBoxLayout()
+        rgb_group = QGroupBox("Set LED Color")
+        rgb_layout = QHBoxLayout()
+        self.r_input = QLineEdit("0"); self.r_input.setFixedWidth(40)
+        self.g_input = QLineEdit("0"); self.g_input.setFixedWidth(40)
+        self.b_input = QLineEdit("0"); self.b_input.setFixedWidth(40)
+        send_rgb_btn = QPushButton("Set LED")
+        send_rgb_btn.clicked.connect(self._emit_rgb_signal)
+        rgb_layout.addWidget(QLabel("R:")); rgb_layout.addWidget(self.r_input)
+        rgb_layout.addWidget(QLabel("G:")); rgb_layout.addWidget(self.g_input)
+        rgb_layout.addWidget(QLabel("B:")); rgb_layout.addWidget(self.b_input)
+        rgb_layout.addWidget(send_rgb_btn)
+        rgb_group.setLayout(rgb_layout)
+        vbox.addWidget(rgb_group)
+        vacuum_group = QGroupBox("Vacuum Control")
+        vac_layout = QHBoxLayout()
+        vac_strong_btn = QPushButton("Strong")
+        vac_weak_btn = QPushButton("Weak")
+        vac_off_btn = QPushButton("OFF")
+        vac_strong_btn.clicked.connect(lambda: self._emit_vacuum_signal("vacuum_strong"))
+        vac_weak_btn.clicked.connect(lambda: self._emit_vacuum_signal("vacuum_weak"))
+        vac_off_btn.clicked.connect(lambda: self._emit_vacuum_signal("vacuum_off"))
+        vac_layout.addWidget(vac_strong_btn)
+        vac_layout.addWidget(vac_weak_btn)
+        vac_layout.addWidget(vac_off_btn)
+        vacuum_group.setLayout(vac_layout)
+        vbox.addWidget(vacuum_group)
+        cmd_group.setLayout(vbox)
+        return cmd_group
+
+
+    # --- Signal Emitters ---
+    def _emit_coords_signal(self):
+        """Mengirim sinyal dengan nilai dari semua 7 spinbox target."""
+        vals = {name: spinbox.value() for name, spinbox in self.spinboxes.items()}
+        self.send_coords_command.emit(
+            vals['X'], vals['Y'], vals['Z'], 
+            vals['RX'], vals['RY'], vals['RZ'], 
+            vals['Speed']
+        )
+
+    def _emit_home_signal(self):
+        """Mengirim sinyal angka konstan"""
+        self.send_home_command.emit()
+
+
+    # ... (method _emit_rgb_signal dan _emit_vacuum_signal Anda tetap sama) ...
+    def _emit_rgb_signal(self):
+        try:
+            r = int(self.r_input.text()); g = int(self.g_input.text()); b = int(self.b_input.text())
+            if 0 <= r <= 255 and 0 <= g <= 255 and 0 <= b <= 255: self.send_rgb_command.emit(r, g, b)
+        except ValueError: pass
+
+    def _emit_vacuum_signal(self, command_key: str):
+        pin1, pin2 = self.VACUUM_MAP.get(command_key, (1, 1))
+        self.send_vacuum_command.emit(command_key, pin1, pin2)
+        
+
+    def _set_synced_value(self, name, value):
+        """
+        Mengatur nilai untuk sepasang spinbox dan slider, memastikan keduanya sinkron.
+        """
+        if name not in self.spinboxes or name not in self.sliders:
+            return # Pengaman jika nama tidak ada
+
+        spinbox = self.spinboxes[name]
+        slider = self.sliders[name]
+
+        # Blokir sinyal dari KEDUA widget untuk sementara
+        spinbox.blockSignals(True)
+        slider.blockSignals(True)
+
+        # Atur nilai spinbox secara langsung
+        spinbox.setValue(value)
+
+        # Hitung dan atur nilai slider yang sesuai
+        if isinstance(spinbox, QDoubleSpinBox):
+            scale = 10**spinbox.decimals()
+            slider.setValue(int(value * scale))
+        else: # QSpinBox
+            slider.setValue(int(value))
+
+        # Lepaskan blokir sinyal
+        spinbox.blockSignals(False)
+        slider.blockSignals(False)
+
+
+
+
+    # --- Public Methods (Slots) ---
+    def update_object_count(self, objects_msg: ManyDetectedObjects):
+        # ... (method ini tetap sama) ...
+        self.cutout_scene.clear()
+        if not objects_msg or not objects_msg.objects: text_item = QGraphicsTextItem("No objects detected.")
+        else: text_item = QGraphicsTextItem(f"Detected {len(objects_msg.objects)} object(s).")
+        text_item.setDefaultTextColor(Qt.white)
+        self.cutout_scene.addItem(text_item)
+
+
+    # ### INI ADALAH SLOT UTAMA YANG BARU ###
+    def update_target_sliders_from_selection(self, selected_item):
+        """
+        Slot publik. Dipanggil ketika item di WorkspacePlane dipilih.
+        Memperbarui semua slider dengan data pose dari item yang dipilih.
+        """
+        is_item_selected = selected_item is not None
+
+        # Aktifkan/nonaktifkan semua widget berdasarkan seleksi
+        for widget_dict in [self.sliders, self.spinboxes]:
+            for widget in widget_dict.values():
+                widget.setEnabled(is_item_selected)
+        self.send_coords_btn.setEnabled(is_item_selected)
+
+        if not is_item_selected:
+            return
+
+        try:
+            x, y, z, rx, ry, rz = selected_item.get_pose()
+            pose = {'X': x, 'Y': y, 'Z': z, 'RX': rx, 'RY': ry, 'RZ': rz}
+            
+            # ### DIUBAH: Gunakan helper method kita ###
+            # Loop melalui data pose dan panggil helper untuk setiap pasang widget
+            for name, value in pose.items():
+                if name in self.spinboxes:
+                    self._set_synced_value(name, value)
+
+        except AttributeError:
+            print(f"Error: Item yang dipilih tidak memiliki method get_pose().")
+            
+            
+            
+            
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/widgets/grcn_monitor_panel.py
+============================================================
+
+### IMPORTS ###
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
+from .components.monitors.grcn_detected_objects_monitor import DetectedObjectMonitorWidget
+from .components.monitors.grcn_joint_monitor import JointMonitorWidget
+from .components.editors.grcn_perspective_editor import PerspectiveEditorWidget
+
+### FULL CONTENT ###
+"""
+Defines the MonitorPanel, a composite widget for displaying monitoring related controls.
+
+This panel is ONLY a container for:
+1. interactive perspective editor widget.
+2. displaying annotated image widget
+3. displaying joint angles widget 
+It no longer displays the camera feed itself.
+"""
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
+
+# Import the child widget from the same directory
+
+from .components.monitors.grcn_detected_objects_monitor import DetectedObjectMonitorWidget
+from .components.monitors.grcn_joint_monitor import JointMonitorWidget
+from .components.editors.grcn_perspective_editor import PerspectiveEditorWidget
+
+class MonitorPanel(QWidget):
+    """A widget that arranges monitoring and perspective control widgets in a specific layout."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        
+        # 1. Create the main vertical layout for the whole panel.
+        # This will stack the top row and the bottom row.
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(5, 5, 5, 5) # Add some padding
+
+        # 2. Create a horizontal layout for the top row.
+        top_row_layout = QHBoxLayout()
+
+        # 3. Instantiate and add the top-left and top-right widgets.
+        self.annotated_camera = DetectedObjectMonitorWidget(self)
+        self.joint_monitor = JointMonitorWidget(self)
+        
+        top_row_layout.addWidget(self.joint_monitor)
+        top_row_layout.addWidget(self.annotated_camera) # Added to the left
+           
+
+        # 4. Instantiate and configure the bottom widget.
+        self.perspective_editor = PerspectiveEditorWidget(self)
+        self.perspective_editor.setMinimumWidth(400) # Set the minimum width as requested.
+
+        # 5. Add the top row and the bottom widget to the main vertical layout.
+        main_layout.addLayout(top_row_layout)      # Top item
+        main_layout.addWidget(self.perspective_editor) # Bottom item
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/widgets/components/__init__.py
+============================================================
+
+### IMPORTS ###
+(No primary imports found)
+
+### FULL CONTENT ###
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/widgets/components/monitors/__init__.py
+============================================================
+
+### IMPORTS ###
+(No primary imports found)
+
+### FULL CONTENT ###
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/widgets/components/monitors/grcn_detected_objects_monitor.py
+============================================================
+
+### IMPORTS ###
+import cv2
+import numpy as np
+from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout
+from PyQt5.QtGui import QPixmap, QImage
+from PyQt5.QtCore import Qt, pyqtSlot
+
+### FULL CONTENT ###
+"""
+Defines the DetectedObjectMonitorWidget, a widget for displaying a video feed.
+
+This component's sole responsibility is to display an image that it receives
+via its public update_camera_view slot. It is a "dumb" component.
+"""
+import cv2
+import numpy as np
+from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout
+from PyQt5.QtGui import QPixmap, QImage
+from PyQt5.QtCore import Qt, pyqtSlot
+
+class DetectedObjectMonitorWidget(QWidget):
+    """A widget that displays the annotated camera feed."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # This widget is now focused only on the camera label
+        self.camera_label = QLabel("Waiting for annotated camera feed...")
+        self.camera_label.setFixedSize(300, 300)
+        self.camera_label.setAlignment(Qt.AlignCenter)
+        self.camera_label.setStyleSheet("border: 1px solid black; background-color: #222;")
+        layout.addWidget(self.camera_label)
+
+    
+    def update_camera_view(self, cv_image: np.ndarray):
+        """
+        Public slot to display the annotated image from the vision pipeline.
+        Converts a cv2 image (numpy array) to a QPixmap.
+        """
+        try:
+            rgb_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
+            h, w, ch = rgb_image.shape
+            bytes_per_line = ch * w
+            qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
+            pixmap = QPixmap.fromImage(qt_image)
+            
+            self.camera_label.setPixmap(pixmap.scaled(
+                self.camera_label.size(),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            ))
+        except Exception as e:
+            print(f"Error in update_camera_view: {e}")
+            self.camera_label.setText("Error displaying image.")
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/widgets/components/monitors/grcn_joint_monitor.py
+============================================================
+
+### IMPORTS ###
+import math
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QProgressBar
+from PyQt5.QtCore import pyqtSlot
+from mycobot280pi_interfaces.msg import JointAnglesArray
+
+### FULL CONTENT ###
+"""
+Defines the JointMonitorWidget, a widget for visualizing robot joint angles that uses the interface JointAnglesArray. 
+This widget creates a series of labels and progress bars to show the state
+of each joint in a human-readable format. It is a "dumb" component that
+receives data via a public slot.
+"""
+
+import math
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QProgressBar
+from PyQt5.QtCore import pyqtSlot
+
+from mycobot280pi_interfaces.msg import JointAnglesArray
+
+
+# Define a safe operating range for the joints in degrees for visualization
+JOINT_MIN_DEG = -170
+JOINT_MAX_DEG = 170
+
+
+
+class JointMonitorWidget(QWidget):
+    """A widget that displays multiple joint states with progress bars."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(5, 5, 5, 5)
+
+        self.joint_widgets = {}  # Dictionary to store widgets for easy access
+        
+        # Assume 6 joints and create placeholders initially
+        for i in range(1, 7):
+            # Use a simple placeholder key that we can reliably access by index
+            placeholder_key = f"joint_{i}"
+            self._create_joint_display(placeholder_key, f"Joint {i}")
+
+    def _create_joint_display(self, key: str, display_name: str):
+        """Helper function to create the widgets for a single joint."""
+        name_label = QLabel(f"{display_name}:")
+        name_label.setFixedWidth(100)
+        
+        progress_bar = QProgressBar()
+        progress_bar.setRange(0, JOINT_MAX_DEG - JOINT_MIN_DEG)
+        progress_bar.setTextVisible(False)
+
+        value_label = QLabel("0.0°")
+        value_label.setFixedWidth(60)
+
+        joint_layout = QHBoxLayout()
+        joint_layout.addWidget(name_label)
+        joint_layout.addWidget(progress_bar)
+        joint_layout.addWidget(value_label)
+        self.main_layout.addLayout(joint_layout)
+
+        # Store the widgets that need updating
+        self.joint_widgets[key] = {
+            'name_label': name_label,
+            'bar': progress_bar,
+            'value': value_label
+        }
+
+    
+    def update_joint_display(self, joint_angle_msg: JointAnglesArray):
+        """Public slot to update all joint displays from a JointAnglesArray message."""
+        # 1. Extract the list of 6 angles (in degrees, as per your publisher's description)
+        latest_angles = joint_angle_msg.joint_angles
+        
+        # Define default names (matching the initialization)
+        # You can replace this list with the actual joint names if you know them.
+        default_joint_names = [f"Joint {i}" for i in range(1, 7)]
+
+        # 2. Iterate through the angles using index (i) and value (angle_deg)
+        # We only iterate up to the number of angles received OR the number of widgets
+        num_joints = min(len(latest_angles), 6) # Assume max 6 joints
+
+        for i in range(num_joints):
+            angle_deg = latest_angles[i]
+            
+            # Map the 0-based index to the 1-based placeholder key (joint_1, joint_2, etc.)
+            placeholder_key = f"joint_{i + 1}"
+
+            if placeholder_key in self.joint_widgets:
+                widgets = self.joint_widgets[placeholder_key]
+                
+                # Update the name label (optional, but good if the publisher only sends data)
+                widgets['name_label'].setText(f"{default_joint_names[i]}:")
+                
+                # Update the numerical value label
+                widgets['value'].setText(f"{angle_deg:.1f}°")
+                
+                # Map the degree value to the progress bar's range and update it
+                # The bar value must be adjusted by the minimum joint limit (e.g., -170)
+                bar_value = int(angle_deg - JOINT_MIN_DEG)
+                widgets['bar'].setValue(bar_value)
+
+            else:
+                self.get_logger().warn(f"No widget found for {placeholder_key}. Check setup.")
+                break # Stop if we can't find a widget
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/widgets/components/controls/__init__.py
+============================================================
+
+### IMPORTS ###
+(No primary imports found)
+
+### FULL CONTENT ###
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/widgets/components/editors/__init__.py
+============================================================
+
+### IMPORTS ###
+(No primary imports found)
+
+### FULL CONTENT ###
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/widgets/components/editors/grcn_perspective_editor.py
+============================================================
+
+### IMPORTS ###
+import cv2
+import numpy as np
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsPixmapItem
+from PyQt5.QtGui import QPixmap, QImage
+from PyQt5.QtCore import QTimer, pyqtSignal
+from ..graphics.grcn_point_handle import PointHandle
+
+### FULL CONTENT ###
+
+"""
+Defines the PerspectiveEditorWidget.
+
+This is an interactive widget that displays a camera feed and allows the user
+to drag four handles to define a perspective transformation area.
+
+It is a "dumb" component that has no knowledge of ROS. It receives image frames
+via a public slot and emits the coordinates of its handles via a PyQt signal.
+"""
+
+import cv2
+import numpy as np
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsPixmapItem
+from PyQt5.QtGui import QPixmap, QImage
+from PyQt5.QtCore import QTimer, pyqtSignal
+
+# Import the custom handle item from its own file
+from ..graphics.grcn_point_handle import PointHandle
+
+
+class PerspectiveEditorWidget(QWidget):
+    """A widget for interactively selecting four perspective points on an image."""
+
+    # Signal that emits the four corner points as a numpy array periodically.
+    perspective_points_changed = pyqtSignal(np.ndarray)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # This widget is now fully decoupled from ROS.
+        self.frame = None
+        self.handles = []
+        
+        # --- Layout & UI Setup ---
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.scene = QGraphicsScene()
+        self.view = QGraphicsView(self.scene)
+        
+        # Create an empty item to hold the background image
+        self.pixmap_item = QGraphicsPixmapItem()
+        self.scene.addItem(self.pixmap_item)
+        main_layout.addWidget(self.view)
+        
+        # --- Timer to periodically emit point data ---
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self._emit_points_update)
+        self.timer.start(200)  # Emit data at 5 Hz
+
+    def update_frame(self, new_frame: np.ndarray):
+        """
+        Public slot to receive a new camera frame (as a numpy array).
+        This also initializes the draggable handles on the first frame.
+        """
+        if new_frame is None or new_frame.size == 0:
+            return
+            
+        self.frame = new_frame
+        
+        # Convert the OpenCV image (BGR) to a QPixmap (RGB)
+        rgb_image = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
+        h, w, ch = self.frame.shape
+        bytes_per_line = ch * w
+        qimg = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
+        pixmap = QPixmap.fromImage(qimg)
+        self.pixmap_item.setPixmap(pixmap)
+        
+        # Initialize handles only once, after the first frame has set the size
+        if not self.handles:
+            # Place handles at the corners with some margin
+            margin = 50
+            self.handles = [
+                PointHandle(margin, margin),
+                PointHandle(w - margin, margin),
+                PointHandle(w - margin, h - margin),
+                PointHandle(margin, h - margin)
+            ]
+            for handle in self.handles:
+                self.scene.addItem(handle)
+
+    def _emit_points_update(self):
+        """
+        Internal method called by the timer. It gathers handle positions
+        and emits them via a signal.
+        """
+        if self.frame is None or not self.handles:
+            return
+
+        # Get the current (x, y) position of each handle
+        points = np.array([h.get_point() for h in self.handles], dtype=np.float32)
+
+        # Emit the signal with the points data
+        self.perspective_points_changed.emit(points)
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/widgets/components/graphics/__init__.py
+============================================================
+
+### IMPORTS ###
+(No primary imports found)
+
+### FULL CONTENT ###
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/widgets/components/graphics/grcn_point_handle.py
+============================================================
+
+### IMPORTS ###
+from PyQt5.QtWidgets import QGraphicsEllipseItem
+from PyQt5.QtGui import QColor, QBrush
+
+### FULL CONTENT ###
+#!/usr/bin/env python3
+
+"""
+Defines the PointHandle class.
+
+This is a simple, reusable QGraphicsItem that represents a draggable handle
+(a small circle) within a QGraphicsScene. It is used by widgets like the
+PerspectiveEditorWidget to allow users to select points interactively.
+"""
+
+from PyQt5.QtWidgets import QGraphicsEllipseItem
+from PyQt5.QtGui import QColor, QBrush
+
+
+class PointHandle(QGraphicsEllipseItem):
+    """A draggable ellipse item used as an interactive handle in a scene."""
+    
+    def __init__(self, x: float, y: float, radius: int = 8, color: QColor = QColor("red")):
+        """
+        Initializes a handle at a specific position.
+        
+        Args:
+            x: The initial x-coordinate in the scene.
+            y: The initial y-coordinate in the scene.
+            radius: The radius of the handle's circle.
+            color: The fill color of the handle.
+        """
+        # Create the ellipse centered at (0, 0)
+        super().__init__(-radius/2, -radius/2, radius, radius)
+        
+        self.setBrush(QBrush(color))
+        self.setPen(QColor("white")) # Add a white border for visibility
+        
+        # Set flags to make the handle interactive
+        self.setFlag(QGraphicsEllipseItem.ItemIsMovable, True)
+        self.setFlag(QGraphicsEllipseItem.ItemSendsScenePositionChanges, True)
+        
+        # Move the handle to its initial position in the scene
+        self.setPos(x, y)
+
+    def get_point(self):
+        """
+        Returns the handle's current position as a tuple of integers.
+        
+        Returns:
+            A tuple containing the (x, y) coordinates.
+        """
+        return int(self.pos().x()), int(self.pos().y())
+
+
+============================================================
+# FILE: /home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/src/mycobot280pi_gui/mycobot280pi_gui/gui/widgets/components/graphics/grcn_draggable_item.py
+============================================================
+
+### IMPORTS ###
+from PyQt5.QtWidgets import QGraphicsPixmapItem, QGraphicsItem
+from PyQt5.QtGui import QColor, QPainter, QPen, QPixmap
+from PyQt5.QtCore import Qt
+from mycobot280pi_interfaces.msg import OneDetectedObject
+
+### FULL CONTENT ###
+"""
+Defines the DraggableItem class for the QGraphicsScene.
+
+Refactored to match the OneDetectedObject.msg definition. It uses x, y from the
+message and applies sensible defaults for the missing 3D pose data (z, rx, ry, rz).
+"""
+
+from PyQt5.QtWidgets import QGraphicsPixmapItem, QGraphicsItem
+from PyQt5.QtGui import QColor, QPainter, QPen, QPixmap
+from PyQt5.QtCore import Qt
+
+# Type hinting for the constructor
+from mycobot280pi_interfaces.msg import OneDetectedObject
+
+class DraggableItem(QGraphicsPixmapItem):
+    """A QGraphicsPixmapItem that can be moved, selected, rotated, and reports its 6D pose."""
+
+    def __init__(self, pixmap: QPixmap, detected_object: OneDetectedObject, parent=None):
+        super().__init__(pixmap, parent)
+        
+        self.detected_object = detected_object
+        self.object_id = detected_object.id
+        
+        # ### PERUBAHAN UTAMA DI SINI ###
+        # Kita sekarang menggunakan nilai default untuk data yang tidak ada di pesan ROS.
+        
+        # Nilai default untuk Z (misalnya, ketinggian aman di atas meja)
+        DEFAULT_Z = 48.0 
+        # Nilai default untuk rotasi (misalnya, gripper menghadap lurus ke bawah)
+        DEFAULT_RX = 180.0
+        DEFAULT_RY = 0.0
+        # Untuk RZ, kita bisa mulai dari 0 atau dari data lain jika ada
+        DEFAULT_RZ = 0.0
+
+        # Simpan komponen pose 3D statis (menggunakan nilai default)
+        self.pose_z = DEFAULT_Z
+        self.pose_rx = DEFAULT_RX
+        self.pose_ry = DEFAULT_RY
+
+        # Atur pose 2D awal dari pesan ROS
+        # Kita asumsikan center_point memiliki atribut .x dan .y
+        self.setPos(detected_object.center_point.x, detected_object.center_point.y)
+        self.setRotation(DEFAULT_RZ)
+        
+        self.was_moved = False
+        
+        self.setFlags(
+            QGraphicsItem.ItemIsMovable |
+            QGraphicsItem.ItemIsSelectable |
+            QGraphicsItem.ItemSendsGeometryChanges
+        )
+        
+        self.setCursor(Qt.PointingHandCursor)
+        self.border_pen = QPen(Qt.transparent); self.border_pen.setWidth(4)
+        self.setTransformOriginPoint(self.boundingRect().center())
+
+    def get_pose(self):
+        """
+        Mengembalikan pose 6D lengkap dari item ini.
+        """
+        x = self.x()
+        y = self.y()
+        rz = self.rotation()
+        
+        z = self.pose_z
+        rx = self.pose_rx
+        ry = self.pose_ry
+        
+        return x, y, z, rx, ry, rz
+
+    # --- Method-method Anda yang lain tidak berubah ---
+        
+    def paint(self, painter: QPainter, option, widget):
+        super().paint(painter, option, widget)
+        painter.setPen(self.border_pen)
+        if self.was_moved:
+            self.border_pen.setColor(QColor("#4CAF50"))
+            painter.drawRect(self.boundingRect())
+        elif self.isSelected():
+            self.border_pen.setColor(QColor("#FFC107"))
+            painter.drawRect(self.boundingRect())
+    
+    def mouseReleaseEvent(self, event):
+        super().mouseReleaseEvent(event)
+        if not self.was_moved:
+            self.was_moved = True
+            self.update()
+
+
