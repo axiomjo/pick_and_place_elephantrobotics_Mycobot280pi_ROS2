@@ -9,7 +9,6 @@ from PyQt5.QtWidgets import QGraphicsPixmapItem, QGraphicsItem
 from PyQt5.QtGui import QColor, QPainter, QPen, QPixmap
 from PyQt5.QtCore import Qt
 
-# This import path will work correctly once your ROS 2 package is set up.
 from mycobot280pi_interfaces.msg import OneDetectedObject
 
 class DraggableItemGUI(QGraphicsPixmapItem):
