@@ -21,7 +21,7 @@ class DraggableItemGUI(QGraphicsPixmapItem):
         self.object_id = detected_object.id
         
         # Default values for Z (safe height) and rotation (gripper facing down) are used.  281]
-        DEFAULT_Z = 48.0 
+        DEFAULT_Z = 35.0 
         DEFAULT_RX = 180.0
         DEFAULT_RY = 0.0 
         DEFAULT_RZ = 0.0

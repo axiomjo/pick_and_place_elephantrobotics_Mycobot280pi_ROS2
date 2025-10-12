@@ -70,7 +70,7 @@ class CommandPanelGUI(QWidget):
         widget_configs = [
             {'name': 'X',  'unit': 'mm', 'range': (-280.0, 280.0), 'decimals': 1, 'type': 'double'},
             {'name': 'Y',  'unit': 'mm', 'range': (-280.0, 280.0), 'decimals': 1, 'type': 'double'},
-            {'name': 'Z',  'unit': 'mm', 'range': (45.0, 400.0),   'decimals': 1, 'type': 'double'},
+            {'name': 'Z',  'unit': 'mm', 'range': (30.0, 230.0),   'decimals': 1, 'type': 'double'},
             {'name': 'RX', 'unit': '°',  'range': (-180.0, 180.0), 'decimals': 1, 'type': 'double'},
             {'name': 'RY', 'unit': '°',  'range': (-180.0, 180.0), 'decimals': 1, 'type': 'double'},
             {'name': 'RZ', 'unit': '°',  'range': (-180.0, 180.0), 'decimals': 1, 'type': 'double'},
