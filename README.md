@@ -1,4 +1,52 @@
-[LAST EDITED: 13 OKT 2025 01:30]
+[LAST EDITED: 13 OKT 2025 04:00]
+
+
+
+
+repository konten TA untuk sistem ini, tersedia di
+https://github.com/axiomjo/konten_TA  
+apabila sidang sudah selesai.
+
+# === SYSTEM OVERVIEW ===
+![final nodes design.](ASSET_README/nodesfull.png)
+
+Sistem robot + antarmuka visual untuk mempermudah pengoperasian Mycobot 280 pi, dalam menjalankan tugas vacuum-and-place.
+Dilengkapi computer vision sederhana, sehingga bisa metain konteks objek di lingkungannya ada di mana.
+
+
+![block diagram](ASSET_README/blokdiagramfull.png)
+
+# === HOW TO RUN THIS SYSTEM ===
+LANGKAH 1:  
+
+Di terminal laptop,
+setelah source ros2 galactic dan source install/setup.bash:
+
+```
+ros2 launch mycobot280pi_gui part1of2_Implementasi_Lengan_Robot280Pi_LAPTOP.launch.py
+```
+
+LANGKAH 2:  
+
+Di terminal myCobot 280pi,
+setelah source ros2 galactic dan source install/setup.bash:
+
+```
+ros2 launch mycobot280pi_robot part2of2_Implementasi_Lengan_Robot280Pi_MYCOBOT280PI.launch.py
+```
+
+--- 
+
+dibuat untuk Tugas Akhir  
+Josephine Dermawan   
+Institut Sains dan Teknologi Terpadu Surabaya  
+2025  
+
+yg berjudul :  
+"Implementasi Lengan Robot MyCobot 280 Pi untuk Memindahkan Koleksi Tanaman Kering di antara Lembaran Buku"
+
+
+# === GUI evolution: ===  
 
 on branch `begin_REFACTORING_GUI_forthethirdtime`
 
@@ -74,21 +122,6 @@ basically aku mundur ke branch MVP_3_4_5 krn guinya broken.
 branch `FINAL_VERSION`
 this branch will be the one with clear patterns and naming conventions.    
 
-# === SYSTEM OVERVIEW ===
-![blom update ke convensiku yg terbaru y.](ASSET_README/ROS2_NODES_DESIGN.png)
-
-Sistem robot + antarmuka visual untuk mempermudah pengoperasian Mycobot 280 pi, dalam menjalankan tugas vacuum-and-place.
-Dilengkapi computer vision, sehingga bisa ngerti konteks objek di lingkungannya.
-
---- 
-
-dibuat untuk Tugas Akhir  
-Josephine Dermawan   
-Institut Sains dan Teknologi Terpadu Surabaya  
-2025  
-
-yg berjudul :  
-"Implementasi Lengan Robot MyCobot 280 Pi untuk Memindahkan Koleksi Tanaman Kering di antara Lembaran Buku"
 
 # === Author's Note ===
 Hi buat siapapun yg baca repo ini.  
@@ -104,16 +137,9 @@ Selama development, aku pake:
 - OpenCV (opencv-contrib-python 4.12.0.88)  
 
 * Linux sana ROS2 nya kudu sepasang, krn tiap distro ROS2 punya distro linux yg direkomendasiin. why? i dunno, its what their devs said. 
-* aku kekeuh pake ini krn tahun 2025, elephantrobotics blom ngeluarin image buat upgrade rasppi robotnya, jadi stuck sama ubuntu 20.04 :[ . kyknya merek lebih pingin ngelanjutin mycobot yg jetson nano daripada pi. mboh ya.
-** pymycobot ada versi terbaru, tapi krn aku gaberani ngutak-ngatik sistem robotnya, aku putusin laptopnya ngikut robotnya.
-*** kampus punya lengan robot, ada 2. di jurusan teknik industri.
+* aku kekeuh pake ini krn tahun 2025, elephantrobotics blom ngeluarin image buat upgrade rasppi robotnya, jadi stuck sama ubuntu 20.04 :[ . kyknya mereka lebih pingin ngelanjutin mycobot yg jetson nano daripada pi. mboh ya.  
+** pymycobot ada versi terbaru, tapi krn aku gaberani ngutak-ngatik sistem robotnya, aku putusin laptopnya ngikut robotnya.  
+*** kampus punya lengan robot, ada 2. di jurusan teknik industri.  
 
-mungkin ini bakal jadi repo mati.  
-tapi moga ada manfaatnya dikit lah.  
-
-klo mau liat buku TA ku, bisa diakses di github repo yg ini (klo udh kubikin public LOL):
-https://github.com/axiomjo/konten_TA# 
-
-mulai dari sini ke bawah, bahasanya nyampur2 inggris indo ya.
-have fun exploring. u'll definitely find little notes here and there.
+thx for following my TA journey. semoga repo ini berfaedah.
 
