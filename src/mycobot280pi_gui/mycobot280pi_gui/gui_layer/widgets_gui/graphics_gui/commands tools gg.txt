@@ -1,0 +1,4 @@
+./toolngeconcat.py -d ./src/mycobot280pi_gui/mycobot280pi_gui/core_layer/ -o controllergui_code.txt -r -e .py --relative
+
+pandoc $(find 0* -name "*.md" | sort) -o laporan-akhir.pdf --file-scope --pdf-engine=xelatex --toc --listings -H format-options.tex -V fontsize=12pt -V "lot=Daftar Gambar"
+
