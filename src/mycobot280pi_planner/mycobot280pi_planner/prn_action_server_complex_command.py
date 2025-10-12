@@ -21,7 +21,7 @@ class ComplexCommandActionServer:
         self.node.get_logger().info("Complex Command Action Server is ready.")
 
     def goal_callback(self, goal_request):
-        self.node.get_logger().info('PLANNER Received new goal request from GUI. Accepting.')
+        self.node.get_logger().info('PLANNER Received new goal request from GUI. Accepting.') 
         return GoalResponse.ACCEPT
 
     def cancel_callback(self, goal_handle):
@@ -51,24 +51,25 @@ class ComplexCommandActionServer:
 
             self.node.get_logger().info(f"Processing object {idx+1}/{len(objects)} (ID: {obj.id}).")
 
-            success,message = self.logic.pick_and_place_object(
+            success, message = self.logic.pick_and_place_object(
                 obj, target_positions[idx], target_orientations[idx],
                 publish_feedback, goal_handle
             )
             
             if not success:
-                if goal_handle.is_cancel_requested:
+                if "CANCELLED" in message or "canceled by user" in message:
                     result_msg.success = False
                     result_msg.message = "Action canceled by user during execution."
-                    goal_handle.canceled()
+                    goal_handle.canceled() 
                 else:
                     result_msg.success = False
-                    result_msg.message = f"Pick and place failed for object {obj.id}.Detail: {failure_message}"
+                    # CORRECTED: Use the actual failure message from the logic module.
+                    result_msg.message = f"Pick and place failed for object {obj.id}. Detail: {message}"
                     goal_handle.abort()
                 return result_msg
 
         result_msg.success = True
-        result_msg.message = "All pick-and-place sequences completed successfully."
+        result_msg.message = "All pick-and-place sequences completed successfully." 
         goal_handle.succeed()
         self.node.get_logger().info("Goal succeeded.")
         return result_msg

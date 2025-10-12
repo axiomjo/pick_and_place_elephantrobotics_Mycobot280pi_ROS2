@@ -1,9 +1,4 @@
-"""
-draggable_item_gui.py - Defines the DraggableItemGUI class for the QGraphicsScene.
-
-This item represents a detected object on the interactive workspace plane.
-It can be moved, selected, rotated, and reports its 6D pose.
-"""
+# In widgets_gui/graphics_gui/draggable_item_gui.py
 
 from PyQt5.QtWidgets import QGraphicsPixmapItem, QGraphicsItem
 from PyQt5.QtGui import QColor, QPainter, QPen, QPixmap
@@ -20,38 +15,59 @@ class DraggableItemGUI(QGraphicsPixmapItem):
         self.detected_object = detected_object
         self.object_id = detected_object.id
         
-        # Default values for Z (safe height) and rotation (gripper facing down) are used.  281]
         DEFAULT_Z = 35.0 
         DEFAULT_RX = 180.0
         DEFAULT_RY = 0.0 
         DEFAULT_RZ = 0.0
 
-        # Store static 3D pose components. 
         self.pose_z = DEFAULT_Z
         self.pose_rx = DEFAULT_RX
         self.pose_ry = DEFAULT_RY
 
-        # Set initial 2D pose from the ROS message. 
-        self.setPos(detected_object.center_point.x, detected_object.center_point.y) 
+        # --- FIX #1: SPAWNING AT THE CENTER ---
+        # We must manually calculate the top-left coordinate to place the center correctly.
+        center_x = detected_object.center_point.x
+        center_y = detected_object.center_point.y
+        
+        item_w = self.boundingRect().width()
+        item_h = self.boundingRect().height()
+
+        top_left_x = center_x - (item_w / 2.0)
+        top_left_y = center_y - (item_h / 2.0)
+
+        # Set the position using the calculated top-left coordinate.
+        self.setPos(top_left_x, top_left_y)
+        
+        # We still need this so that setRotation() works around the center, not the top-left.
+        self.setTransformOriginPoint(self.boundingRect().center())
         self.setRotation(DEFAULT_RZ)
         
         self.was_moved = False
         
         self.setFlags(
             QGraphicsItem.ItemIsMovable |
-            QGraphicsItem.ItemIsSelectable | 
+            QGraphicsItem.ItemIsSelectable |
             QGraphicsItem.ItemSendsGeometryChanges
         )
         
         self.setCursor(Qt.PointingHandCursor)
         self.border_pen = QPen(Qt.transparent)
         self.border_pen.setWidth(4)
-        self.setTransformOriginPoint(self.boundingRect().center())
 
     def get_pose(self):
         """Returns the complete 6D pose of this item."""
-        x = self.x()
-        y = self.y()
+        # --- FIX #2: REPORTING THE CENTER ---
+        # self.x() and self.y() return the top-left position. We must calculate the center.
+        top_left_x = self.x()
+        top_left_y = self.y()
+        
+        item_w = self.boundingRect().width()
+        item_h = self.boundingRect().height()
+
+        # Calculate the center from the top-left position.
+        x = top_left_x + (item_w / 2.0)
+        y = top_left_y + (item_h / 2.0)
+        
         rz = self.rotation()
         
         z = self.pose_z

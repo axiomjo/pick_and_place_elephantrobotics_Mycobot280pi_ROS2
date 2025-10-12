@@ -77,12 +77,12 @@ class PlannerLogicActionClient:
                 command_type="vacuum_strong",
             ), "activate vacuum strong"),
 
-            # 6. DESCEND TO OBJECT HEIGHT (Z=40)
+            # 6. DESCEND TO OBJECT HEIGHT (Z=30)
             (SimpleCommandsAction.Goal(
                 command_type="move_blockingmode",
-                coords=[obj.center_point.x, obj.center_point.y, 40.0, RX_DOWN, RY_DOWN, 0.0],
+                coords=[obj.center_point.x, obj.center_point.y, 30.0, RX_DOWN, RY_DOWN, 0.0],
                 speed=50
-            ), "descend exactly to object (Z=40)"),
+            ), "descend exactly to object (Z=30)"),
 
             # 7. LIFT UP to safe place
             (SimpleCommandsAction.Goal(
@@ -104,12 +104,12 @@ class PlannerLogicActionClient:
                 speed=100
             ), "move to above place position (Z=70, RZ=User)"),
 
-            # 10. DESCEND TO PLACE POSITION (Z=40)
+            # 10. DESCEND TO PLACE POSITION (Z=30)
             (SimpleCommandsAction.Goal(
                 command_type="move_blockingmode",
-                coords=[obj_target.x, obj_target.y, 40.0, RX_DOWN, RY_DOWN, float(obj_orientation)],
+                coords=[obj_target.x, obj_target.y, 30.0, RX_DOWN, RY_DOWN, float(obj_orientation)],
                 speed=50
-            ), "descend to final placement height (Z=40)"),
+            ), "descend to final placement height (Z=30)"),
 
             # 11. DEACTIVATE VACUUM
             (SimpleCommandsAction.Goal(
@@ -140,7 +140,7 @@ class PlannerLogicActionClient:
             )
             
             if not success:
-                return False, primitive_message
+                return False, message
 
         feedback_callback(f"Finished pick and place for object {obj.id}")
         return True, "Pick and place sequence completed."
