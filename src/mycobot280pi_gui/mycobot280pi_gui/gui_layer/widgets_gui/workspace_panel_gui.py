@@ -2,106 +2,146 @@
 workspace_panel_gui.py - Defines the WorkspacePanelGUI widget.
 
 This is the main interactive 2D canvas (the View) where the user can see
-and manipulate draggable objects. It observes the WorkspaceModel for its data.
+and manipulate draggable objects. It observes the WorkspaceModel for its data
+and includes interactive controls for rotating selected items.
 """
 
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QGraphicsView, QGraphicsScene, QFrame,
-    QLabel, QSlider, QDoubleSpinBox, QGraphicsTextItem,
-    QGraphicsEllipseItem, QGraphicsRectItem, QGraphicsPathItem
+    QWidget, QVBoxLayout, QGraphicsView, QGraphicsScene,
+    QLabel, QSlider, QDoubleSpinBox, QHBoxLayout,
+    QGraphicsTextItem, QGraphicsEllipseItem, QGraphicsRectItem, QGraphicsPathItem
 )
 from PyQt5.QtGui import (
     QTransform, QColor, QBrush, QPen, QPainterPath, QFont
 )
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal, pyqtSlot
-from typing import List
 
-# Import the model it observes and the graphics it displays
 from ...core_layer.workspace_model_core import WorkspaceModel
 from .graphics_gui.draggable_item_gui import DraggableItemGUI
 
-# --- Custom Scene for emitting selection signals ---
 class InteractiveGraphicsScene(QGraphicsScene):
-    """A QGraphicsScene that emits signals on selection changes."""
-    # Emits a list of the currently selected DraggableItemGUI objects
     selection_changed = pyqtSignal(list)
-
     def __init__(self, parent=None):
         super().__init__(parent)
-    
     def mousePressEvent(self, event):
         super().mousePressEvent(event)
         selected_items = [item for item in self.selectedItems() if isinstance(item, DraggableItemGUI)]
         self.selection_changed.emit(selected_items)
 
-
-# --- The Main Workspace Panel Widget ---
 class WorkspacePanelGUI(QWidget):
-    """The main View for the interactive workspace."""
-    
-    # This signal is forwarded from the scene for other UI components to use.
     selection_changed = pyqtSignal(list)
 
     def __init__(self, model, parent=None): # (model: WorkspaceModel, parent: QWidget)
         super().__init__(parent)
-        
-        # --- Dependency (Injected) ---
         self.model = model
-
-        # This list holds references to items CURRENTLY displayed in the scene.
-        # It is managed exclusively by the update_display slot.
         self._scene_items = []
 
-        # --- UI Setup ---
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(5)
 
         self.scene = InteractiveGraphicsScene(self)
         self.view = QGraphicsView(self.scene)
         self.scene.setSceneRect(QRectF(-300, -300, 600, 600))
-        
-        # Flip the Y-axis to have a standard mathematical coordinate system
-        transform = QTransform()
-        transform.scale(1, -1)
+        transform = QTransform(); transform.scale(1, -1)
         self.view.setTransform(transform)
 
-        main_layout.addWidget(self.view)
+        # --- MODIFIED: The layout is now built in steps ---
+        # 1. Add the main canvas view
+        main_layout.addWidget(self.view, 1) # Give it a stretch factor
 
-        # Draw the static background elements once
+        # 2. Create and add the interactive controls underneath
+        rotation_controls = self._create_rotation_controls()
+        main_layout.addWidget(rotation_controls)
+
+        # 3. Draw the static background
         self.draw_mycobot280pi_working_plane()
         self.draw_axes_with_ticks()
 
-        # --- Signal Connections ---
-        # Connect to the model to receive updates
+        # Connect signals
         self.model.items_changed.connect(self.update_display)
-        # Forward selection changes from the scene
         self.scene.selection_changed.connect(self.selection_changed)
+        self.scene.selection_changed.connect(self._on_selection_changed)
 
-        # Perform an initial draw
+        # Initial state
         self.update_display()
+        self._on_selection_changed([]) # Start with controls disabled
+
+    # --- NEW SECTION: Methods to manage interactive controls ---
+
+    def _create_rotation_controls(self):
+        """Builds the QWidget containing the rotation slider and spinbox."""
+        control_container = QWidget()
+        layout = QHBoxLayout(control_container)
+        layout.setContentsMargins(5, 0, 5, 0)
+
+        self.visual_rz_slider = QSlider(Qt.Horizontal)
+        self.visual_rz_spinbox = QDoubleSpinBox()
+
+        self.visual_rz_slider.setRange(-180, 180)
+        self.visual_rz_spinbox.setRange(-180.0, 180.0)
+        self.visual_rz_spinbox.setSuffix(" °")
+        self.visual_rz_spinbox.setDecimals(1)
+
+        # Connect slider and spinbox to each other and to the rotation logic
+        self.visual_rz_slider.valueChanged.connect(self.visual_rz_spinbox.setValue)
+        self.visual_rz_spinbox.valueChanged.connect(self.visual_rz_slider.setValue)
+        self.visual_rz_spinbox.valueChanged.connect(self.set_selected_item_rotation)
+
+        layout.addWidget(QLabel("Interactive Rotation (RZ):"))
+        layout.addWidget(self.visual_rz_slider, 1)
+        layout.addWidget(self.visual_rz_spinbox)
+
+        return control_container
+
+    @pyqtSlot(list)
+    def _on_selection_changed(self, selected_items):
+        """Enables/disables controls and updates them with the selected item's rotation."""
+        if len(selected_items) == 1:
+            item = selected_items[0]
+            self.visual_rz_slider.setEnabled(True)
+            self.visual_rz_spinbox.setEnabled(True)
+            
+            # Update the slider/spinbox value without triggering its own signal
+            self.visual_rz_spinbox.blockSignals(True)
+            self.visual_rz_slider.blockSignals(True)
+            self.visual_rz_spinbox.setValue(item.rotation())
+            self.visual_rz_spinbox.blockSignals(False)
+            self.visual_rz_slider.blockSignals(False)
+        else:
+            # If nothing or multiple items are selected, disable the controls
+            self.visual_rz_slider.setEnabled(False)
+            self.visual_rz_spinbox.setEnabled(False)
+
+    @pyqtSlot(float)
+    def set_selected_item_rotation(self, angle):
+        """Applies the rotation to the currently selected item."""
+        selected_items = self.scene.selectedItems()
+        if len(selected_items) == 1 and isinstance(selected_items[0], DraggableItemGUI):
+            selected_items[0].setRotation(float(angle))
+            
 
     @pyqtSlot()
     def update_display(self):
-        """
-        Public slot to redraw the scene based on the model's current state.
-        This is the core of the View's responsibility.
-        """
-        # 1. Remove all old draggable items from the scene
         for item in self._scene_items:
             self.scene.removeItem(item)
         self._scene_items.clear()
-
-        # 2. Get the new, authoritative list of items from the model
+        
         items_from_model = self.model.get_all_items()
-
-        # 3. Add the new items to the scene and our internal tracker
         for item in items_from_model:
             self.scene.addItem(item)
             self._scene_items.append(item)
-            
 
-    # --- Methods for drawing static elements (copied from old project) ---
+    @pyqtSlot()
+    def rotate_selected_clockwise(self):
+        """Rotates the entire VIEW clockwise by 15 degrees."""
+        self.view.rotate(15)
 
+    @pyqtSlot()
+    def rotate_selected_counter_clockwise(self):
+        """Rotates the entire VIEW counter-clockwise by 15 degrees."""
+        self.view.rotate(-15)
+        
     def draw_mycobot280pi_working_plane(self):
         """Draws the static elements representing the robot base and work area."""
 
@@ -304,4 +344,3 @@ class WorkspacePanelGUI(QWidget):
         y_label_neg.setTransform(text_transform)
         y_label_neg.setZValue(9)
         self.scene.addItem(y_label_neg)
-

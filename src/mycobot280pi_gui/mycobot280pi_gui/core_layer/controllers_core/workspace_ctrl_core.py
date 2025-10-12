@@ -44,7 +44,8 @@ class WorkspaceController(QObject):
         self.logger = self.ros_comm.get_logger()
         self.latest_objects_msg = None
         self.latest_annotated_image = None
-    
+        self._current_selection = []
+
     @pyqtSlot(ManyDetectedObjects)
     def cache_detected_objects(self, objects_msg):
         self.latest_objects_msg = objects_msg
@@ -52,38 +53,47 @@ class WorkspaceController(QObject):
     @pyqtSlot(np.ndarray)
     def cache_annotated_image(self, cv_image):
         self.latest_annotated_image = cv_image
-    
+
+    @pyqtSlot(list)
+    def cache_current_selection(self, selected_items):
+        self._current_selection = selected_items
+        
     @pyqtSlot()
     def reset_plane(self):
         self.logger.info("Resetting the workspace plane...")
         self.model.clear_all_items()
         self.status_message_changed.emit("Plane has been reset. Ready for new plan.")
 
-    @pyqtSlot(list)
-    def delete_selected(self, selected_items):
-        if not selected_items:
+    @pyqtSlot()
+    def delete_selected(self):
+        if not self._current_selection:
             self.status_message_changed.emit("No items selected to delete.")
             return
-        self.logger.info("Deleting {} selected items...".format(len(selected_items)))
-        self.model.remove_items(selected_items)
-        self.status_message_changed.emit("Deleted {} item(s).".format(len(selected_items)))
+        items_to_delete = self._current_selection
+        self.logger.info("Deleting {} selected items...".format(len(items_to_delete)))
+        self.model.remove_items(items_to_delete)
+        self.status_message_changed.emit("Deleted {} item(s).".format(len(items_to_delete)))
+        self._current_selection = []
 
     @pyqtSlot()
     def add_new_objects_from_cutouts(self):
+        """
+        Dumb "insert and forget" method. Creates items for ALL currently
+        detected objects and adds them to the model.
+        """
         if self.latest_objects_msg is None or self.latest_annotated_image is None:
             self.logger.warn("Add objects called, but ROS data is not ready yet.")
             self.status_message_changed.emit("ROS data is not available to add objects.")
             return
 
-        self.logger.info("Processing detected objects to add to the workspace.")
+        # --- THIS IS THE SIMPLIFIED LOGIC ---
         newly_created_items = []
         image_to_process = self.latest_annotated_image
-        
-        # The controller needs the full image dimensions to calculate scene coordinates
         img_h, img_w, _ = image_to_process.shape
         cam_center_x = img_w / 2.0
         cam_center_y = img_h / 2.0
 
+        # Loop through ALL objects in the message, no checking for existing IDs.
         for obj in self.latest_objects_msg.objects:
             try:
                 pixmap = _create_cutout_pixmap(image_to_process, obj)
@@ -95,25 +105,15 @@ class WorkspaceController(QObject):
                 
                 item = DraggableItemGUI(pixmap=flipped_pixmap, detected_object=obj)
                 
-                # --- THIS IS THE CORRECTED LOGIC ---
-                # 1. Convert the object's camera center point to a scene center point.
-                #    The scene's (0,0) is at the center of the camera image.
                 scene_center_x = obj.center_point.x - cam_center_x
-                # to match robot coordinate system
-                scene_center_y = -( obj.center_point.y - cam_center_y)
-
-                # 2. Calculate the top-left position for the item.
-                #    setPos() places the item's top-left corner (its origin).
-                #    So, we offset the center point by half the item's width/height.
-                item_w = flipped_pixmap.width()
-                item_h = flipped_pixmap.height()
+                scene_center_y = -(obj.center_point.y - cam_center_y)
+                
+                item_w, item_h = flipped_pixmap.width(), flipped_pixmap.height()
                 top_left_x = scene_center_x - (item_w / 2)
                 top_left_y = scene_center_y - (item_h / 2)
                 
-                # 3. Set the item's position *before* adding it to the model.
                 item.setPos(top_left_x, top_left_y)
-                # --- END OF CORRECTION ---
-
+                
                 newly_created_items.append(item)
 
             except Exception as e:
@@ -121,5 +121,9 @@ class WorkspaceController(QObject):
                 traceback_str = traceback.format_exc()
                 self.logger.error(f"{error_msg}\n---\n{traceback_str}\n---")
         
-        self.model.add_items(newly_created_items)
-        self.status_message_changed.emit("Added {} new objects to the plane.".format(len(newly_created_items)))
+        if newly_created_items:
+            self.model.add_items(newly_created_items)
+            self.status_message_changed.emit("Added {} new objects to the plane.".format(len(newly_created_items)))
+        else:
+            self.status_message_changed.emit("No objects were detected to add.")
+        # --- END OF SIMPLIFIED LOGIC ---
