@@ -1,0 +1,368 @@
+==========
+__init__.py
+======
+
+
+
+=====
+
+==========
+ros_facade_bridge.py
+======
+
+"""
+ros_facade_bridge.py - Defines the ROS_Facade_Bridge class.
+
+This class is the single, clean entry point for the GUI to interact with the
+entire ROS backend. It acts as a "Facade," hiding the complexity of the
+underlying nodes, handlers, and threading from the rest of the application.
+"""
+
+from rclpy.executors import MultiThreadedExecutor
+import threading
+from PyQt5.QtCore import QObject, pyqtSignal
+import numpy as np
+
+# Import the main ROS node from its new location
+from .ros_node_main import ROS_Node_Main
+
+# Import message types required for pyqtSignal definitions
+from mycobot280pi_interfaces.msg import ManyDetectedObjects, JointAnglesArray
+
+class ROS_Facade_Bridge(QObject):
+    """The Facade class that bridges the GUI/Controllers with the ROS backend."""
+
+    # --- Signals for ROS -> GUI/Controller Communication ---
+    # These signals are emitted from the ROS thread and safely received by the GUI thread.
+    undistorted_image_received = pyqtSignal(np.ndarray)
+    annotated_image_received = pyqtSignal(np.ndarray)
+    detected_objects_received = pyqtSignal(ManyDetectedObjects)
+    joint_angles_received = pyqtSignal(JointAnglesArray)
+    simple_command_response_received = pyqtSignal(bool, str) 
+    action_feedback = pyqtSignal(str)
+    action_result = pyqtSignal(bool, str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        
+        # 1. The Facade creates its internal ROS node orchestrator.
+        #    It passes 'self' so that the handlers can get a reference
+        #    to this facade and emit its signals[cite: 22].
+        self._ros_node = ROS_Node_Main(self)
+        
+        # 2. A MultiThreadedExecutor runs in a background thread to spin the node[cite: 24].
+        self.executor = MultiThreadedExecutor()
+        self.executor.add_node(self._ros_node)
+        self.ros_thread = threading.Thread(target=self.executor.spin)
+        self.ros_thread.daemon = True # Ensures thread exits when main app exits
+        self.ros_thread.start()
+        
+        self.get_logger().info("ROS Communication Facade is ready.")
+
+    # --- Public API Methods for Controller -> ROS Communication ---
+    # The Controllers will call these simple methods.
+
+    def get_logger(self):
+        """Provides access to the ROS logger."""
+        return self._ros_node.get_logger()
+    
+    def publish_four_points(self, points): # (points: np.ndarray) -> None
+        """Delegate point publishing to the TopicHandler."""
+        self._ros_node.topic_handler.publish_perspective_points(points)
+
+    def call_simple_command(self, **kwargs):
+        """
+        Delegate a unified simple command service call to the ServiceClientHandler.
+        This uses keyword arguments for flexibility.
+        """
+        self._ros_node.service_handler.call_simple_command(**kwargs)
+        
+    def send_complex_goal(self, objects_to_move, target_positions, target_orientation):
+        """Delegate complex goal action call to the ActionClientHandler[cite: 34]."""
+        self._ros_node.action_handler.send_goal(objects_to_move, target_positions, target_orientation)
+
+    def cancel_complex_goal(self):
+        """Delegate goal cancellation to the ActionClientHandler."""
+        self._ros_node.action_handler.cancel_goal()
+
+    def shutdown(self):
+        """Handles the clean shutdown of the ROS components."""
+        self.get_logger().info("Shutting down ROS executor and node...")
+        self.executor.shutdown()
+        self._ros_node.destroy_node()
+
+
+=====
+
+==========
+ros_node_main.py
+======
+
+"""
+ros_node_main.py - Defines the ROS_Node_Main class.
+
+This class is the central rclpy.Node for the application. It does not handle
+any specific ROS communication logic itself. Instead, its sole responsibility
+is to act as an orchestrator:
+- It creates instances of all specialized handler classes (Topic, Service, Action).
+- It provides the necessary context (itself as a Node instance) to each handler.
+- It is the node that gets spun by the executor in the background thread.
+"""
+
+from rclpy.node import Node
+from PyQt5.QtCore import QObject
+
+# Import the specialized handlers from their new locations
+from .handlers_ros.topic_hdlr import TopicHandler
+from .handlers_ros.service_client_hdlr import ServiceClientHandler
+from .handlers_ros.action_client_hdlr import ActionClientHandler
+
+class ROS_Node_Main(Node):
+    """The central ROS node that creates and manages all communication handlers."""
+
+    def __init__(self, facade):
+        # (facade: QObject) -> None
+        """
+        Initializes the node and all its specialized handlers.
+
+        Args:
+            facade: A reference to the ROS_Facade_Bridge instance,
+                    which is passed down to the handlers so they can emit its signals.
+        """
+        super().__init__('gui_robot_control_node') 
+        self.get_logger().info("ROS Orchestrator Node is initializing...")
+        
+        # Create an instance of each handler, passing the necessary context
+        self.topic_handler = TopicHandler(self, facade)
+        self.service_handler = ServiceClientHandler(self, facade)
+        self.action_handler = ActionClientHandler(self, facade)
+        
+        self.get_logger().info("All ROS handlers have been successfully created.")
+
+
+=====
+
+==========
+handlers_ros/__init__.py
+======
+
+
+
+=====
+
+==========
+handlers_ros/action_client_hdlr.py
+======
+
+"""
+action_client_hdlr.py - Defines the ActionClientHandler.
+
+This class encapsulates all logic for interacting with the complex command
+ROS 2 Action Client.
+"""
+import rclpy.node
+from PyQt5.QtCore import QObject
+from rclpy.action import ActionClient
+import threading
+from mycobot280pi_interfaces.action import ProcessWorkspace
+from action_msgs.msg import GoalStatus
+
+ACTION_COMPLEX_COMMAND = '/planner/act_complex_command'
+
+class ActionClientHandler:
+    """Manages all interactions with the ProcessWorkspace action client."""
+
+    def __init__(self, node, facade): # (node: rclpy.node.Node, facade: QObject) -> None
+        self._node = node
+        self._facade = facade
+        self._action_client = ActionClient(node, ProcessWorkspace, ACTION_COMPLEX_COMMAND)
+        self._goal_handle_lock = threading.Lock()
+        self._active_goal_handle = None
+
+    def send_goal(self, objects_to_move, target_positions, target_orientation):
+        if not self._action_client.wait_for_server(timeout_sec=2.0):
+            self._node.get_logger().error('Action server not available!')
+            self._facade.action_result.emit(False, 'Action server not available')
+            return
+            
+        goal_msg = ProcessWorkspace.Goal()
+        goal_msg.objects_to_move = objects_to_move
+        goal_msg.objects_target_position = target_positions
+        goal_msg.objects_target_orientation = target_orientation
+        
+        self._node.get_logger().info('Sending complex action goal...')
+        send_goal_future = self._action_client.send_goal_async(goal_msg, feedback_callback=self._feedback_callback)
+        send_goal_future.add_done_callback(self._goal_response_callback)
+
+    def cancel_goal(self):
+        with self._goal_handle_lock:
+            if self._active_goal_handle is None: return
+            status = self._active_goal_handle.status
+            if status in [GoalStatus.STATUS_ACCEPTED, GoalStatus.STATUS_EXECUTING]:
+                self._node.get_logger().info('Cancelling the active goal...')
+                self._active_goal_handle.cancel_goal_async()
+
+    def _goal_response_callback(self, future):
+        goal_handle = future.result() 
+        if not goal_handle.accepted:
+            self._facade.action_result.emit(False, 'Goal rejected')
+            return
+        with self._goal_handle_lock:
+            self._active_goal_handle = goal_handle
+        goal_handle.get_result_async().add_done_callback(self._result_callback)
+
+    def _feedback_callback(self, feedback_msg):
+        self._facade.action_feedback.emit(feedback_msg.feedback.current_state)
+
+    def _result_callback(self, future):
+        try:
+            result = future.result().result
+            self._facade.action_result.emit(result.success, result.message)
+        except Exception as e:
+            self._facade.action_result.emit(False, f'Exception: {e}')
+        finally:
+            with self._goal_handle_lock:
+                self._active_goal_handle = None
+
+
+=====
+
+==========
+handlers_ros/service_client_hdlr.py
+======
+
+"""
+service_client_hdlr.py - Defines the ServiceClientHandler.
+
+This handler encapsulates the logic for building and sending requests to the
+unified simple command service.
+"""
+from rclpy.node import Node
+from rclpy.task import Future
+from PyQt5.QtCore import QObject
+from mycobot280pi_interfaces.srv import Mycobot280PiSimpleCommandsMadeSure
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
+
+SERVICE_SIMPLE_COMMAND = '/gui/srv_simple_command'
+
+class ServiceClientHandler:
+    """Manages the ROS 2 Service Client for all simple commands."""
+    
+    def __init__(self, node_host, facade_ref): # (node_host: Node, facade_ref: QObject) -> None
+        self.node = node_host
+        self.facade = facade_ref
+        
+        qos_profile = QoSProfile(
+            reliability=ReliabilityPolicy.RELIABLE,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1
+        )
+        
+        self.simple_command_client = self.node.create_client(
+            Mycobot280PiSimpleCommandsMadeSure, SERVICE_SIMPLE_COMMAND, qos_profile=qos_profile
+        )
+
+    def call_simple_command(self, **kwargs):
+        def ensure_list(value):
+            return [] if value is None else value
+
+        request = Mycobot280PiSimpleCommandsMadeSure.Request()
+        request.command_type = kwargs.get('command_type', '')
+        request.coords = [float(c) for c in ensure_list(kwargs.get('coords'))]
+        request.joint_angles = [float(j) for j in ensure_list(kwargs.get('joint_angles'))]
+        request.speed = kwargs.get('speed', 0)
+        request.r, request.g, request.b = kwargs.get('r', 0), kwargs.get('g', 0), kwargs.get('b', 0)
+        request.vacuum_pin1_level = int(kwargs.get('vacuum_pin1_level', 0))
+        request.vacuum_pin2_level = int(kwargs.get('vacuum_pin2_level', 0))
+
+        self.node.get_logger().info(f"GUI is calling service for: {request.command_type}")
+        future = self.simple_command_client.call_async(request)
+        future.add_done_callback(self._simple_command_response_callback)
+
+    def _simple_command_response_callback(self, future): # (future: Future) -> None
+        try:
+            response = future.result()
+            if response is not None:
+                self.facade.simple_command_response_received.emit(response.success, response.message)
+            else:
+                self.facade.simple_command_response_received.emit(False, 'Service call failed (No result).')
+        except Exception as e:
+            self.facade.simple_command_response_received.emit(False, f'Service client call exception: {e}')
+
+
+=====
+
+==========
+handlers_ros/topic_hdlr.py
+======
+
+"""
+topic_hdlr.py - Defines the TopicHandler.
+
+This class encapsulates all logic for ROS 2 topic communication, including
+all publishers and subscribers for the application.
+"""
+
+import rclpy.node
+from PyQt5.QtCore import QObject
+from cv_bridge import CvBridge
+import numpy as np
+
+# Import all required message types
+from sensor_msgs.msg import Image
+from mycobot280pi_interfaces.msg import Point2D, Point2DArray, ManyDetectedObjects, JointAnglesArray
+
+# Constants for topic names
+TOPIC_UNDISTORTED_IMAGE = '/vision/msg_undistorted_image'
+TOPIC_DETECTED_OBJECTS = '/vision/msg_detected_objects'
+TOPIC_ANNOTATED_IMAGE = '/vision/msg_annotated_image'
+TOPIC_JOINT_ANGLES = '/robot/msg_joint_angles'
+TOPIC_FOUR_POINTS = '/gui/msg_four_perspective_points'
+
+class TopicHandler:
+    """Manages all publishers and subscribers for the node."""
+
+    def __init__(self, node, facade):
+        # (node: rclpy.node.Node, facade: QObject) -> None
+        self._node = node
+        self._facade = facade
+        self._bridge = CvBridge()
+        
+        # Publishers
+        self._points_pub = self._node.create_publisher(Point2DArray, TOPIC_FOUR_POINTS, 10)
+        
+        # Subscribers
+        self._node.create_subscription(Image, TOPIC_UNDISTORTED_IMAGE, self._undistorted_cb, 10)
+        self._node.create_subscription(Image, TOPIC_ANNOTATED_IMAGE, self._annotated_cb, 10)
+        self._node.create_subscription(ManyDetectedObjects, TOPIC_DETECTED_OBJECTS, self._objects_cb, 10)
+        self._node.create_subscription(JointAnglesArray, TOPIC_JOINT_ANGLES, self._joints_cb, 10)
+
+    def publish_perspective_points(self, points): # (points: np.ndarray) -> None
+        msg = Point2DArray()
+        for x, y in points:
+            msg.points.append(Point2D(x=float(x), y=float(y)))
+        self._points_pub.publish(msg)
+
+    def _undistorted_cb(self, msg): # (msg: Image) -> None
+        try:
+            cv_img = self._bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+            self._facade.undistorted_image_received.emit(cv_img)
+        except Exception as e:
+            self._node.get_logger().warn(f"Failed undistorted image conversion: {e}")
+
+    def _annotated_cb(self, msg): # (msg: Image) -> None
+        try:
+            cv_img = self._bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+            self._facade.annotated_image_received.emit(cv_img)
+        except Exception as e:
+            self._node.get_logger().warn(f"Failed annotated image conversion: {e}")
+
+    def _objects_cb(self, msg): # (msg: ManyDetectedObjects) -> None
+        self._facade.detected_objects_received.emit(msg)
+
+    def _joints_cb(self, msg): # (msg: JointAnglesArray) -> None
+        self._facade.joint_angles_received.emit(msg)
+
+
+=====
+

@@ -11,7 +11,7 @@ import threading
 from mycobot280pi_interfaces.action import ProcessWorkspace
 from action_msgs.msg import GoalStatus
 
-ACTION_COMPLEX_COMMAND = '/planner/act_complex_command'
+ACTION_COMPLEX_COMMAND = '/gui/act_complex_command'
 
 class ActionClientHandler:
     """Manages all interactions with the ProcessWorkspace action client."""
