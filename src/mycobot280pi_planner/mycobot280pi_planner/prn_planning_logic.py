@@ -1,69 +1,146 @@
-# prn_planning_logic.py
-import rclpy
-from mycobot280pi_interfaces.msg import SimpleCommands
-from .prn_constants import PLANE_HEIGHT_CLEARANCE, PICK_HEIGHT_Z, RX_DOWN, RY_DOWN, DEFAULT_SPEED, HOME_POSE
+from mycobot280pi_interfaces.action import SimpleCommandsAction
+from .prn_action_client_command_primitives import CommandPrimitivesActionClient
+
+# --- Constants used by this module ---
+RX_DOWN = 180.0
+RY_DOWN = 0.0
+DEFAULT_SPEED = 100
 
 
-class PlannerLogic:
-    def __init__(self, node, feedback_callback_group):
+class PlannerLogicActionClient:
+    def __init__(self, node, callback_group):
         self.node = node
-        self.command_pub = None
+        self.action_client = CommandPrimitivesActionClient(self.node, callback_group)
+        self.current_primitive_goal_handle = None 
 
-    def set_command_publisher(self, pub):
-        self.command_pub = pub
+    def _execute_primitive_step(self, cmd_goal: SimpleCommandsAction.Goal, description: str, feedback_callback, complex_goal_handle):
+        """
+        Receives a SimpleCommandsAction.Goal object, passes it to the Action Client,
+        and returns the success status and message from the Executor.
+        """
+        feedback_callback(f"Executing step: {description}")
 
-    def _publish_command(self, cmd: SimpleCommands, description: str = ""):
-        """Fire-and-forget command publisher."""
-        if self.command_pub:
-            self.command_pub.publish(cmd)
-            self.node.get_logger().info(f"[Planner] Published command: {cmd.command_type} {description}")
+        if complex_goal_handle.is_cancel_requested:
+            return False, "CANCELLED"
+
+        success, message, new_goal_handle = self.action_client.send_goal(cmd_goal)
+        self.current_primitive_goal_handle = new_goal_handle
+
+        if not success:
+            self.node.get_logger().error(f"Primitive command FAILED: {description}. Message: {message}")
+            feedback_callback(f"ERROR: {description} failed. {message}")
+            return False, message
         else:
-            self.node.get_logger().error("Command publisher not set!")
+            self.node.get_logger().info(f"Primitive command SUCCEEDED: {description}")
+            return True, message
+
+        
 
     def pick_and_place_object(self, obj, obj_target, obj_orientation, feedback_callback, goal_handle):
-        """
-        Fire-and-forget pick and place sequence.
-        No blocking, no waiting for feedback.
-        """
-
         feedback_callback(f"Starting pick and place for object {obj.id}")
 
-        # --- Step 1: Move above pick position ---
-        pick_pose = [obj.center_point.x, obj.center_point.y, PLANE_HEIGHT_CLEARANCE, RX_DOWN, RY_DOWN, 0.0]
-        cmd = SimpleCommands(command_type="move", coords=pick_pose, speed=DEFAULT_SPEED)
-        self._publish_command(cmd, "above pick position")
+        steps = [
+            # 0. RGB: BLUE (Preparing / Home)
+            (SimpleCommandsAction.Goal(
+                command_type="set_rgb",
+                r=0, g=0, b=255
+            ), "set RGB to blue (ready/home)"),
 
-        # --- Step 2: Descend to pick height ---
-        pick_pose_down = [obj.center_point.x, obj.center_point.y, PICK_HEIGHT_Z, RX_DOWN, RY_DOWN, 0.0]
-        cmd = SimpleCommands(command_type="move", coords=pick_pose_down, speed=DEFAULT_SPEED)
-        self._publish_command(cmd, "pick position")
+            # 1. GO HOME (Initial State)
+            (SimpleCommandsAction.Goal(
+                command_type="move_joints",
+                joint_angles=[0, 0, 0, 0, 0, 0],
+                speed=100
+            ), "return to home position (angles 0)"),
 
-        # --- Step 3: Activate vacuum ---
-        cmd = SimpleCommands(command_type="vacuum_on")
-        self._publish_command(cmd, "vacuum ON")
+            # 2. RGB: YELLOW (Approaching object)
+            (SimpleCommandsAction.Goal(
+                command_type="set_rgb",
+                r=255, g=255, b=0
+            ), "set RGB to yellow (approaching object)"),
 
-        # --- Step 4: Move above place position ---
-        place_pose = [obj_target.x, obj_target.y, PLANE_HEIGHT_CLEARANCE, RX_DOWN, RY_DOWN, float(obj_orientation)]
-        cmd = SimpleCommands(command_type="move", coords=place_pose, speed=DEFAULT_SPEED)
-        self._publish_command(cmd, "above place position")
+            # 3. GOTO ABOVE OBJECT (Z=70)
+            (SimpleCommandsAction.Goal(
+                command_type="move_blockingmode",
+                coords=[obj.center_point.x, obj.center_point.y, 70.0, RX_DOWN, RY_DOWN, 0.0],
+                speed=100
+            ), "move above object (Z=70, RZ=0)"),
 
-        # --- Step 5: Descend to place height ---
-        place_pose_down = [obj_target.x, obj_target.y, PICK_HEIGHT_Z, RX_DOWN, RY_DOWN, float(obj_orientation)]
-        cmd = SimpleCommands(command_type="move", coords=place_pose_down, speed=DEFAULT_SPEED)
-        self._publish_command(cmd, "place position")
+            # 4. RGB: RED (Picking)
+            (SimpleCommandsAction.Goal(
+                command_type="set_rgb",
+                r=255, g=0, b=0
+            ), "set RGB to red (picking object)"),
 
-        # --- Step 6: Deactivate vacuum ---
-        cmd = SimpleCommands(command_type="vacuum_off")
-        self._publish_command(cmd, "vacuum OFF")
+            # 5. ACTIVATE VACUUM STRONG
+            (SimpleCommandsAction.Goal(
+                command_type="vacuum_strong",
+            ), "activate vacuum strong"),
 
-        # --- Step 7: Return to home ---
-        cmd = SimpleCommands(command_type="move", coords=HOME_POSE, speed=DEFAULT_SPEED)
-        self._publish_command(cmd, "home position")
+            # 6. DESCEND TO OBJECT HEIGHT (Z=40)
+            (SimpleCommandsAction.Goal(
+                command_type="move_blockingmode",
+                coords=[obj.center_point.x, obj.center_point.y, 40.0, RX_DOWN, RY_DOWN, 0.0],
+                speed=50
+            ), "descend exactly to object (Z=40)"),
+
+            # 7. LIFT UP to safe place
+            (SimpleCommandsAction.Goal(
+                command_type="move_joints",
+                joint_angles=[0, 0, 0, 0, 0, 0],
+                speed=100
+            ), "return to home position (angles 0)"),
+
+            # 8. RGB: GREEN (Placing)
+            (SimpleCommandsAction.Goal(
+                command_type="set_rgb",
+                r=0, g=255, b=0
+            ), "set RGB to green (placing object)"),
+
+            # 9. MOVE TO ABOVE PLACE POSITION (Z=70)
+            (SimpleCommandsAction.Goal(
+                command_type="move_blockingmode",
+                coords=[obj_target.x, obj_target.y, 70.0, RX_DOWN, RY_DOWN, float(obj_orientation)],
+                speed=100
+            ), "move to above place position (Z=70, RZ=User)"),
+
+            # 10. DESCEND TO PLACE POSITION (Z=40)
+            (SimpleCommandsAction.Goal(
+                command_type="move_blockingmode",
+                coords=[obj_target.x, obj_target.y, 40.0, RX_DOWN, RY_DOWN, float(obj_orientation)],
+                speed=50
+            ), "descend to final placement height (Z=40)"),
+
+            # 11. DEACTIVATE VACUUM
+            (SimpleCommandsAction.Goal(
+                command_type="vacuum_off",
+            ), "deactivate vacuum"),
+
+            # 12. LIFT UP (Z=70)
+            (SimpleCommandsAction.Goal(
+                command_type="move_blockingmode",
+                coords=[obj_target.x, obj_target.y, 70.0, RX_DOWN, RY_DOWN, float(obj_orientation)],
+                speed=DEFAULT_SPEED
+            ), "lift up after place (Z=70)"),
+
+            # 13. RGB: BLUE (Return to idle)
+            (SimpleCommandsAction.Goal(
+                command_type="set_rgb",
+                r=0, g=0, b=255
+            ), "set RGB to blue (done/idle)")
+        ]
+
+        for cmd, description in steps:
+            if goal_handle.is_cancel_requested:
+                feedback_callback("Sequence CANCELLED.")
+                return False, "Action canceled by user."
+            
+            success, message = self._execute_primitive_step(
+                cmd, description, feedback_callback, goal_handle
+            )
+            
+            if not success:
+                return False, primitive_message
 
         feedback_callback(f"Finished pick and place for object {obj.id}")
-        return True  # Always returns true, executor decides actual success
-
-    def manual_command_callback(self, msg):
-        """Forward manual commands directly to executor."""
-        self._publish_command(msg, "manual forward")
-
+        return True, "Pick and place sequence completed."

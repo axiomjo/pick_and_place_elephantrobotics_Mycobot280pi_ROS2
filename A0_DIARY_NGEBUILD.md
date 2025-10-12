@@ -378,11 +378,211 @@ mc.clear_error_information() #buat kosongin jadi 0 lagi.
 # BIKIN KOMUNIKASI DARI EXECUTOR NODE KE GUI BUAT CEK COMMANDNYA ERROR GA SUPAYA ADA USER FEEDBACK (ini.... kyk complicated soro seh, tapi klo gaada ini, buwingung kok g jalan2.)
 
 
+btw, aku nambahin alias di terimal mycobot WKWKWKWKWK
+
+alias pymycobotterminal="python3 -i -c 'from pymycobot.mycobot import MyCobot; from pymycobot import PI_PORT, PI_BAUD; import RPi.GPIO; mc = MyCobot(PI_PORT, PI_BAUD)'"
+
+alias rosonly='source /opt/ros/galactic/setup.bash'
+
+alias bothrosandinstall='source /opt/ros/galactic/setup.bash && cd ~ && source TA_JosephineD_2025/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/install/setup.bash
+
+alias toworkspace='cd TA_JosephineD_2025/pick_and_place_elephantrobotics_Mycobot280pi_ROS2'
 
 
 
 
+# ini habis nambahin launchfile di gui supaya bisa manual ngasih input X:=angka_berapa_si_/dev/videoX
+ternyata launchfile gg juga, bisa nerima input
 
 
+# yk, ku kembali ke desain ros awal yg ga kuambil krn susah tapi ternyata perlu wkwkwkwk
 
+daripada gui ke planner buat simple commands,
+mending langsung ke executioner wkwkwkwkwkw
+
+jadi konsepnya rippling action. jadi klo user cancel action di gui, gui nerusin ke planner, trus planner cancel action ke executioner.
+
+
+# aku frustasi "indentation error di robot_executor_node. line 162 mulu, gatau apaan, kuliat pake vscode juga gajelas, mboh mumet 
+tapi klo gaada error itu, aku gabakal ngeh sama error2 lain sih. i think i neededd that.
+
+# ini buku blom kelar. sy brain fog. lagi pingin nyelesain, tapi lagi lamban bgt jalan pikirannya rn. kyk setengah sadar. agak pusing sih. aku perlu nyelesain ini.
+ok, bby jo. see u tmr i g.
+
+# tau darimana arti error mappings? official docs wkwkwkwkwk au aja yg gapaham pas dulu baca hahaha
+https://docs.elephantrobotics.com/docs/mycobot_280_pi_en/3-FunctionsAndApplications/6.developmentGuide/python/2_API.html  
+
+1.3 get_error_information()
+function： Obtaining robot error information
+
+Return value：
+
+0: No error message.
+1 ~ 6: The corresponding joint exceeds the limit position.
+16 ~ 19: Collision protection.
+32: Kinematics inverse solution has no solution.
+33 ~ 34: Linear motion has no adjacent solution.
+
+# im refactoring the gui, pake design pattern model view controller, supaya g spaghetti code lagi, dan aku actually bisa njelasin konsep besar package ini di bab 3. tapi waktuku cuma sehari. apa nutut?
+
+jadi, proposed directory jadi gini
+
+── mycobot280pi/              
+    ├── __init__.py
+    ├── grcn_entry_main.py
+    ├── app_orchestrator_core.py
+    │
+    ├── core_layer/                # MODEL & CONTROLLER layer
+    │   ├── __init__.py
+    │   ├── state_enum_core.py
+    │   ├── workspace_model_core.py
+    │   └── controllers_core/
+    │       ├── __init__.py
+    │       ├── complex_cmd_hdlr_core.py  
+    │       ├── simple_cmd_hdlr_core.py   
+    │       └── workspace_ctrl_core.py
+    │
+    ├── gui_layer/                 # VIEW layer
+    │   ├── __init__.py
+    │   ├── main_window_gui.py
+    │   ├── signal_connector_gui.py
+    │   └── widgets_gui/
+    │       ├── __init__.py
+    │       ├── action_panel_gui.py
+    │       ├── command_panel_gui.py
+    │       ├── monitor_panel_gui.py
+    │       ├── workspace_panel_gui.py
+    │       └── graphics_gui/
+    │           ├── __init__.py
+    │           ├── draggable_item_gui.py
+    │           └── point_handle_gui.py
+    │
+    └── ros_layer/                 # ROS2
+        ├── __init__.py
+        ├── ros_facade_bridge.py
+        ├── ros_node_main.py
+        └── handlers_ros/
+            ├── __init__.py
+            ├── action_client_hdlr.py
+            ├── service_client_hdlr.py
+            └── topic_hdlr.py
+
+
+dan krn agak jelas class mana manggil class mana, 
+Of course. This is the perfect time to map out the new relationships. A clear dependency map is like a blueprint for the refactoring process.
+
+I've designed a format that shows both what a class **needs to be created** (its dependencies) and **who uses it** (its consumers). This should give you a very clear picture of how all the pieces will connect.
+
+***
+
+### Dependency Map of the Refactored Application
+
+This map outlines the key classes, their dependencies (which are "injected" into their constructors), and their primary consumers.
+
+---
+
+### **Application Layer (The Orchestrator)**
+
+This is the master builder that constructs and connects all other components.
+
+#### **`mycobot280pi_app/app_orchestrator_core.py`**
+* **Class:** `AppOrchestrator`
+    * **Dependencies (Injected via `__init__`):** None. It is the top-level class.
+    * **Primary Consumer(s):**
+        * Instantiated only once by `grcn_entry_main.py` to start the entire application.
+
+---
+
+### **Core Layer (Model & Controller)**
+
+This layer contains the application's state and logic. It is completely independent of the UI.
+
+#### **`mycobot280pi_app/core_layer/workspace_model_core.py`**
+* **Class:** `WorkspaceModel`
+    * **Dependencies (Injected via `__init__`):** None. It is a self-contained data store.
+    * **Primary Consumer(s):**
+        * **Instantiated by:** `AppOrchestrator`.
+        * **Manipulated by (Calls its methods):** `WorkspaceController` (to add/remove items), `ComplexCommandHandler` (to read the list of moved items).
+        * **Observed by (Connects to its signals):** `WorkspacePanelGUI` (to update the visual display of items).
+
+#### **`mycobot280pi_app/core_layer/controllers_core/workspace_ctrl_core.py`**
+* **Class:** `WorkspaceController`
+    * **Dependencies (Injected via `__init__`):**
+        * `model: WorkspaceModel`
+        * `ros_comm: ROS_Facade_Bridge` (to receive ROS data like detected objects).
+    * **Primary Consumer(s):**
+        * **Instantiated by:** `AppOrchestrator`.
+        * Its methods are connected as slots to signals from `ActionPanelGUI` (e.g., reset, delete buttons) and `ROS_Facade_Bridge`.
+
+#### **`mycobot280pi_app/core_layer/controllers_core/simple_cmd_hdlr_core.py`**
+* **Class:** `SimpleCommandHandler`
+    * **Dependencies (Injected via `__init__`):**
+        * `ros_comm: ROS_Facade_Bridge` (to send simple commands).
+    * **Primary Consumer(s):**
+        * **Instantiated by:** `AppOrchestrator`.
+        * Its methods are connected as slots to signals from `CommandPanelGUI` (e.g., move, set RGB, vacuum buttons).
+
+#### **`mycobot280pi_app/core_layer/controllers_core/complex_cmd_hdlr_core.py`**
+* **Class:** `ComplexCommandHandler`
+    * **Dependencies (Injected via `__init__`):**
+        * `model: WorkspaceModel` (to get the list of moved items).
+        * `ros_comm: ROS_Facade_Bridge` (to send the complex goal).
+    * **Primary Consumer(s):**
+        * **Instantiated by:** `AppOrchestrator`.
+        * Its methods are connected as slots to signals from `ActionPanelGUI` (e.g., start, cancel buttons).
+
+---
+
+### **GUI Layer (View)**
+
+This layer is responsible for everything the user sees and interacts with.
+
+#### **`mycobot280pi_app/gui_layer/main_window_gui.py`**
+* **Class:** `MainWindowGUI`
+    * **Dependencies (Injected via `__init__`):** None. It builds its own child widgets.
+    * **Primary Consumer(s):**
+        * **Instantiated by:** `AppOrchestrator`. It acts as the container for all other UI widgets.
+
+#### **`mycobot280pi_app/gui_layer/widgets_gui/` (All panel files)**
+* **Classes:** `ActionPanelGUI`, `CommandPanelGUI`, `WorkspacePanelGUI`, `MonitorPanelGUI`
+    * **Dependencies (Injected via `__init__`):** None. They are self-contained UI components.
+    * **Primary Consumer(s):**
+        * [cite_start]**Instantiated by:** `MainWindowGUI`[cite: 116, 117].
+        * They emit signals (e.g., `button.clicked`) that are connected to the Controllers by the `AppOrchestrator`.
+
+#### **`mycobot280pi_app/gui_layer/widgets_gui/graphics_gui/draggable_item_gui.py`**
+* **Class:** `DraggableItemGUI`
+    * **Dependencies (Injected via `__init__`):**
+        * `pixmap: QPixmap`
+        * [cite_start]`detected_object: OneDetectedObject` [cite: 279]
+    * **Primary Consumer(s):**
+        * **Instantiated by:** `WorkspaceController` when it processes new detected objects from ROS, before adding them to the `WorkspaceModel`.
+
+---
+
+### **ROS Layer (Communication Bridge)**
+
+This layer handles all communication with the ROS 2 network.
+
+#### **`mycobot280pi_app/ros_layer/ros_facade_bridge.py`**
+* **Class:** `ROS_Facade_Bridge`
+    * **Dependencies (Injected via `__init__`):** None. [cite_start]It creates its own `ROS_Node_Main`. [cite: 23]
+    * **Primary Consumer(s):**
+        * **Instantiated by:** `AppOrchestrator`.
+        * A reference is passed to all Controllers that need to either send or receive data from ROS.
+
+#### **`mycobot280pi_app/ros_layer/ros_node_main.py`**
+* **Class:** `ROS_Node_Main`
+    * **Dependencies (Injected via `__init__`):**
+        * [cite_start]`facade: ROS_Facade_Bridge` [cite: 10, 11]
+    * **Primary Consumer(s):**
+        * [cite_start]**Instantiated by:** `ROS_Facade_Bridge`. [cite: 23]
+
+#### **`mycobot280pi_app/ros_layer/handlers_ros/` (All handler files)**
+* **Classes:** `ActionClientHandler`, `ServiceClientHandler`, `TopicHandler`
+    * **Dependencies (Injected via `__init__`):**
+        * `node: ROS_Node_Main`
+        * [cite_start]`facade: ROS_Facade_Bridge` [cite: 40, 41, 55, 74, 75]
+    * **Primary Consumer(s):**
+        * [cite_start]**Instantiated by:** `ROS_Node_Main` as part of its setup. [cite: 7]        
 

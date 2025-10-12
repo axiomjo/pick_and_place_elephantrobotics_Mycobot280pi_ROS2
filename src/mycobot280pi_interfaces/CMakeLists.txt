@@ -46,6 +46,7 @@ endif()
 
   set(action_files
     "action/ProcessWorkspace.action"
+    "action/SimpleCommandsAction.action"
   )
 
   # Generate code for the listed interfaces
