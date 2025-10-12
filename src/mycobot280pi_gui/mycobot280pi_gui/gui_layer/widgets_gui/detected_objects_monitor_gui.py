@@ -19,10 +19,10 @@ class DetectedObjectMonitorGUI(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        self.camera_label = QLabel("Waiting for annotated camera feed...") [cite: 237]
-        self.camera_label.setFixedSize(300, 300) [cite: 237]
-        self.camera_label.setAlignment(Qt.AlignCenter) [cite: 237]
-        self.camera_label.setStyleSheet("border: 1px solid black; background-color: #222;") [cite: 237]
+        self.camera_label = QLabel("Waiting for annotated camera feed...") 
+        self.camera_label.setFixedSize(300, 300) 
+        self.camera_label.setAlignment(Qt.AlignCenter) 
+        self.camera_label.setStyleSheet("border: 1px solid black; background-color: #222;") 
         layout.addWidget(self.camera_label)
 
     @pyqtSlot(np.ndarray)
@@ -42,7 +42,7 @@ class DetectedObjectMonitorGUI(QWidget):
                 self.camera_label.size(),
                 Qt.KeepAspectRatio,
                 Qt.SmoothTransformation
-            )) [cite: 239]
+            )) 
         except Exception as e:
             self.camera_label.setText("Error displaying image.")
-            print(f"Error in update_camera_view: {e}") [cite: 240]
+            print(f"Error in update_camera_view: {e}") 

@@ -39,7 +39,7 @@ class JointMonitorGUI(QWidget):
         value_label = QLabel("0.0°")
         value_label.setFixedWidth(60)
 
-        joint_layout = QHBoxLayout() [cite: 246]
+        joint_layout = QHBoxLayout() 
         joint_layout.addWidget(name_label)
         joint_layout.addWidget(progress_bar)
         joint_layout.addWidget(value_label)
@@ -49,22 +49,22 @@ class JointMonitorGUI(QWidget):
             'name_label': name_label,
             'bar': progress_bar,
             'value': value_label
-        } [cite: 244, 247]
+        }
 
     @pyqtSlot(JointAnglesArray)
     def update_joint_display(self, joint_angle_msg):
         """Public slot to update all joint displays from a JointAnglesArray message."""
         latest_angles = joint_angle_msg.joint_angles
-        default_joint_names = [f"Joint {i}" for i in range(1, 7)] [cite: 249]
+        default_joint_names = [f"Joint {i}" for i in range(1, 7)]
         num_joints = min(len(latest_angles), 6)
 
         for i in range(num_joints):
             angle_deg = latest_angles[i]
-            placeholder_key = f"joint_{i + 1}" [cite: 250]
+            placeholder_key = f"joint_{i + 1}" 
 
             if placeholder_key in self.joint_widgets:
                 widgets = self.joint_widgets[placeholder_key]
-                widgets['name_label'].setText(f"{default_joint_names[i]}:") [cite: 251]
-                widgets['value'].setText(f"{angle_deg:.1f}°") [cite: 251]
+                widgets['name_label'].setText(f"{default_joint_names[i]}:") 
+                widgets['value'].setText(f"{angle_deg:.1f}°") 
                 bar_value = int(angle_deg - JOINT_MIN_DEG)
-                widgets['bar'].setValue(bar_value) [cite: 252]
+                widgets['bar'].setValue(bar_value) 

@@ -20,8 +20,8 @@ class PerspectiveEditorGUI(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.frame = None [cite: 259]
-        self.handles = [] [cite: 259]
+        self.frame = None 
+        self.handles = [] 
         
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -29,7 +29,7 @@ class PerspectiveEditorGUI(QWidget):
         self.scene = QGraphicsScene()
         self.view = QGraphicsView(self.scene)
         
-        self.pixmap_item = QGraphicsPixmapItem() [cite: 260]
+        self.pixmap_item = QGraphicsPixmapItem() 
         self.scene.addItem(self.pixmap_item)
         main_layout.addWidget(self.view)
         
@@ -39,32 +39,32 @@ class PerspectiveEditorGUI(QWidget):
 
     @pyqtSlot(np.ndarray)
     def update_frame(self, new_frame):
-        """Public slot to receive a new camera frame (as a numpy array).""" [cite: 261]
+        """Public slot to receive a new camera frame (as a numpy array).""" 
         if new_frame is None or new_frame.size == 0:
             return
         self.frame = new_frame
         
         rgb_image = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
         h, w, ch = self.frame.shape
-        bytes_per_line = ch * w [cite: 264]
+        bytes_per_line = ch * w [
         qimg = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
         pixmap = QPixmap.fromImage(qimg)
         self.pixmap_item.setPixmap(pixmap)
         
         if not self.handles:
-            margin = 50 [cite: 265]
+            margin = 50 
             self.handles = [
                 PointHandleGUI(margin, margin),
                 PointHandleGUI(w - margin, margin),
                 PointHandleGUI(w - margin, h - margin),
                 PointHandleGUI(margin, h - margin)
-            ] [cite: 265, 266]
+            ] 
             for handle in self.handles:
                 self.scene.addItem(handle)
 
     def _emit_points_update(self):
-        """Internal method called by timer to gather and emit handle positions.""" [cite: 267]
+        """Internal method called by timer to gather and emit handle positions.""" 
         if self.frame is None or not self.handles:
             return
         points = np.array([h.get_point() for h in self.handles], dtype=np.float32)
-        self.perspective_points_changed.emit(points) [cite: 268]
+        self.perspective_points_changed.emit(points) 

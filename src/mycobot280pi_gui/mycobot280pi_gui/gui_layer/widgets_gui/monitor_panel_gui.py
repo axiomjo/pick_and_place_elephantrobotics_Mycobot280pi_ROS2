@@ -17,7 +17,7 @@ class MonitorPanelGUI(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         
-        main_layout = QVBoxLayout(self) [cite: 230]
+        main_layout = QVBoxLayout(self) 
         main_layout.setContentsMargins(5, 5, 5, 5)
 
         # 1. Create a horizontal layout for the top row.
@@ -26,12 +26,12 @@ class MonitorPanelGUI(QWidget):
         # 2. Instantiate the child widgets.
         self.annotated_camera = DetectedObjectMonitorGUI(self)
         self.joint_monitor = JointMonitorGUI(self)
-        self.perspective_editor = PerspectiveEditorGUI(self) [cite: 232]
+        self.perspective_editor = PerspectiveEditorGUI(self)
         
         # 3. Add the top-row widgets to the horizontal layout.
-        top_row_layout.addWidget(self.joint_monitor) [cite: 231]
-        top_row_layout.addWidget(self.annotated_camera) [cite: 231]
+        top_row_layout.addWidget(self.joint_monitor)
+        top_row_layout.addWidget(self.annotated_camera)
            
         # 4. Add the top row layout and the bottom widget to the main vertical layout.
-        main_layout.addLayout(top_row_layout) [cite: 234]
-        main_layout.addWidget(self.perspective_editor) [cite: 234]
+        main_layout.addLayout(top_row_layout)
+        main_layout.addWidget(self.perspective_editor)
