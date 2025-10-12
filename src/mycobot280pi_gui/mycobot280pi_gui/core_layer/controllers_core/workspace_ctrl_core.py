@@ -6,40 +6,24 @@ adding objects based on ROS data, resetting the plane, and deleting selected ite
 """
 import cv2
 import numpy as np
+import traceback
 from PyQt5.QtCore import QObject, pyqtSlot, pyqtSignal
-from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtGui import QImage, QPixmap, QTransform
 
-# Import the models and views it will interact with
 from ..workspace_model_core import WorkspaceModel
 from ...gui_layer.widgets_gui.graphics_gui.draggable_item_gui import DraggableItemGUI
-
-# Import type hints for ROS components
 from ...ros_layer.ros_facade_bridge import ROS_Facade_Bridge
 from mycobot280pi_interfaces.msg import ManyDetectedObjects, OneDetectedObject
 
 
-# This function is migrated from the old gui_utils.py
-def _create_cutout_pixmap(source_image, obj): 
-    """
-    Crops a source OpenCV image based on a detected object's bounding box.
-    This is a private helper function for this module.
-    
-    return:
-        QPixmap
-    """
-    w = obj.width
-    h = obj.height
-    x = int(obj.center_point.x - w / 2.0)
-    y = int(obj.center_point.y - h / 2.0)
-    
+def _create_cutout_pixmap(source_image, obj): # (np.ndarray, OneDetectedObject) -> QPixmap
+    w, h = obj.width, obj.height
+    x, y = int(obj.center_point.x - w / 2.0), int(obj.center_point.y - h / 2.0)
     img_h, img_w, _ = source_image.shape
     if w <= 0 or h <= 0 or x < 0 or y < 0 or (x + w) > img_w or (y + h) > img_h:
         return QPixmap()
-
     cutout_cv = source_image[y:y+h, x:x+w]
-    if cutout_cv.size == 0:
-        return QPixmap()
-
+    if cutout_cv.size == 0: return QPixmap()
     try:
         rgb_cutout = cv2.cvtColor(cutout_cv, cv2.COLOR_BGR2RGB)
         h2, w2, ch = rgb_cutout.shape
@@ -51,69 +35,41 @@ def _create_cutout_pixmap(source_image, obj):
 
 
 class WorkspaceController(QObject):
-    """Manages the business logic of the workspace."""
-
-    # Signal to send status updates to the GUI
     status_message_changed = pyqtSignal(str)
 
     def __init__(self, model, ros_comm, parent=None):
-        # (model: WorkspaceModel, ros_comm: ROS_Facade_Bridge, parent: QObject)
         super().__init__(parent)
-        
-        # --- Dependencies (Injected) ---
         self.model = model
         self.ros_comm = ros_comm
         self.logger = self.ros_comm.get_logger()
-
-        # --- Internal State ---
-        # This controller caches the latest ROS data it needs to perform its job.
         self.latest_objects_msg = None
         self.latest_annotated_image = None
     
-    # --- Public Slots (for ROS Facade signals) ---
-
     @pyqtSlot(ManyDetectedObjects)
     def cache_detected_objects(self, objects_msg):
-        """Caches the latest detected objects message from the ROS Facade."""
         self.latest_objects_msg = objects_msg
 
     @pyqtSlot(np.ndarray)
     def cache_annotated_image(self, cv_image):
-        """Caches the latest annotated image from the ROS Facade."""
         self.latest_annotated_image = cv_image
-
-    # --- Public Slots (for GUI View signals) ---
     
     @pyqtSlot()
     def reset_plane(self):
-        """
-        Handles the logic for the "Reset Plane" button.
-        Commands the model to clear all its items.
-        """
         self.logger.info("Resetting the workspace plane...")
         self.model.clear_all_items()
         self.status_message_changed.emit("Plane has been reset. Ready for new plan.")
 
     @pyqtSlot(list)
     def delete_selected(self, selected_items):
-        """
-        Handles the logic for the "Delete Selected" button.
-        Commands the model to remove the specified items.
-        """
         if not selected_items:
             self.status_message_changed.emit("No items selected to delete.")
             return
-
         self.logger.info("Deleting {} selected items...".format(len(selected_items)))
         self.model.remove_items(selected_items)
         self.status_message_changed.emit("Deleted {} item(s).".format(len(selected_items)))
 
     @pyqtSlot()
     def add_new_objects_from_cutouts(self):
-        """
-        Handles the "Add New Objects" button. Creates DraggableItemGUI instances
-        from cached ROS data and commands the model to add them.
-        """
         if self.latest_objects_msg is None or self.latest_annotated_image is None:
             self.logger.warn("Add objects called, but ROS data is not ready yet.")
             self.status_message_changed.emit("ROS data is not available to add objects.")
@@ -123,26 +79,47 @@ class WorkspaceController(QObject):
         newly_created_items = []
         image_to_process = self.latest_annotated_image
         
+        # The controller needs the full image dimensions to calculate scene coordinates
+        img_h, img_w, _ = image_to_process.shape
+        cam_center_x = img_w / 2.0
+        cam_center_y = img_h / 2.0
+
         for obj in self.latest_objects_msg.objects:
             try:
                 pixmap = _create_cutout_pixmap(image_to_process, obj)
-                if pixmap.isNull():
-                    continue
+                if pixmap.isNull(): continue
 
-                # The QGraphicsScene will be inverted, so we flip the pixmap vertically now.
-                transform = QTransform()
-                transform.scale(1, -1)
+                transform = QTransform(); transform.scale(1, -1)
                 flipped_pixmap = pixmap.transformed(transform)
-                if flipped_pixmap.isNull():
-                    continue
+                if flipped_pixmap.isNull(): continue
                 
-                # Create the GUI item but DON'T add it to a scene here.
                 item = DraggableItemGUI(pixmap=flipped_pixmap, detected_object=obj)
+                
+                # --- THIS IS THE CORRECTED LOGIC ---
+                # 1. Convert the object's camera center point to a scene center point.
+                #    The scene's (0,0) is at the center of the camera image.
+                scene_center_x = obj.center_point.x - cam_center_x
+                # to match robot coordinate system
+                scene_center_y = -( obj.center_point.y - cam_center_y)
+
+                # 2. Calculate the top-left position for the item.
+                #    setPos() places the item's top-left corner (its origin).
+                #    So, we offset the center point by half the item's width/height.
+                item_w = flipped_pixmap.width()
+                item_h = flipped_pixmap.height()
+                top_left_x = scene_center_x - (item_w / 2)
+                top_left_y = scene_center_y - (item_h / 2)
+                
+                # 3. Set the item's position *before* adding it to the model.
+                item.setPos(top_left_x, top_left_y)
+                # --- END OF CORRECTION ---
+
                 newly_created_items.append(item)
 
             except Exception as e:
-                self.logger.error("Error processing object ID {}: {}".format(obj.id, e), exc_info=True)
+                error_msg = "Error processing object ID {}: {}".format(obj.id, e)
+                traceback_str = traceback.format_exc()
+                self.logger.error(f"{error_msg}\n---\n{traceback_str}\n---")
         
-        # Command the model to add all the newly created items in one go.
         self.model.add_items(newly_created_items)
         self.status_message_changed.emit("Added {} new objects to the plane.".format(len(newly_created_items)))

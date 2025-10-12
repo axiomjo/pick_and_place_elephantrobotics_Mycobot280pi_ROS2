@@ -99,20 +99,6 @@ class WorkspacePanelGUI(QWidget):
             self.scene.addItem(item)
             self._scene_items.append(item)
             
-            # Reposition the item based on its internal state.
-            # This is important as the item's position might have been set
-            # before it was added to the scene.
-            center_pos = item.mapToScene(item.boundingRect().center())
-            img_height, img_width = item.pixmap().height(), item.pixmap().width()
-            cam_center_x = img_width / 2.0
-            cam_center_y = img_height / 2.0
-
-            scene_x = item.detected_object.center_point.x - cam_center_x
-            scene_y = -(item.detected_object.center_point.y - cam_center_y)
-            final_x = scene_x - (img_width / 2)
-            final_y = scene_y - (img_height / 2)
-            item.setPos(final_x, final_y)
-
 
     # --- Methods for drawing static elements (copied from old project) ---
 
