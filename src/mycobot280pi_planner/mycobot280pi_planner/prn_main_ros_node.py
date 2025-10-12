@@ -3,12 +3,8 @@ from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor 
 from rclpy.callback_groups import ReentrantCallbackGroup
 
-# Import the modular components
 from .prn_planning_logic import PlannerLogicActionClient
-from .prn_action_server import PlannerActionServer
-
-
-
+from .prn_action_server_complex_command import ComplexCommandActionServer
 
 class PlannerRobotNode(Node):
     def __init__(self):
@@ -18,13 +14,11 @@ class PlannerRobotNode(Node):
         action_callback_group = ReentrantCallbackGroup()
         logic_client_callback_group = ReentrantCallbackGroup() 
 
-        self.logic_action_client = PlannerLogicActionClient(self, logic_client_callback_group) 
-        self.action_server = PlannerActionServer(self, self.logic_action_client, action_callback_group)
-
+        self.logic = PlannerLogicActionClient(self, logic_client_callback_group) 
+        self.action_server = ComplexCommandActionServer(self, self.logic, action_callback_group)
 
         self.get_logger().info("PlannerRobotNode is up and running. 🧠")
         
-    
 def main(args=None):
     rclpy.init(args=args)
     node = PlannerRobotNode()

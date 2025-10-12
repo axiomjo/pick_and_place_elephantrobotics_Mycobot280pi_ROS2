@@ -7,6 +7,8 @@ adding objects based on ROS data, resetting the plane, and deleting selected ite
 import cv2
 import numpy as np
 import traceback
+from copy import deepcopy
+
 from PyQt5.QtCore import QObject, pyqtSlot, pyqtSignal
 from PyQt5.QtGui import QImage, QPixmap, QTransform
 
@@ -78,41 +80,46 @@ class WorkspaceController(QObject):
     @pyqtSlot()
     def add_new_objects_from_cutouts(self):
         """
-        Dumb "insert and forget" method. Creates items for ALL currently
-        detected objects and adds them to the model.
+        Creates items for ALL currently detected objects and adds them to the model.
+        The coordinate transformation from image space to scene space is done here.
         """
         if self.latest_objects_msg is None or self.latest_annotated_image is None:
             self.logger.warn("Add objects called, but ROS data is not ready yet.")
             self.status_message_changed.emit("ROS data is not available to add objects.")
             return
 
-        # --- THIS IS THE SIMPLIFIED LOGIC ---
         newly_created_items = []
         image_to_process = self.latest_annotated_image
         img_h, img_w, _ = image_to_process.shape
         cam_center_x = img_w / 2.0
         cam_center_y = img_h / 2.0
 
-        # Loop through ALL objects in the message, no checking for existing IDs.
         for obj in self.latest_objects_msg.objects:
             try:
+                # --- Perform coordinate transformation FIRST ---
+                scene_x = obj.center_point.x - cam_center_x
+                scene_y = -(obj.center_point.y - cam_center_y) # Invert Y for scene
+
+                # --- Create a corrected data object ---
+                # This ensures the item's internal data matches the scene.
+                corrected_obj = deepcopy(obj)
+                corrected_obj.center_point.x = scene_x
+                corrected_obj.center_point.y = scene_y
+                
+                # Create the pixmap from the original image and original object data
                 pixmap = _create_cutout_pixmap(image_to_process, obj)
                 if pixmap.isNull(): continue
 
+                # Flip the pixmap visually to match the scene's inverted Y-axis
                 transform = QTransform(); transform.scale(1, -1)
                 flipped_pixmap = pixmap.transformed(transform)
                 if flipped_pixmap.isNull(): continue
                 
-                item = DraggableItemGUI(pixmap=flipped_pixmap, detected_object=obj)
+                # --- Pass the CORRECTED object to the constructor ---
+                item = DraggableItemGUI(pixmap=flipped_pixmap, detected_object=corrected_obj)
                 
-                scene_center_x = obj.center_point.x - cam_center_x
-                scene_center_y = -(obj.center_point.y - cam_center_y)
-                
-                item_w, item_h = flipped_pixmap.width(), flipped_pixmap.height()
-                top_left_x = scene_center_x - (item_w / 2)
-                top_left_y = scene_center_y - (item_h / 2)
-                
-                item.setPos(top_left_x, top_left_y)
+                # The item's __init__ will now handle setting the correct position.
+                # The manual setPos call is no longer needed here.
                 
                 newly_created_items.append(item)
 
@@ -126,4 +133,3 @@ class WorkspaceController(QObject):
             self.status_message_changed.emit("Added {} new objects to the plane.".format(len(newly_created_items)))
         else:
             self.status_message_changed.emit("No objects were detected to add.")
-        # --- END OF SIMPLIFIED LOGIC ---
