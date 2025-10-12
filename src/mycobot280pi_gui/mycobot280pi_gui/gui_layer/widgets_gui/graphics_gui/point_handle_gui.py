@@ -16,10 +16,10 @@ class PointHandleGUI(QGraphicsEllipseItem):
         """
         Initializes a handle at a specific position.
         Args:
-            [cite_start]x: The initial x-coordinate in the scene. [cite: 273]
-            [cite_start]y: The initial y-coordinate in the scene. [cite: 274]
-            [cite_start]radius: The radius of the handle's circle. [cite: 275]
-            [cite_start]color: The fill color of the handle. [cite: 275]
+            x: The initial x-coordinate in the scene. 
+            y: The initial y-coordinate in the scene. 
+            radius: The radius of the handle's circle. 
+            color: The fill color of the handle. 
         """
         # Create the ellipse centered at (0, 0)
         super().__init__(-radius/2, -radius/2, radius, radius)
@@ -29,7 +29,7 @@ class PointHandleGUI(QGraphicsEllipseItem):
         
         # Set flags to make the handle interactive
         self.setFlag(QGraphicsEllipseItem.ItemIsMovable, True)
-        [cite_start]self.setFlag(QGraphicsEllipseItem.ItemSendsScenePositionChanges, True) [cite: 276]
+        self.setFlag(QGraphicsEllipseItem.ItemSendsScenePositionChanges, True) 
         
         # Move the handle to its initial position in the scene
         self.setPos(x, y)
@@ -38,6 +38,6 @@ class PointHandleGUI(QGraphicsEllipseItem):
         """
         Returns the handle's current position as a tuple of integers.
         Returns:
-            [cite_start]A tuple containing the (x, y) coordinates. [cite: 277]
+            A tuple containing the (x, y) coordinates. 
         """
-        [cite_start]return int(self.pos().x()), int(self.pos().y()) [cite: 278]
+        return int(self.pos().x()), int(self.pos().y()) 

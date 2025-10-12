@@ -128,7 +128,7 @@ class WorkspacePanelGUI(QWidget):
         circle_item.setBrush(QBrush(semi_transparent_color))
         circle_item.setPen(QPen(Qt.NoPen))
         circle_item.setZValue(0)
-        self.working_plane_scene.addItem(circle_item)
+        self.scene.addItem(circle_item)
 
         OUTER_RADIUS = 250
         INNER_RADIUS = 150
@@ -169,7 +169,7 @@ class WorkspacePanelGUI(QWidget):
         path_item.setBrush(QBrush(semi_transparent_color))
         path_item.setPen(QPen(Qt.NoPen))
         path_item.setZValue(0)
-        self.working_plane_scene.addItem(path_item)
+        self.scene.addItem(path_item)
 
         # --- 7. inner blocked area (gray center) ---
         base_block_item = QGraphicsEllipseItem(
@@ -178,7 +178,7 @@ class WorkspacePanelGUI(QWidget):
         base_block_item.setBrush(QBrush(QColor(192, 192, 192, 150)))
         base_block_item.setPen(QPen(Qt.NoPen))
         base_block_item.setZValue(1)
-        self.working_plane_scene.addItem(base_block_item)
+        self.scene.addItem(base_block_item)
 
         # --- baseplate rectangle ---
         rect_width, rect_height, corner_radius = 110, 150, 7.5
@@ -188,134 +188,134 @@ class WorkspacePanelGUI(QWidget):
             corner_radius,
             corner_radius,
         )
-        rounded_rect_item = self.working_plane_scene.addPath(path)
+        rounded_rect_item = self.scene.addPath(path)
         rounded_rect_item.setBrush(QBrush(QColor("#DFDFDF")))
         rounded_rect_item.setPen(QPen(Qt.NoPen))
         rounded_rect_item.setZValue(1)
 
-    # --- robot base ---
-    robotbase_radius = 45
-    robotbase_item = QGraphicsEllipseItem(
-        -robotbase_radius, -robotbase_radius,
-        2 * robotbase_radius, 2 * robotbase_radius
-    )
-    robotbase_item.setBrush(QBrush(QColor("#C3C3C3")))
-    robotbase_item.setPen(QPen(Qt.NoPen))
-    robotbase_item.setZValue(2)
-    self.working_plane_scene.addItem(robotbase_item)
+        # --- robot base ---
+        robotbase_radius = 45
+        robotbase_item = QGraphicsEllipseItem(
+            -robotbase_radius, -robotbase_radius,
+            2 * robotbase_radius, 2 * robotbase_radius
+        )
+        robotbase_item.setBrush(QBrush(QColor("#C3C3C3")))
+        robotbase_item.setPen(QPen(Qt.NoPen))
+        robotbase_item.setZValue(2)
+        self.scene.addItem(robotbase_item)
 
-    # --- robot base face ---
-    face_width, face_height = 20, 60
-    face_item = QGraphicsRectItem(
-        -face_width / 2 - 45, -face_height / 2, face_width, face_height
-    )
-    face_item.setBrush(QBrush(QColor("#C3C3C3")))
-    face_item.setPen(QPen(Qt.NoPen))
-    face_item.setZValue(2)
-    self.working_plane_scene.addItem(face_item)
+        # --- robot base face ---
+        face_width, face_height = 20, 60
+        face_item = QGraphicsRectItem(
+            -face_width / 2 - 45, -face_height / 2, face_width, face_height
+        )
+        face_item.setBrush(QBrush(QColor("#C3C3C3")))
+        face_item.setPen(QPen(Qt.NoPen))
+        face_item.setZValue(2)
+        self.scene.addItem(face_item)
 
 
-def draw_axes_with_ticks(self):
-    """Draw coordinate grid with labeled axes."""
-    grid_range = 300
-    pen_grid = QPen(QColor(220, 220, 220), 1, Qt.SolidLine)
+    def draw_axes_with_ticks(self):
+        """Draw coordinate grid with labeled axes."""
+        grid_range = 300
+        pen_grid = QPen(QColor(220, 220, 220), 1, Qt.SolidLine)
 
-    # grid lines
-    for x in range(-grid_range, grid_range + 1, 10):
-        self.working_plane_scene.addLine(
-            x, -grid_range, x, grid_range, pen_grid
-        ).setZValue(-10)
+        # grid lines
+        for x in range(-grid_range, grid_range + 1, 10):
+            self.scene.addLine(
+                x, -grid_range, x, grid_range, pen_grid
+            ).setZValue(-10)
 
-    for y in range(-grid_range, grid_range + 1, 10):
-        self.working_plane_scene.addLine(
-            -grid_range, y, grid_range, y, pen_grid
-        ).setZValue(-10)
+        for y in range(-grid_range, grid_range + 1, 10):
+            self.scene.addLine(
+                -grid_range, y, grid_range, y, pen_grid
+            ).setZValue(-10)
 
-    # axes
-    pen_x_axis = QPen(Qt.red, 2)
-    pen_y_axis = QPen(Qt.blue, 2)
-    self.working_plane_scene.addLine(
-        -grid_range, 0, grid_range, 0, pen_x_axis
-    ).setZValue(5)
-    self.working_plane_scene.addLine(
-        0, -grid_range, 0, grid_range, pen_y_axis
-    ).setZValue(5)
+        # axes
+        pen_x_axis = QPen(Qt.red, 2)
+        pen_y_axis = QPen(Qt.blue, 2)
+        self.scene.addLine(
+            -grid_range, 0, grid_range, 0, pen_x_axis
+        ).setZValue(5)
+        self.scene.addLine(
+            0, -grid_range, 0, grid_range, pen_y_axis
+        ).setZValue(5)
 
-    # ticks
-    tick_size = 5
-    for val in range(-grid_range, grid_range + 1, 50):
-        if val == 0:
-            continue
-        self.working_plane_scene.addLine(
-            val, -tick_size, val, tick_size, pen_x_axis
-        ).setZValue(6)
-        self.working_plane_scene.addLine(
-            -tick_size, val, tick_size, val, pen_y_axis
-        ).setZValue(6)
+        # ticks
+        tick_size = 5
+        for val in range(-grid_range, grid_range + 1, 50):
+            if val == 0:
+                continue
+            self.scene.addLine(
+                val, -tick_size, val, tick_size, pen_x_axis
+            ).setZValue(6)
+            self.scene.addLine(
+                -tick_size, val, tick_size, val, pen_y_axis
+            ).setZValue(6)
 
-    # labels
-    font = QFont("Arial", 8)
-    text_transform = QTransform().scale(1, -1)
+        # labels
+        font = QFont("Arial", 8)
+        text_transform = QTransform().scale(1, -1)
 
-    for val in range(-grid_range + 50, grid_range, 50):
-        if val == 0:
-            continue
+        for val in range(-grid_range + 50, grid_range, 50):
+            if val == 0:
+                continue
 
-        text_x = QGraphicsTextItem(str(val))
-        text_x.setFont(font)
-        text_x.setDefaultTextColor(Qt.red)
-        text_x.setPos(val - 15, -10)
-        text_x.setTransform(text_transform)
-        text_x.setZValue(7)
-        self.working_plane_scene.addItem(text_x)
+            text_x = QGraphicsTextItem(str(val))
+            text_x.setFont(font)
+            text_x.setDefaultTextColor(Qt.red)
+            text_x.setPos(val - 15, -10)
+            text_x.setTransform(text_transform)
+            text_x.setZValue(7)
+            self.scene.addItem(text_x)
 
-        text_y = QGraphicsTextItem(str(val))
-        text_y.setFont(font)
-        text_y.setDefaultTextColor(Qt.blue)
-        text_y.setPos(-40, val + 7)
-        text_y.setTransform(text_transform)
-        text_y.setZValue(7)
-        self.working_plane_scene.addItem(text_y)
+            text_y = QGraphicsTextItem(str(val))
+            text_y.setFont(font)
+            text_y.setDefaultTextColor(Qt.blue)
+            text_y.setPos(-40, val + 7)
+            text_y.setTransform(text_transform)
+            text_y.setZValue(7)
+            self.scene.addItem(text_y)
 
-    # origin dot
-    origin = self.working_plane_scene.addEllipse(
-        -3, -3, 6, 6, QPen(Qt.red), QBrush(Qt.red)
-    )
-    origin.setZValue(8)
+        # origin dot
+        origin = self.scene.addEllipse(
+            -3, -3, 6, 6, QPen(Qt.red), QBrush(Qt.red)
+        )
+        origin.setZValue(8)
 
-    # big axis labels
-    font_big = QFont("Arial", 20, QFont.Bold)
-    text_transform = QTransform().scale(1, -1)
+        # big axis labels
+        font_big = QFont("Arial", 20, QFont.Bold)
+        text_transform = QTransform().scale(1, -1)
 
-    x_label = QGraphicsTextItem("X")
-    x_label.setFont(font_big)
-    x_label.setDefaultTextColor(Qt.red)
-    x_label.setPos(grid_range, 20)
-    x_label.setTransform(text_transform)
-    x_label.setZValue(9)
-    self.working_plane_scene.addItem(x_label)
+        x_label = QGraphicsTextItem("X")
+        x_label.setFont(font_big)
+        x_label.setDefaultTextColor(Qt.red)
+        x_label.setPos(grid_range, 20)
+        x_label.setTransform(text_transform)
+        x_label.setZValue(9)
+        self.scene.addItem(x_label)
 
-    x_label_neg = QGraphicsTextItem("−X")
-    x_label_neg.setFont(font_big)
-    x_label_neg.setDefaultTextColor(Qt.red)
-    x_label_neg.setPos(-grid_range - 50, 20)
-    x_label_neg.setTransform(text_transform)
-    x_label_neg.setZValue(9)
-    self.working_plane_scene.addItem(x_label_neg)
+        x_label_neg = QGraphicsTextItem("−X")
+        x_label_neg.setFont(font_big)
+        x_label_neg.setDefaultTextColor(Qt.red)
+        x_label_neg.setPos(-grid_range - 50, 20)
+        x_label_neg.setTransform(text_transform)
+        x_label_neg.setZValue(9)
+        self.scene.addItem(x_label_neg)
 
-    y_label = QGraphicsTextItem("Y")
-    y_label.setFont(font_big)
-    y_label.setDefaultTextColor(Qt.blue)
-    y_label.setPos(-15, grid_range + 50)
-    y_label.setTransform(text_transform)
-    y_label.setZValue(9)
-    self.working_plane_scene.addItem(y_label)
+        y_label = QGraphicsTextItem("Y")
+        y_label.setFont(font_big)
+        y_label.setDefaultTextColor(Qt.blue)
+        y_label.setPos(-15, grid_range + 50)
+        y_label.setTransform(text_transform)
+        y_label.setZValue(9)
+        self.scene.addItem(y_label)
 
-    y_label_neg = QGraphicsTextItem("−Y")
-    y_label_neg.setFont(font_big)
-    y_label_neg.setDefaultTextColor(Qt.blue)
-    y_label_neg.setPos(-20, -grid_range)
-    y_label_neg.setTransform(text_transform)
-    y_label_neg.setZValue(9)
-    self.working_plane_scene.addItem(y_label_neg)
+        y_label_neg = QGraphicsTextItem("−Y")
+        y_label_neg.setFont(font_big)
+        y_label_neg.setDefaultTextColor(Qt.blue)
+        y_label_neg.setPos(-20, -grid_range)
+        y_label_neg.setTransform(text_transform)
+        y_label_neg.setZValue(9)
+        self.scene.addItem(y_label_neg)
 

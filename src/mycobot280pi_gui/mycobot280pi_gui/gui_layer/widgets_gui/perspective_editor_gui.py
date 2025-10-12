@@ -46,7 +46,7 @@ class PerspectiveEditorGUI(QWidget):
         
         rgb_image = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
         h, w, ch = self.frame.shape
-        bytes_per_line = ch * w [
+        bytes_per_line = ch * w
         qimg = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
         pixmap = QPixmap.fromImage(qimg)
         self.pixmap_item.setPixmap(pixmap)

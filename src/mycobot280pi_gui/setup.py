@@ -34,7 +34,7 @@ setup(
     # This section creates the executable that you can run with `ros2 run`
     entry_points={
         'console_scripts': [
-            'gui_robot_control_node = mycobot280pi_gui.grcn_gui_main_entry:main',
+            'gui_robot_control_node = mycobot280pi_gui.grcn_entry_main:main',
         ],
     },
 )
