@@ -475,3 +475,11 @@ I've designed a format that shows both what a class **needs to be created** (its
 
 # penyakit koordinat GUI balik lagi. Aaaahhhhhhhh
 knp ke-offset mulu sih? kapan warasnya?
+
+# 13 oct, monday.
+soooo, aku mundurin diri dari sidang periode ini. i just hope i can finish the book fast. because it starts to fly out of my brain, and i feel so disinterested in this book. im tired. and this is a second-second chance that i need, that i hope i didint need, but i need. im glad theres a second second chance.
+
+and pak yudi, my supervisor showed me great mercy, and he didnt lash out on me for creating such a horrendous output. and im glad. 
+so i'll chase it down. so im free, altho my sidang is actually on december. now how am i gonna tell my parents? i dont know. my mom will prolly be so tired. and so will the dosens. and i wanna crumple inside, and cry because even after receiving grace, im still this bad. and i got grace. grace it is.
+
+im tired. i wish im fast and efficient and independent. but im not there yet. and im still growing, and my growth is so slow compared to other peeps. and i got grace. plenty of grace. the grace suffices. and one day, we'll get there jo. its ok. ur still deeply loved. i still love u ok. i got grace, so, you do too. now, lets use this grace that our dosen and mom gave well? and be a good jojo? ok?
