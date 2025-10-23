@@ -1,0 +1,569 @@
+==========
+setup.py
+======
+
+from setuptools import setup
+
+package_name = 'mycobot280pi_planner'
+
+setup(
+    name=package_name,
+    version='0.0.0',
+    packages=[package_name],
+    data_files=[
+        ('share/ament_index/resource_index/packages',
+            ['resource/' + package_name]),
+        ('share/' + package_name, ['package.xml']),
+    ],
+    install_requires=['setuptools'],
+    zip_safe=True,
+    maintainer='axiomjo',
+    maintainer_email='jojo.josephined@gmail.com',
+    description='TODO: Package description',
+    license='TODO: License declaration',
+    tests_require=['pytest'],
+    entry_points={
+        'console_scripts': [
+            'planner_robot_node = mycobot280pi_planner.prn_main_ros_node:main',
+        ],
+    },
+)
+
+
+=====
+
+==========
+test/test_copyright.py
+======
+
+# Copyright 2015 Open Source Robotics Foundation, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from ament_copyright.main import main
+import pytest
+
+
+@pytest.mark.copyright
+@pytest.mark.linter
+def test_copyright():
+    rc = main(argv=['.', 'test'])
+    assert rc == 0, 'Found errors'
+
+
+=====
+
+==========
+test/test_flake8.py
+======
+
+# Copyright 2017 Open Source Robotics Foundation, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from ament_flake8.main import main_with_errors
+import pytest
+
+
+@pytest.mark.flake8
+@pytest.mark.linter
+def test_flake8():
+    rc, errors = main_with_errors(argv=[])
+    assert rc == 0, \
+        'Found %d code style errors / warnings:\n' % len(errors) + \
+        '\n'.join(errors)
+
+
+=====
+
+==========
+test/test_pep257.py
+======
+
+# Copyright 2015 Open Source Robotics Foundation, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from ament_pep257.main import main
+import pytest
+
+
+@pytest.mark.linter
+@pytest.mark.pep257
+def test_pep257():
+    rc = main(argv=['.', 'test'])
+    assert rc == 0, 'Found code style errors / warnings'
+
+
+=====
+
+==========
+mycobot280pi_planner/__init__.py
+======
+
+
+
+=====
+
+==========
+mycobot280pi_planner/prn_action_client_command_primitives.py
+======
+
+import rclpy
+from rclpy.action import ActionClient
+from mycobot280pi_interfaces.action import SimpleCommandsAction
+
+# --- Constants used by this module ---
+ACTION_COMMAND_PRIMITIVES = '/planner/act_command_primitives' 
+WAIT_TIMEOUT_SEC = 5.0
+
+class CommandPrimitivesActionClient:
+    def __init__(self, node, callback_group):
+        self.node = node
+        self._action_client = ActionClient(
+            node, 
+            SimpleCommandsAction,
+            ACTION_COMMAND_PRIMITIVES,
+            callback_group=callback_group
+        )
+        self.current_goal_handle = None 
+        self.node.get_logger().info(" PLANNER Action Client for Command Primitives is ready.")
+
+    def send_goal(self, primitive_cmd_goal: SimpleCommandsAction.Goal):
+        """
+        Sends a primitive action goal and waits for the result (blocking).
+        :param primitive_cmd_goal: A SimpleCommandsAction.Goal object.
+        :return: Tuple (success: bool, message: str, goal_handle)
+        """
+        self.node.get_logger().info(f"Waiting for EXECUTOR's command primitives action server: {ACTION_COMMAND_PRIMITIVES}...")
+        if not self._action_client.wait_for_server(timeout_sec=WAIT_TIMEOUT_SEC):
+            self.node.get_logger().error("PLANNER Command Primitives Action Server is not available!")
+            return False, "Primitive Action Server not available.", None
+
+        self.node.get_logger().info(f"Sending primitive goal: {primitive_cmd_goal.command_type}")
+        
+        send_goal_future = self._action_client.send_goal_async(primitive_cmd_goal)
+        rclpy.spin_until_future_complete(self.node, send_goal_future)
+        goal_handle = send_goal_future.result()
+        
+        if not goal_handle.accepted:
+            self.node.get_logger().error("Primitive goal rejected by EXECUTOR action server.")
+            return False, "Primitive goal rejected by EXECUTOR action server.", None
+        
+        self.current_goal_handle = goal_handle    
+        self.node.get_logger().info('Primitive goal accepted. Waiting for result...')
+
+        get_result_future = goal_handle.get_result_async()
+        rclpy.spin_until_future_complete(self.node, get_result_future)
+        
+        result_response = get_result_future.result()
+        result_data = result_response.result
+        
+        self.current_goal_handle = None
+        
+        return result_data.success, result_data.message, goal_handle
+
+    def cancel_current_goal(self):
+        """
+        Sends a cancellation signal to the currently active primitive action goal.
+        """
+        if self.current_goal_handle is None:
+            self.node.get_logger().info("No active primitive goal to cancel in Planner.")
+            return True
+
+        self.node.get_logger().warn(f"Sending Cancellation Request for Goal ID: {self.current_goal_handle.goal_id}")
+        
+        cancel_future = self._action_client.cancel_goal_async(self.current_goal_handle)
+        rclpy.spin_until_future_complete(self.node, cancel_future)
+        
+        if cancel_future.result():
+            self.node.get_logger().warn("Cancellation Request accepted by Executor.")
+            return True
+        else:
+            self.node.get_logger().error("Failed to send Cancellation Request.")
+            return False
+
+
+=====
+
+==========
+mycobot280pi_planner/prn_action_server_complex_command.py
+======
+
+from rclpy.action import ActionServer, CancelResponse, GoalResponse
+from mycobot280pi_interfaces.action import ProcessWorkspace
+
+# --- Constants used by this module ---
+ACTION_COMPLEX_COMMAND = '/gui/act_complex_command'
+
+class ComplexCommandActionServer:
+    def __init__(self, node, logic, callback_group):
+        self.node = node
+        self.logic = logic
+        
+        self._action_server = ActionServer(
+            node=self.node,
+            action_type=ProcessWorkspace,
+            action_name=ACTION_COMPLEX_COMMAND,
+            execute_callback=self.execute_callback,
+            goal_callback=self.goal_callback,
+            cancel_callback=self.cancel_callback,
+            callback_group=callback_group
+        )
+        self.node.get_logger().info("Complex Command Action Server is ready.")
+
+    def goal_callback(self, goal_request):
+        self.node.get_logger().info('PLANNER Received new goal request from GUI. Accepting.') 
+        return GoalResponse.ACCEPT
+
+    def cancel_callback(self, goal_handle):
+        self.node.get_logger().info('PLANNER Received cancel request from GUI. Allowing.')
+        return CancelResponse.ACCEPT
+
+    def execute_callback(self, goal_handle):
+        self.node.get_logger().info("Executing goal...")
+
+        objects = goal_handle.request.objects_to_move.objects
+        target_positions = goal_handle.request.objects_target_position.points
+        target_orientations = goal_handle.request.objects_target_orientation
+        feedback_msg = ProcessWorkspace.Feedback()
+        result_msg = ProcessWorkspace.Result()
+
+        def publish_feedback(feedback_message):
+            feedback_msg.current_state = feedback_message
+            goal_handle.publish_feedback(feedback_msg)
+            self.node.get_logger().info(f"Feedback: {feedback_message}")
+
+        for idx, obj in enumerate(objects):
+            if goal_handle.is_cancel_requested:
+                result_msg.success = False
+                result_msg.message = "Action canceled by user before starting new object."
+                goal_handle.canceled()
+                return result_msg
+
+            self.node.get_logger().info(f"Processing object {idx+1}/{len(objects)} (ID: {obj.id}).")
+
+            success, message = self.logic.pick_and_place_object(
+                obj, target_positions[idx], target_orientations[idx],
+                publish_feedback, goal_handle
+            )
+            
+            if not success:
+                if "CANCELLED" in message or "canceled by user" in message:
+                    result_msg.success = False
+                    result_msg.message = "Action canceled by user during execution."
+                    goal_handle.canceled() 
+                else:
+                    result_msg.success = False
+                    # CORRECTED: Use the actual failure message from the logic module.
+                    result_msg.message = f"Pick and place failed for object {obj.id}. Detail: {message}"
+                    goal_handle.abort()
+                return result_msg
+
+        result_msg.success = True
+        result_msg.message = "All pick-and-place sequences completed successfully." 
+        goal_handle.succeed()
+        self.node.get_logger().info("Goal succeeded.")
+        return result_msg
+
+
+=====
+
+==========
+mycobot280pi_planner/prn_main_ros_node.py
+======
+
+import rclpy
+from rclpy.node import Node
+from rclpy.executors import MultiThreadedExecutor 
+from rclpy.callback_groups import ReentrantCallbackGroup
+
+from .prn_planning_logic import PlannerLogicActionClient
+from .prn_action_server_complex_command import ComplexCommandActionServer
+
+class PlannerRobotNode(Node):
+    def __init__(self):
+        super().__init__('planner_robot_node')
+        
+        # Create ReentrantCallbackGroups for parallel processing
+        action_callback_group = ReentrantCallbackGroup()
+        logic_client_callback_group = ReentrantCallbackGroup() 
+
+        self.logic = PlannerLogicActionClient(self, logic_client_callback_group) 
+        self.action_server = ComplexCommandActionServer(self, self.logic, action_callback_group)
+
+        self.get_logger().info("PlannerRobotNode is up and running. 🧠")
+        
+def main(args=None):
+    rclpy.init(args=args)
+    node = PlannerRobotNode()
+    
+    # Use MultiThreadedExecutor to handle the action server and action client 
+    # callbacks concurrently. This is essential for the blocking sequence.
+    executor = MultiThreadedExecutor()
+    executor.add_node(node)
+    
+    try:
+        executor.spin()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        executor.shutdown()
+        node.destroy_node()
+        rclpy.shutdown()
+
+if __name__ == "__main__":
+    main()
+
+
+=====
+
+==========
+mycobot280pi_planner/prn_planning_logic.py
+======
+
+from mycobot280pi_interfaces.action import SimpleCommandsAction
+from .prn_action_client_command_primitives import CommandPrimitivesActionClient
+
+# --- Constants used by this module ---
+RX_DOWN = 180.0
+RY_DOWN = 0.0
+DEFAULT_SPEED = 100
+
+
+class PlannerLogicActionClient:
+    def __init__(self, node, callback_group):
+        self.node = node
+        self.action_client = CommandPrimitivesActionClient(self.node, callback_group)
+        self.current_primitive_goal_handle = None 
+
+    def _execute_primitive_step(self, cmd_goal: SimpleCommandsAction.Goal, description: str, feedback_callback, complex_goal_handle):
+        """
+        Receives a SimpleCommandsAction.Goal object, passes it to the Action Client,
+        and returns the success status and message from the Executor.
+        """
+        feedback_callback(f"Executing step: {description}")
+
+        if complex_goal_handle.is_cancel_requested:
+            return False, "CANCELLED"
+
+        success, message, new_goal_handle = self.action_client.send_goal(cmd_goal)
+        self.current_primitive_goal_handle = new_goal_handle
+
+        if not success:
+            self.node.get_logger().error(f"Primitive command FAILED: {description}. Message: {message}")
+            feedback_callback(f"ERROR: {description} failed. {message}")
+            return False, message
+        else:
+            self.node.get_logger().info(f"Primitive command SUCCEEDED: {description}")
+            return True, message
+
+        
+
+    def pick_and_place_object(self, obj, obj_target, obj_orientation, feedback_callback, goal_handle):
+        feedback_callback(f"Starting pick and place for object {obj.id}")
+
+        steps = [
+            # 0. RGB: BLUE (Preparing / Home)
+            (SimpleCommandsAction.Goal(
+                command_type="set_rgb",
+                r=0, g=0, b=255
+            ), "set RGB to blue (ready/home)"),
+
+            # 1. GO HOME (Initial State)
+            (SimpleCommandsAction.Goal(
+                command_type="move_joints",
+                joint_angles=[0, 0, 0, 0, 0, 0],
+                speed=100
+            ), "return to home position (angles 0)"),
+
+            # 2. RGB: YELLOW (Approaching object)
+            (SimpleCommandsAction.Goal(
+                command_type="set_rgb",
+                r=255, g=255, b=0
+            ), "set RGB to yellow (approaching object)"),
+
+            # 3. GOTO ABOVE OBJECT (Z=70)
+            (SimpleCommandsAction.Goal(
+                command_type="move_blockingmode",
+                coords=[obj.center_point.x, obj.center_point.y, 70.0, RX_DOWN, RY_DOWN, 0.0],
+                speed=100
+            ), "move above object (Z=70, RZ=0)"),
+
+            # 4. RGB: RED (Picking)
+            (SimpleCommandsAction.Goal(
+                command_type="set_rgb",
+                r=255, g=0, b=0
+            ), "set RGB to red (picking object)"),
+
+            # 5. ACTIVATE VACUUM STRONG
+            (SimpleCommandsAction.Goal(
+                command_type="vacuum_strong",
+            ), "activate vacuum strong"),
+
+            # 6. DESCEND TO OBJECT HEIGHT (Z=30)
+            (SimpleCommandsAction.Goal(
+                command_type="move_blockingmode",
+                coords=[obj.center_point.x, obj.center_point.y, 30.0, RX_DOWN, RY_DOWN, 0.0],
+                speed=50
+            ), "descend exactly to object (Z=30)"),
+
+            # 7. LIFT UP to safe place
+            (SimpleCommandsAction.Goal(
+                command_type="move_joints",
+                joint_angles=[0, 0, 0, 0, 0, 0],
+                speed=100
+            ), "return to home position (angles 0)"),
+
+            # 8. RGB: GREEN (Placing)
+            (SimpleCommandsAction.Goal(
+                command_type="set_rgb",
+                r=0, g=255, b=0
+            ), "set RGB to green (placing object)"),
+
+            # 9. MOVE TO ABOVE PLACE POSITION (Z=70)
+            (SimpleCommandsAction.Goal(
+                command_type="move_blockingmode",
+                coords=[obj_target.x, obj_target.y, 70.0, RX_DOWN, RY_DOWN, float(obj_orientation)],
+                speed=100
+            ), "move to above place position (Z=70, RZ=User)"),
+
+            # 10. DESCEND TO PLACE POSITION (Z=30)
+            (SimpleCommandsAction.Goal(
+                command_type="move_blockingmode",
+                coords=[obj_target.x, obj_target.y, 30.0, RX_DOWN, RY_DOWN, float(obj_orientation)],
+                speed=50
+            ), "descend to final placement height (Z=30)"),
+
+            # 11. DEACTIVATE VACUUM
+            (SimpleCommandsAction.Goal(
+                command_type="vacuum_off",
+            ), "deactivate vacuum"),
+
+            # 12. LIFT UP (Z=70)
+            (SimpleCommandsAction.Goal(
+                command_type="move_blockingmode",
+                coords=[obj_target.x, obj_target.y, 70.0, RX_DOWN, RY_DOWN, float(obj_orientation)],
+                speed=DEFAULT_SPEED
+            ), "lift up after place (Z=70)"),
+
+            # 13. RGB: BLUE (Return to idle)
+            (SimpleCommandsAction.Goal(
+                command_type="set_rgb",
+                r=0, g=0, b=255
+            ), "set RGB to blue (done/idle)")
+        ]
+
+        for cmd, description in steps:
+            if goal_handle.is_cancel_requested:
+                feedback_callback("Sequence CANCELLED.")
+                return False, "Action canceled by user."
+            
+            success, message = self._execute_primitive_step(
+                cmd, description, feedback_callback, goal_handle
+            )
+            
+            if not success:
+                return False, message
+
+        feedback_callback(f"Finished pick and place for object {obj.id}")
+        return True, "Pick and place sequence completed."
+
+
+=====
+
+==========
+mycobot280pi_planner/prn_states_for_HSM.py
+======
+
+"""
+ prn_states_for_HSM.py file contains every states that is used in the design of this HSM.
+ 
+ each state has its own class. and every state will inherit the BaseState class so i dont need to rewrite the basic functionalities over and over again
+"""
+import asyncio
+from rclpy.node import Node
+
+class BaseState:
+    def __init__(self, name):
+        self.name = name
+    
+    # Must be 'async def' because it will await Action results
+    async def execute(self, user_data: dict, clients: dict):
+        """
+        Runs the state logic and returns the outcome string.
+        :param user_data: The shared data dictionary.
+        :param clients: Dictionary of injected Action Client helpers.
+        """
+        # Placeholder logic: just print and succeed
+        print(f"Executing State: {self.name}")
+        return 'succeeded' # Possible outcomes: 'succeeded', 'aborted', 'preempted'
+    
+    def exit(self):
+        print(f"Exiting State: {self.name}")
+        
+class Initialize(BaseState):
+    """
+    State to initialize the robot, usually moving to a home/safe pose.
+    """
+    def __init__(self):
+        super().__init__('INITIALIZE')
+    
+    async def execute(self, user_data: dict, clients: dict):
+        node = user_data['node'] # Access the Planner node for logging
+        
+        # 1. Get the MoveArm client instance
+        move_client = clients.get('move_arm_client')
+        if not move_client:
+            node.get_logger().error("Initialize state failed: MoveArm client not available.")
+            return 'aborted'
+            
+        node.get_logger().info("INITIALIZE: Sending MoveToHome pose...")
+        
+        # 2. Define the home pose
+        home_pose = [0.0] * 6 # Replace with actual MyCobot home pose
+        
+        # 3. Non-blocking call to the Action Client helper
+        # This is where the function will pause and yield control
+        outcome = await move_client.send_goal_and_wait(home_pose)
+        
+        if outcome == 'succeeded':
+            node.get_logger().info("INITIALIZE: MoveToHome succeeded. System Ready.")
+        else:
+            node.get_logger().error("INITIALIZE: MoveToHome failed.")
+            
+        return outcome # Will be 'succeeded' or 'aborted'
+
+
+=====
+
