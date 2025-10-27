@@ -46,10 +46,23 @@ class PrimitivesActionServer:
     
     def execute_primitive_command_callback(self, goal_handle):
         """Action execution runs in a worker thread provided by the MultiThreadedExecutor."""
-        command_request = goal_handle.request
-        self.node.get_logger().info(f"Executing action goal: {command_request.command_type}...")
         
+        # Check for preemption/cancellation first
+        if goal_handle.is_cancel_requested:
+            goal_handle.canceled()
+            self.node.get_logger().info(f"Action CANCELLED: {command_request.command_type}")
+            
+            result_msg = SimpleCommandsAction.Result()
+            result_msg.success = False
+            result_msg.message = "Execution cancelled."
+            return result_msg
+            
+        command_request = goal_handle.request
+        
+        
+
         # Call the core execution logic on the main Orchestrator node
+        self.node.get_logger().info(f"Action is EXECUTING: {command_request.command_type}")
         success, message = self.execute_command_callback(
             command_type=command_request.command_type,
             coords=command_request.coords,
@@ -58,14 +71,8 @@ class PrimitivesActionServer:
             r=command_request.r, g=command_request.g, b=command_request.b
         )
 
-        result_msg = SimpleCommandsAction.Result()
         
-        # Check for preemption/cancellation first
-        if goal_handle.is_cancel_requested:
-            goal_handle.canceled()
-            result_msg.success = False
-            result_msg.message = "Execution cancelled."
-            return result_msg
+        
 
         # Finalize the result
         if success:
@@ -75,14 +82,8 @@ class PrimitivesActionServer:
             goal_handle.abort()
             self.node.get_logger().error(f"Action FAILED: {command_request.command_type}. {message}")
             
+        result_msg = SimpleCommandsAction.Result()    
         result_msg.success = success
         result_msg.message = message
         
-        if success:
-            goal_handle.succeed()
-            self.node.get_logger().info(f"Action SUCCEEDED: {command_request.command_type}")
-        else:
-            goal_handle.abort()
-            self.node.get_logger().error(f"Action FAILED: {command_request.command_type}. {message}")
-
         return result_msg
