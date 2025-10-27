@@ -43,12 +43,27 @@ class PlannerHSM:
         
         self.state = State.PROCESSING
         self.current_goal_handle = goal_handle
-        self.current_processing_task = asyncio.create_task(
-            self._processing_loop(goal_handle)
-        )
-        final_result = await self.current_processing_task
-        return final_result
-     
+        self.current_processing_task = asyncio.current_task() 
+
+        try:
+            # Await the coroutine *directly*.
+            final_result = await self._processing_loop(goal_handle)
+            return final_result
+
+        except asyncio.CancelledError:
+            # Safety net for cancellations
+            self.node.get_logger().warn("HSM: Main goal handler was cancelled.")
+
+            self.state = State.IDLE
+            self.current_goal_handle = None
+            self.current_processing_task = None
+
+            # We must NOT let the CancelledError escape to rclpy
+            result = ProcessWorkspace.Result()
+            result.success = False
+            result.message = "Process cancelled."
+            return result
+         
      
         
     async def handle_cancel_request(self):
@@ -100,7 +115,7 @@ class PlannerHSM:
                 RY_DOWN = 0.0
                 
                 approach_goal = SimpleCommandsAction.Goal(
-                    command_type="move_blockingmode",
+                    command_type="move",
                     coords=[obj.center_point.x, obj.center_point.y, 70.0, RX_DOWN, RY_DOWN, 0.0],
                     speed=100
                 )
@@ -116,7 +131,7 @@ class PlannerHSM:
                 await self.node.execute_simple_command(v_strong_goal)
                 
                 descend_goal = SimpleCommandsAction.Goal(
-                    command_type="move_blockingmode",
+                    command_type="move",
                     coords=[obj.center_point.x, obj.center_point.y, 30.0, RX_DOWN, RY_DOWN, 0.0],
                     speed=50
                 )
@@ -133,7 +148,7 @@ class PlannerHSM:
                 await self.node.execute_simple_command(rgb_green_goal)
                 
                 approach_place_goal = SimpleCommandsAction.Goal(
-                    command_type="move_blockingmode",
+                    command_type="move",
                     coords=[target.x, target.y, 70.0, RX_DOWN, RY_DOWN, float(orient)],
                     speed=100
                 )
@@ -143,7 +158,7 @@ class PlannerHSM:
                 goal_handle.publish_feedback(feedback)
                 
                 descend_place_goal = SimpleCommandsAction.Goal(
-                    command_type="move_blockingmode",
+                    command_type="move",
                     coords=[target.x, target.y, 30.0, RX_DOWN, RY_DOWN, float(orient)],
                     speed=50
                 )
@@ -153,7 +168,7 @@ class PlannerHSM:
                 await self.node.execute_simple_command(v_off_goal)
                 
                 lift_up_goal = SimpleCommandsAction.Goal(
-                    command_type="move_blockingmode",
+                    command_type="move",
                     coords=[target.x, target.y, 70.0, RX_DOWN, RY_DOWN, float(orient)],
                     speed=100
                 )
@@ -202,28 +217,4 @@ class PlannerHSM:
             self.current_goal_handle = None
             self.current_processing_task = None
             
-            
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-        
