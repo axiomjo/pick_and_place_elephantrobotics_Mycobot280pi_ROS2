@@ -1,3 +1,88 @@
+
+# kamis 23 okt
+asli ini aneh bgt minggu ini dapet whole week ga keganggu, bisa buat TA.
+
+Step in Old pick_and_place_object ,New HSM State Class,Purpose
+"Steps 0, 1",,Initialize ,Already exists. Moves to Home/Ready.
+Steps 2-6,ApproachPickPose,Move to the safe hover pose above the object.
+Steps 7-8,GraspObject,Descend and activate the vacuum.
+Steps 9-10,LiftToSafe,Lift the object to a safe travel height.
+Steps 11-12,ApproachPlacePose,Move to the safe hover pose above the target.
+Steps 13-14,ReleaseObject,Descend and deactivate the vacuum.
+Step 15-16,ReturnToIdle,Lift to safe height and return to the main loop.
+
+
+# rabu 22 okt 2025 HIERARCICHAL STATE MACHINES IN OOP! lets try thisssss
+akhirnya aku bisa balik ke sini hahaha. ini mau bikin ulang alur complex command. mo pake paper yg dual arm fsm, dia pake hsm. gak fsm krn gak transisinya bakal kebanyakan dan prone to error, jadi langsung ke hsm aja. 
+
+nah.. berearti, planner node gw... dirombak total WKWKWKWK soalnya bukan njalanin step by step lagi. berarti ini samaaja mbikin dari 0...? haha. ok.
+
+ywd. baru sampe situ.
+
+# selasa, 14 okt 2025 todo's
+
+
+## observasi: my system is actually ok. tapi bagian primitive command nya gagal. jadi ndabisa pick n place, masih bisa dikontrol manual.
+
+## balik2 halaman perlu nutak ngatik pose supaya ngadep samping... DAN butuh buku yg beneran bisa kebuka dan stay put wkwkwk, ngeselin bukunya.
+
+## simpple commands jalan semua kok, yg engga itu yg planner hahaha.
+
+## gaenak klo mo give smthg in relation to the workplace krn di working area gaada referensi objek2 yg kita liat di dunia nyata, so i will just overlay the cam feed to the bottom of the working area with alpha 10.
+
+## planner node.. yeah  need to create a fsm buat planner node pas ngurusin gerak robot, klo nda, commandnya keperintah semua ke executor, aand it doesnt work. sadge.
+
+## jadi... keknya... butuh ngembangin planner node
+
+## dan, buat z, keknya lebih enak klo i sediain slider yg ada gravity di beberapa titik? kyk ubuntu loh.
+
+## buat kerja, n dapet moneh, supaya bisa independen, 
+i'll coba apply ke timedoor academy / kodingnext / . puingin dapet kurikulum mereka tbh. gaji... now thats hard. aku tau aku lebih lambat dari org2. aku gak secepet itu. aku juga ga se-powerful org yg bisa ngejuggle beberapa hal sekaligus. so, sampe bulan ini selesai, imma just kerjain TA. habisitu november cari kerja sampingan, kan praktikum juga udah selesai. trus desember buku n perintilan sidang udh selesai.
+
+dari terminal laptop:
+[planner_robot_node-6] [INFO] [1760406254.270523345] [planner_robot_node]: Waiting for EXECUTOR's command primitives action server: /planner/act_command_primitives...
+[planner_robot_node-6] [INFO] [1760406254.272870553] [planner_robot_node]: Sending primitive goal: set_rgb
+[planner_robot_node-6] [INFO] [1760406254.282880128] [planner_robot_node]: Primitive goal accepted. Waiting for result...
+[planner_robot_node-6] [ERROR] [1760406254.472372233] [planner_robot_node]: Primitive command FAILED: set RGB to blue (ready/home). Message: 
+[planner_robot_node-6] [INFO] [1760406254.475976357] [planner_robot_node]: Feedback: ERROR: set RGB to blue (ready/home) failed. 
+[gui_robot_control_node-5] [INFO] [1760406254.491323596] [gui_robot_control_node]: Complex action finished. Success: False, Message: Pick and place failed for object 4. Detail: 
+
+dari terminal mycobot:
+ [INFO] [1760405926.443889010] [robot_executor_node]: EXECUTOR: move to array('f', [178.5, 169.5, 72.5, 180.0, 0.0, 0.0]) (asynchronous)
+[robot_executor_node-1] [INFO] [1760405943.975933986] [robot_executor_node]: Received service request: move_joints
+[robot_executor_node-1] [INFO] [1760405943.978555324] [robot_executor_node]: EXECUTOR: move joints to array('f', [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+[robot_executor_node-1] [WARN] [1760405944.115736443] [robot_executor_node]: Failed getting joint states: object of type 'NoneType' has no len()
+[robot_executor_node-1] [INFO] [1760405957.959450673] [robot_executor_node]: Received service request: move
+[robot_executor_node-1] [INFO] [1760405957.963322147] [robot_executor_node]: EXECUTOR: move to array('f', [164.5, 164.5, 72.5, 180.0, 0.0, 0.0]) (asynchronous)
+[robot_executor_node-1] [INFO] [1760405968.985270373] [robot_executor_node]: Received service request: move
+[robot_executor_node-1] [INFO] [1760405968.987922434] [robot_executor_node]: EXECUTOR: move to array('f', [164.5, 164.5, 72.5, 180.0, 0.0, 100.4000015258789]) (asynchronous)
+[robot_executor_node-1] [WARN] [1760405969.130458983] [robot_executor_node]: Failed getting joint states: object of type 'NoneType' has no len()
+[robot_executor_node-1] [WARN] [1760405970.229440133] [robot_executor_node]: Failed getting joint states: object of type 'NoneType' has no len()
+[robot_executor_node-1] [INFO] [1760405979.198682391] [robot_executor_node]: Received service request: move
+[robot_executor_node-1] [INFO] [1760405979.204751162] [robot_executor_node]: EXECUTOR: move to array('f', [164.5, 164.5, 30.0, 180.0, 0.0, 100.4000015258789]) (asynchronous)
+[robot_executor_node-1] [INFO] [1760406122.921178175] [robot_executor_node]: Received service request: move_joints
+[robot_executor_node-1] [INFO] [1760406122.923784300] [robot_executor_node]: EXECUTOR: move joints to array('f', [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+[robot_executor_node-1] [INFO] [1760406254.308660104] [robot_executor_node]: Received new action goal request: set_rgb. Accepting.
+[robot_executor_node-1] [INFO] [1760406254.319829992] [robot_executor_node]: Executing action goal: set_rgb...
+[robot_executor_node-1] [INFO] [1760406254.322464676] [robot_executor_node]: EXECUTOR: Set RGB (0, 0, 255)
+[robot_executor_node-1] [INFO] [1760406254.486290996] [robot_executor_node]: Action SUCCEEDED: set_rgb
+[robot_executor_node-1] [ERROR] [1760406254.491411700] [robot_executor_node]: Error raised in execute callback: Failed to update goal state: goal_handle attempted invalid transition from state SUCCEEDED with event SUCCEED, at /tmp/binarydeb/ros-galactic-rcl-action-3.1.3/src/rcl_action/goal_handle.c:95
+[robot_executor_node-1] Traceback (most recent call last):
+[robot_executor_node-1]   File "/opt/ros/galactic/lib/python3.8/site-packages/rclpy/action/server.py", line 324, in _execute_goal
+[robot_executor_node-1]     execute_result = await await_or_execute(execute_callback, goal_handle)
+[robot_executor_node-1]   File "/opt/ros/galactic/lib/python3.8/site-packages/rclpy/executors.py", line 107, in await_or_execute
+[robot_executor_node-1]     return callback(*args)
+[robot_executor_node-1]   File "/home/er/TA_JosephineD_2025/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/install/mycobot280pi_robot/lib/python3.8/site-packages/mycobot280pi_robot/ren_action_server_command_primitive.py", line 82, in execute_primitive_command_callback
+[robot_executor_node-1]     goal_handle.succeed()
+[robot_executor_node-1]   File "/opt/ros/galactic/lib/python3.8/site-packages/rclpy/action/server.py", line 152, in succeed
+[robot_executor_node-1]     self._update_state(_rclpy.GoalEvent.SUCCEED)
+[robot_executor_node-1]   File "/opt/ros/galactic/lib/python3.8/site-packages/rclpy/action/server.py", line 116, in _update_state
+[robot_executor_node-1]     self._goal_handle.update_goal_state(event)
+[robot_executor_node-1] rclpy._rclpy_pybind11.RCLError: Failed to update goal state: goal_handle attempted invalid transition from state SUCCEEDED with event SUCCEED, at /tmp/binarydeb/ros-galactic-rcl-action-3.1.3/src/rcl_action/goal_handle.c:95
+[robot_executor_node-1] [INFO] [1760406588.110642542] [robot_executor_node]: Received service request: move
+[robot_executor_node-1] [INFO] [1760406588.113360709] [robot_executor_node]: EXECUTOR: move to array('f', [132.5, 95.5, 60.099998474121094, 180.0, 0.0, 0.0]) (asynchronous)
+
+=====================
 25 sept ini lagi bikin ulang.
 
 # perkara interface package
@@ -18,33 +103,6 @@ asli ini bagian guwila gede pol,
 
 ah kan gui punya ros node sendiri ya, itu masif bgt. jadi dia dibikinin thread dewean, supaya g ganggu pyqt gui. nah, itu dibikin di ros node class yg dipanggil sm ros communication.
 
-
-## Why So Many Methods in _ROSnode class ? 🧑‍🍳
-
-Think of the `_ROSNode` class as a **Head Chef** in a very advanced kitchen. This chef needs a separate recipe (a method) for every single task they perform. Your Head Chef is very capable and handles four different kinds of tasks:
-
-1.  **Receiving Ingredients (Subscriptions):** The chef needs a specific procedure for what to do when a delivery arrives. For each of the **4** topics it subscribes to, it needs a unique callback method to handle that specific ingredient (e.g., raw images, joint angles).
-
-      * *Result: 4 methods*
-
-2.  **Sending Out Dishes (Publications):** The chef needs a recipe for preparing and sending out a dish. Your GUI asks it to publish points.
-
-      * *Result: 1 method*
-
-3.  **Handling Quick Orders (Services):** A service is like a quick, direct order: "Make me a coffee." There's a method to *take the order* (`call_simple_command_service`) and another method to *handle the confirmation* that the coffee was delivered (`_simple_command_done`).
-
-      * *Result: 2 methods*
-
-4.  **Managing Complex Catering Events (Actions):** An action is a long, multi-step task like catering a party. It requires a lot of back-and-forth communication.
-
-      * A method to *accept the catering job* (`send_complex_action_goal`).
-      * A method to handle the *initial confirmation* (`_goal_response`).
-      * A method to give the customer *live updates* (`_action_feedback`).
-      * A method to handle the *final result* (`_action_result`).
-      * A method to *cancel the job* if needed (`cancel_action_goal`).
-      * *Result: 5 methods*
-
-Adding these up (4 + 1 + 2 + 5) gives you **12** distinct methods, each with a unique and necessary job for handling the complexities of ROS 2 communication.
 
 # perkara object detection
 kan annotated image aman yh.
@@ -366,7 +424,7 @@ trus kucoba pasang ke monitor kecil, ganyala blas.
 
 
 # BROOOO aku baru tau klo mycobot nyediain 
-mc.sync_send_coords(coords,speed, mode, timeout=15) #YG BLOCKING
+mc.sync_send_coords(coords,speed, mode, timeout=15) #YG BLOCKING, ternyata cuma yg non blocking dikasih while loop ;[
 mc.send_coords(coords,speed,mode) # mode = 0 = ANGULAR mode, dia ngabil rute paling efisien gerak, makanya aneh. bisa jatoh2.  
 mc.send_coords(coords,speed,mode) # mode = 1 = LINEAR mode. dia literally kyyk bikin garis lurus dari skrg ke posisi target.  
 mc.get_error_information() # buat cek movenya error ga. aku sih dapet 32 klo tujuan send_coords gamasukakal  
@@ -380,6 +438,7 @@ mc.clear_error_information() #buat kosongin jadi 0 lagi.
 
 btw, aku nambahin alias di terimal mycobot WKWKWKWKWK
 
+```
 alias pymycobotterminal="python3 -i -c 'from pymycobot.mycobot import MyCobot; from pymycobot import PI_PORT, PI_BAUD; import RPi.GPIO; mc = MyCobot(PI_PORT, PI_BAUD)'"
 
 alias rosonly='source /opt/ros/galactic/setup.bash'
@@ -387,7 +446,7 @@ alias rosonly='source /opt/ros/galactic/setup.bash'
 alias bothrosandinstall='source /opt/ros/galactic/setup.bash && cd ~ && source TA_JosephineD_2025/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/install/setup.bash
 
 alias toworkspace='cd TA_JosephineD_2025/pick_and_place_elephantrobotics_Mycobot280pi_ROS2'
-
+```
 
 
 
@@ -409,7 +468,7 @@ tapi klo gaada error itu, aku gabakal ngeh sama error2 lain sih. i think i neede
 # ini buku blom kelar. sy brain fog. lagi pingin nyelesain, tapi lagi lamban bgt jalan pikirannya rn. kyk setengah sadar. agak pusing sih. aku perlu nyelesain ini.
 ok, bby jo. see u tmr i g.
 
-# tau darimana arti error mappings? official docs wkwkwkwkwk au aja yg gapaham pas dulu baca hahaha
+# tau darimana arti error mappings? official docs wkwkwkwkwk aku aja yg gapaham pas dulu baca hahaha
 https://docs.elephantrobotics.com/docs/mycobot_280_pi_en/3-FunctionsAndApplications/6.developmentGuide/python/2_API.html  
 
 1.3 get_error_information()

@@ -13,6 +13,14 @@ def concatenate_files(directory, output_file, recursive=False, extensions=None, 
         recursive (bool): If True, search subdirectories as well.
         extensions (list): A list of file extensions to include (e.g., ['.py', '.txt']).
         relative_path (bool): If True, use relative file paths in headers.
+        
+    contoh command"
+    
+    python3 toolngeconcat.py -d src/mycobot280pi_robot -o planner.txt -r -e .py --relative 
+
+
+
+
     """
     print(f"Starting concatenation...")
     # Get the absolute path of the source directory to make relative paths clean

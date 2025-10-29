@@ -11,20 +11,20 @@ from pymycobot import MyCobot, PI_PORT, PI_BAUD # Required for robot control
 # ### MYCOBOT ERROR CODE MAPPING ###
 # ==================================================================
 ERROR_CODE_MAPPING = {
-    0: "NO ERROR: Command executed successfully.",
-    1: "JOINT 1: Exceeded angular limit.",
-    2: "JOINT 2: Exceeded angular limit.",
-    3: "JOINT 3: Exceeded angular limit.",
-    4: "JOINT 4: Exceeded angular limit.",
-    5: "JOINT 5: Exceeded angular limit.",
-    6: "JOINT 6: Exceeded angular limit.",
-    16: "COLLISION: Collision protection triggered (16-19 range).",
-    17: "COLLISION: Collision protection triggered (16-19 range).",
-    18: "COLLISION: Collision protection triggered (16-19 range).",
-    19: "COLLISION: Collision protection triggered (16-19 range).",
-    32: "IK NO SOLUTION: Kinematics inverse solution has no solution (Target coordinates unreachable).",
-    33: "LINEAR PATH FAIL: Linear motion has no adjacent solution (Path obstructed or impossible).",
-    34: "LINEAR PATH FAIL: Linear motion has no adjacent solution (Path obstructed or impossible).",
+    0:  "NO ERROR: Command executed successfully.",
+    1:  "JOINT 1: Exceeded angular limit.",
+    2:  "JOINT 2: Exceeded angular limit.",
+    3:  "JOINT 3: Exceeded angular limit.",
+    4:  "JOINT 4: Exceeded angular limit.",
+    5:  "JOINT 5: Exceeded angular limit.",
+    6:  "JOINT 6: Exceeded angular limit.",
+    16: "COLLISION: Collision protection triggered.",
+    17: "COLLISION: Collision protection triggered.",
+    18: "COLLISION: Collision protection triggered.",
+    19: "COLLISION: Collision protection triggered.",
+    32: "IK NO SOLUTION: Target coordinates unreachable.",
+    33: "LINEAR PATH FAIL: Path obstructed or impossible.",
+    34: "LINEAR PATH FAIL: Path obstructed or impossible.",
 }
 
 
@@ -41,29 +41,41 @@ class VacuumPumpV2Controller:
         self.pin_pump = pin_pump
         self.pin_vent = pin_vent
         self.logger = logger
+        
         try:
             GPIO.setmode(GPIO.BCM)
             GPIO.setup(self.pin_pump, GPIO.OUT)
             GPIO.setup(self.pin_vent, GPIO.OUT)
-            self.set_state(1, 1)  # Default off
+            self.vacuum_off() # Default off
+            
         except Exception as e:
-            if self.logger:
-                self.logger.warn(f"GPIO setup failed (Are you on a Pi?): {e}")
+            self._warn(f"GPIO setup failed (Are you on a Pi?): {e}")
+    
+    def _info(self, msg):
+        if self.logger:
+            self.logger.info(msg)
 
+    def _warn(self, msg):
+        if self.logger:
+            self.logger.warn(msg)
+            
     def set_state(self, state_pump, state_vent):
         """Sets the state of the vacuum pump and vent pins (0=ON, 1=OFF for active low)."""
         try:
             GPIO.output(self.pin_pump, state_pump)
             GPIO.output(self.pin_vent, state_vent)
-            if self.logger:
-                self.logger.info(f"Vacuum state: pump={state_pump}, vent={state_vent}")
+            self._info(f"Vacuum state set: pump={state_pump}, vent={state_vent}")
         except Exception as e:
-            if self.logger:
-                self.logger.warn(f"Failed to set vacuum state: {e}")
+            self._warn(f"Failed to set vacuum state: {e}")
 
-    def vacuum_off(self): self.set_state(1, 1)
-    def vacuum_strong(self): self.set_state(0, 1)
-    def vacuum_weak(self): self.set_state(0, 0)
+    def vacuum_off(self): 
+        self.set_state(1, 1) 
+        
+    def vacuum_strong(self): 
+        self.set_state(0, 1)
+        
+    def vacuum_weak(self): 
+        self.set_state(0, 0)
 
     def cleanup(self):
         """Cleans up the GPIO pins."""
@@ -96,88 +108,88 @@ class MycobotHardwareWrapper:
             return None
 
     def execute_command(self, command_type, coords=None, joint_angles=None, speed=50, r=0, g=0, b=0):
-        """Core execution logic with hardware error checking."""        
+        """Executes a command and checks robot error state afterward."""
         if not self.mc:
-            self.logger.warn("MyCobot not connected!!! command failed.")
-            return False, "FATAL: MyCobot not connected."
-            
-        message = ""
+            return self._fail("MyCobot not connected.")
 
         try:
-            # --- 1. Execute Command (Accumulate a success message, but don't return yet) ---
+            # --- 1. Execute the command ---
             if command_type == "move":
-                # Asynchronous move
-                self.logger.info(f"EXECUTOR: move to {coords} (asynchronous)")
+                self.logger.info(f"EXECUTOR: Move to {coords}")
                 self.mc.send_coords(list(coords), speed, 1)
                 message = "Move command sent asynchronously."
-                
-            elif command_type == "move_blockingmode":
-                # Synchronous move
-                self.logger.info(f"EXECUTOR: move synchronous blocking to {coords}")
-                self.mc.sync_send_coords(list(coords), speed, 1)
-                message = "Blocking move completed."
-                
+
             elif command_type == "move_joints":
-                self.logger.info(f"EXECUTOR: move joints to {joint_angles}")
+                self.logger.info(f"EXECUTOR: Move joints to {joint_angles}")
                 self.mc.send_angles(list(joint_angles), speed)
                 message = "Joint move command sent."
-                
+
             elif command_type == "vacuum_strong":
                 self.logger.info("EXECUTOR: VACUUM STRONG")
                 self.vacuum.vacuum_strong()
-                message = "Vacuum STRONG successful."
-                
+                message = "Vacuum STRONG activated."
+
             elif command_type == "vacuum_weak":
                 self.logger.info("EXECUTOR: VACUUM WEAK")
                 self.vacuum.vacuum_weak()
-                message = "Vacuum WEAK successful."
-            
+                message = "Vacuum WEAK activated."
+
             elif command_type == "vacuum_off":
                 self.logger.info("EXECUTOR: VACUUM OFF")
                 self.vacuum.vacuum_off()
-                message = "Vacuum OFF successful."
-            
+                message = "Vacuum OFF executed."
+
             elif command_type == "set_rgb":
                 self.logger.info(f"EXECUTOR: Set RGB ({r}, {g}, {b})")
                 self.mc.set_color(r, g, b)
-                message = "Set RGB successful."
-            
+                message = "LED color set successfully."
+
             else:
-                # Command type recognized by ROS handler but not implemented here
-                return False, f"Unknown command: {command_type}"
-            
+                return self._fail(f"Unknown command: {command_type}")
+
         except Exception as e:
-            # Catch internal Python exceptions (e.g., list conversion error)
-            self.logger.error(f"Execution FAILED due to internal Python exception: {e}")
-            message = f"Execution failed internally: {e}"
-        
-        robot_error_code = 0
+            return self._fail(f"Internal Python exception: {e}")
+
+        # --- 2. Check robot error code ---
         try:
-            robot_error_code = self.mc.get_error_information()
+            error_code = self.mc.get_error_information()
             self.mc.clear_error_information()
         except Exception as e:
-            self.logger.error(f"EXECUTOR cant read robot error register: {e}")
-            return False, "Hardware communication failure during error check/clear."
-        
-        if (robot_error_code == 0):
-             return True, message 
-        else:
+            return self._fail(f"Failed reading/clearing robot error register: {e}")
+
+        if error_code is None:
+            return self._fail("Robot error code returned None (communication issue).")
+
+        if error_code != 0:
             error_string = ERROR_CODE_MAPPING.get(
-                robot_error_code, 
-                f"UNKNOWN HARDWARE ERROR (Code: {robot_error_code})."
+                error_code, f"UNKNOWN HARDWARE ERROR (Code: {error_code})"
             )
-            return False, f"Command rejected. Reason: {error_string}"
+            return self._fail(error_string)
+
+        return True, message
 
     def get_joint_angles(self):
-        """Fetches joint angles for the publisher."""
-        if not self.mc: return None
+        """Returns current joint angles or None if unavailable."""
+        if not self.mc:
+            return None
         try:
-            angles_degrees = self.mc.get_angles()
-            return angles_degrees if len(angles_degrees) == 6 else None
+            angles = self.mc.get_angles()
+            if angles and len(angles) == 6:
+                return angles
+            return None
         except Exception as e:
-            self.logger.warn(f"Failed getting joint states: {e}")
+            self.logger.warn(f"Failed to get joint states: {e}")
             return None
 
     def cleanup_hardware(self):
-        """Cleans up all hardware connections."""
-        self.vacuum.cleanup()
+        """Clean up all hardware safely."""
+        try:
+            self.vacuum.cleanup()
+        except Exception as e:
+            self.logger.warn(f"Cleanup failed: {e}")
+
+      
+    def _fail(self, msg):
+        """Unified error return + log."""
+        self.logger.warn(f"EXECUTOR: {msg}")
+        return False, f"Command failed: {msg}"
