@@ -18,6 +18,7 @@ class WorkspaceModel(QObject):
     # This signal is emitted whenever the list of items changes.
     # The View will connect to this to know when to redraw itself.
     items_changed = pyqtSignal()
+    background_changed = pyqtSignal(QPixmap)
     
     def __init__(self, parent=None):
         """Initializes the WorkspaceModel."""
@@ -26,8 +27,18 @@ class WorkspaceModel(QObject):
         # This private attribute is the core data. No one outside this class
         # should ever touch this list directly, enforcing encapsulation.
         self._items_on_plane: List[DraggableItemGUI] = []
+        self._background_pixmap: QPixmap = QPixmap()
 
     # --- Public Methods (for the Controller to call) ---
+    
+    def set_background_pixmap(self, pixmap: QPixmap):
+        """
+        Sets the background pixmap and emits the background_changed signal
+        to notify the view.
+        """
+        self._background_pixmap = pixmap
+        # This emit will be caught by the View
+        self.background_changed.emit(self.get_background_pixmap())
     
     def add_items(self, new_items: List[DraggableItemGUI]):
         """
@@ -68,3 +79,10 @@ class WorkspaceModel(QObject):
         call this to get the items it needs to draw.
         """
         return self._items_on_plane
+        
+    def get_background_pixmap(self) -> QPixmap:
+        """
+        Provides read-only access to the background pixmap
+        for the View's initial setup.
+        """
+        return self._background_pixmap
