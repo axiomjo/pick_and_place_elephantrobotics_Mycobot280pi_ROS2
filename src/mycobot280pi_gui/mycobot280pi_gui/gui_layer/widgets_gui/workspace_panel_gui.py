@@ -9,10 +9,10 @@ and includes interactive controls for rotating selected items.
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QGraphicsView, QGraphicsScene,
     QLabel, QSlider, QDoubleSpinBox, QHBoxLayout,
-    QGraphicsTextItem, QGraphicsEllipseItem, QGraphicsRectItem, QGraphicsPathItem
+    QGraphicsTextItem, QGraphicsEllipseItem, QGraphicsRectItem, QGraphicsPathItem, QGraphicsPixmapItem
 )
 from PyQt5.QtGui import (
-    QTransform, QColor, QBrush, QPen, QPainterPath, QFont
+    QTransform, QColor, QBrush, QPen, QPainterPath, QFont, QPixmap
 )
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal, pyqtSlot
 
@@ -21,26 +21,86 @@ from .graphics_gui.draggable_item_gui import DraggableItemGUI
 
 class InteractiveGraphicsScene(QGraphicsScene):
     selection_changed = pyqtSignal(list)
-    def __init__(self, parent=None):
+    def __init__(self, model: WorkspaceModel, parent=None):
         super().__init__(parent)
+        
+        self.model = model
+        
+        # 1. Create the dedicated item for the background
+        self._background_item = QGraphicsPixmapItem()
+        # 2. Set its properties as requested
+        self._background_item.setZValue(-100) # Bottom-most layer
+        self._background_item.setOpacity(0.25) # 25% opacity
+        # 3. Make it uneditable (as requested)
+        self._background_item.setFlag(QGraphicsPixmapItem.ItemIsSelectable, False)
+        # 4. Add it to the scene permanently
+        self.addItem(self._background_item)
+        
+        self.model.background_changed.connect(self.on_background_changed)
+        self.model.items_changed.connect(self.on_items_changed)
+        self.on_background_changed(self.model.get_background_pixmap())
+        self.on_items_changed()
+    
+    @pyqtSlot(QPixmap)
+    def on_background_changed(self, pixmap: QPixmap):
+        """
+        Slot to update the background pixmap when the model changes.
+        """
+        if pixmap.isNull():
+            self._background_item.setPixmap(QPixmap()) # Clear it
+            return
+
+        # Your view is already Y-flipped, but the controller's logic
+        # for object cutouts flips their pixmaps. To match, we must
+        # also flip the background pixmap.
+        transform = QTransform()
+        transform.scale(1, -1) # Invert Y-axis
+        flipped_pixmap = pixmap.transformed(transform)
+
+        self._background_item.setPixmap(flipped_pixmap)
+        
+        # Position the pixmap centered at the scene's origin (0,0)
+        # This matches your controller's (x - center_x) logic.
+        w = flipped_pixmap.width()
+        h = flipped_pixmap.height()
+        self._background_item.setPos(-w / 2.0, -h / 2.0)
+        
+    @pyqtSlot()
+    def on_items_changed(self):
+        """
+        Slot to update the draggable items when the model changes.
+        This is the correct, robust way to sync the scene with the model.
+        """
+        # 1. Find and remove ALL existing DraggableItemGUI items
+        # This leaves static axes and the background item untouched.
+        items_to_remove = [item for item in self.items() if isinstance(item, DraggableItemGUI)]
+        for item in items_to_remove:
+            self.removeItem(item)
+            
+        # 2. Get the new list of items from the model
+        items_from_model = self.model.get_all_items()
+        
+        # 3. Add all of them to the scene
+        for item in items_from_model:
+            self.addItem(item)
+                
     def mousePressEvent(self, event):
         super().mousePressEvent(event)
         selected_items = [item for item in self.selectedItems() if isinstance(item, DraggableItemGUI)]
         self.selection_changed.emit(selected_items)
-
+        
 class WorkspacePanelGUI(QWidget):
     selection_changed = pyqtSignal(list)
 
     def __init__(self, model, parent=None): # (model: WorkspaceModel, parent: QWidget)
         super().__init__(parent)
         self.model = model
-        self._scene_items = []
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(5)
 
-        self.scene = InteractiveGraphicsScene(self)
+        self.scene = InteractiveGraphicsScene(self.model, self)
         self.view = QGraphicsView(self.scene)
         self.scene.setSceneRect(QRectF(-300, -300, 600, 600))
         transform = QTransform(); transform.scale(1, -1)
@@ -59,12 +119,10 @@ class WorkspacePanelGUI(QWidget):
         self.draw_axes_with_ticks()
 
         # Connect signals
-        self.model.items_changed.connect(self.update_display)
         self.scene.selection_changed.connect(self.selection_changed)
         self.scene.selection_changed.connect(self._on_selection_changed)
 
         # Initial state
-        self.update_display()
         self._on_selection_changed([]) # Start with controls disabled
 
     # --- NEW SECTION: Methods to manage interactive controls ---
@@ -121,16 +179,6 @@ class WorkspacePanelGUI(QWidget):
             selected_items[0].setRotation(float(angle))
             
 
-    @pyqtSlot()
-    def update_display(self):
-        for item in self._scene_items:
-            self.scene.removeItem(item)
-        self._scene_items.clear()
-        
-        items_from_model = self.model.get_all_items()
-        for item in items_from_model:
-            self.scene.addItem(item)
-            self._scene_items.append(item)
 
     @pyqtSlot()
     def rotate_selected_clockwise(self):
