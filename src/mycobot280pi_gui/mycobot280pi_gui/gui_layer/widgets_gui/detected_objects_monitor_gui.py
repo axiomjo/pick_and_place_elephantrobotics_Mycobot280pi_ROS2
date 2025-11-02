@@ -10,6 +10,8 @@ from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import Qt, pyqtSlot
 
+from .gui_utils import convert_cv_to_pixmap
+
 class DetectedObjectMonitorGUI(QWidget):
     """A widget that displays the annotated camera feed."""
 
@@ -32,12 +34,12 @@ class DetectedObjectMonitorGUI(QWidget):
         Converts a cv2 image (numpy array) to a QPixmap.
         """
         try:
-            rgb_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
-            h, w, ch = rgb_image.shape
-            bytes_per_line = ch * w
-            qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
-            pixmap = QPixmap.fromImage(qt_image)
+            pixmap = convert_cv_to_pixmap(cv_image)
             
+            if pixmap.isNull():
+                self.camera_label.setText("Error displaying image.")
+                return
+                
             self.camera_label.setPixmap(pixmap.scaled(
                 self.camera_label.size(),
                 Qt.KeepAspectRatio,

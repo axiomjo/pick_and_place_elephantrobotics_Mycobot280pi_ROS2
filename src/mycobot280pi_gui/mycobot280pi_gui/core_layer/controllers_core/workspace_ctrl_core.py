@@ -16,7 +16,7 @@ from ..workspace_model_core import WorkspaceModel
 from ...gui_layer.widgets_gui.graphics_gui.draggable_item_gui import DraggableItemGUI
 from ...ros_layer.ros_facade_bridge import ROS_Facade_Bridge
 from mycobot280pi_interfaces.msg import ManyDetectedObjects, OneDetectedObject
-
+from ...gui_layer.widgets_gui.gui_utils import convert_cv_to_pixmap
 
 def _create_cutout_pixmap(source_image, obj): # (np.ndarray, OneDetectedObject) -> QPixmap
     w, h = obj.width, obj.height
@@ -59,6 +59,10 @@ class WorkspaceController(QObject):
     @pyqtSlot(list)
     def cache_current_selection(self, selected_items):
         self._current_selection = selected_items
+        bg_pixmap = convert_cv_to_pixmap(cv_image)
+        
+        if self.model and not bg_pixmap.isNull():
+            self.model.set_background_pixmap(bg_pixmap)
         
     @pyqtSlot()
     def reset_plane(self):

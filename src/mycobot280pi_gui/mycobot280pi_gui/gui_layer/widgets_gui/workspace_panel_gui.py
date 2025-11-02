@@ -135,12 +135,12 @@ class WorkspacePanelGUI(QWidget):
     @pyqtSlot()
     def rotate_selected_clockwise(self):
         """Rotates the entire VIEW clockwise by 15 degrees."""
-        self.view.rotate(15)
+        self.view.rotate(-15)
 
     @pyqtSlot()
     def rotate_selected_counter_clockwise(self):
         """Rotates the entire VIEW counter-clockwise by 15 degrees."""
-        self.view.rotate(-15)
+        self.view.rotate(15)
         
     def draw_mycobot280pi_working_plane(self):
         """Draws the static elements representing the robot base and work area."""
