@@ -28,6 +28,7 @@ class ActionPanelGUI(QWidget):
         self.delete_btn = QPushButton("Delete Selected")
         self.rotate_counter_clockwise_btn = QPushButton("Rotate CCW")
         self.rotate_clockwise_btn = QPushButton("Rotate CW")
+        self.add_memory_btn = QPushButton("Add Memory Circle")
 
         # --- Arrange Buttons in Layout ---
         # Row 0: Primary action buttons
@@ -40,6 +41,7 @@ class ActionPanelGUI(QWidget):
         layout.addWidget(self.add_object_btn, 1, 1)
         layout.addWidget(self.rotate_counter_clockwise_btn, 1, 2)
         layout.addWidget(self.rotate_clockwise_btn, 1, 3)
+        layout.addWidget(self.add_memory_btn, 2, 0)
 
         # Set an initial state for the buttons
         self.update_button_states(AppState.IDLE)
@@ -58,6 +60,7 @@ class ActionPanelGUI(QWidget):
         self.reset_btn.setDisabled(is_busy)
         self.rotate_clockwise_btn.setDisabled(is_busy)
         self.rotate_counter_clockwise_btn.setDisabled(is_busy)
+        self.add_memory_btn.setDisabled(is_busy)
 
         # Manage the main action buttons based on state
         if state == AppState.IDLE:
