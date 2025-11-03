@@ -65,11 +65,7 @@ class WorkspaceController(QObject):
     @pyqtSlot(list)
     def cache_current_selection(self, selected_items):
         self._current_selection = selected_items
-        bg_pixmap = convert_cv_to_pixmap(cv_image)
-        
-        if self.model and not bg_pixmap.isNull():
-            self.model.set_background_pixmap(bg_pixmap)
-        
+       
     @pyqtSlot()
     def reset_plane(self):
         self.logger.info("Resetting the workspace plane...")

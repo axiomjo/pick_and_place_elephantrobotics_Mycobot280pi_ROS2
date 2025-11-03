@@ -7,6 +7,8 @@ this list is modified.
 """
 
 from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt5.QtGui import QPixmap, QImage
+
 from typing import List
 
 # We import the DraggableItemGUI, as this model's job is to manage a list of them.
