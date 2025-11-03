@@ -127,8 +127,7 @@ class CommandPanelGUI(QWidget):
         return group
     
     def _create_service_command_group(self):
-        # Method ini sudah bagus, tidak perlu diubah
-        # ... (salin-tempel method _create_service_command_group Anda di sini) ...
+        
         cmd_group = QGroupBox("Immediate Robot Commands")
         vbox = QVBoxLayout()
         rgb_group = QGroupBox("Set LED Color")

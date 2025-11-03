@@ -21,6 +21,8 @@ from .graphics_gui.draggable_item_gui import DraggableItemGUI
 
 class InteractiveGraphicsScene(QGraphicsScene):
     selection_changed = pyqtSignal(list)
+    item_movement_finished = pyqtSignal(list)
+    
     def __init__(self, model: WorkspaceModel, parent=None):
         super().__init__(parent)
         
@@ -89,8 +91,19 @@ class InteractiveGraphicsScene(QGraphicsScene):
         selected_items = [item for item in self.selectedItems() if isinstance(item, DraggableItemGUI)]
         self.selection_changed.emit(selected_items)
         
+    def mouseReleaseEvent(self, event):
+        super().mouseReleaseEvent(event)
+        selected_items = self.selectedItems()
+        
+        if len(selected_items) == 1:
+            item = selected_items[0]
+            if isinstance(item, DraggableItemGUI) and item.was_moved:
+                self.item_movement_finished.emit(selected_items)
+        
+        
 class WorkspacePanelGUI(QWidget):
     selection_changed = pyqtSignal(list)
+    item_pose_changed = pyqtSignal(list)
 
     def __init__(self, model, parent=None): # (model: WorkspaceModel, parent: QWidget)
         super().__init__(parent)
@@ -121,6 +134,7 @@ class WorkspacePanelGUI(QWidget):
         # Connect signals
         self.scene.selection_changed.connect(self.selection_changed)
         self.scene.selection_changed.connect(self._on_selection_changed)
+        self.scene.item_movement_finished.connect(self.item_pose_changed)
 
         # Initial state
         self._on_selection_changed([]) # Start with controls disabled

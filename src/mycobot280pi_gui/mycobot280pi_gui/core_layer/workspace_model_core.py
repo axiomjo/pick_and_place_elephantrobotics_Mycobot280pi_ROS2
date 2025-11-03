@@ -82,7 +82,7 @@ class WorkspaceModel(QObject):
         """
         return self._items_on_plane
         
-    def get_background_pixmap(self) -> QPixmap:
+    def get_background_pixmap(self):
         """
         Provides read-only access to the background pixmap
         for the View's initial setup.

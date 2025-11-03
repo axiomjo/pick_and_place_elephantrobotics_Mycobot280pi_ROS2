@@ -55,6 +55,7 @@ class SignalConnector:
         # --- 5. Peer UI Component Connections ---
         ws_panel.selection_changed.connect(ws_ctrl.cache_current_selection)
         ws_panel.selection_changed.connect(cmd_panel.update_target_sliders_from_selection)
+        ws_panel.item_pose_changed.connect(cmd_panel.update_target_sliders_from_selection)
         ros_comm.detected_objects_received.connect(cmd_panel.update_object_count)
 
         action_panel.rotate_clockwise_btn.clicked.connect(ws_panel.rotate_selected_clockwise)

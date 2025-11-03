@@ -18,7 +18,7 @@ from ...ros_layer.ros_facade_bridge import ROS_Facade_Bridge
 from mycobot280pi_interfaces.msg import ManyDetectedObjects, OneDetectedObject, Point2D
 from ...gui_layer.widgets_gui.gui_utils import convert_cv_to_pixmap
 
-def _create_cutout_pixmap(source_image, obj): # (np.ndarray, OneDetectedObject) -> QPixmap
+def _create_cutout_pixmap(source_image, obj): 
     w, h = obj.width, obj.height
     x, y = int(obj.center_point.x - w / 2.0), int(obj.center_point.y - h / 2.0)
     img_h, img_w, _ = source_image.shape
@@ -35,7 +35,7 @@ def _create_cutout_pixmap(source_image, obj): # (np.ndarray, OneDetectedObject) 
     except cv2.error:
         return QPixmap()
 
-def _create_circle_pixmap(size: int, color: QColor, text: str)
+def _create_circle_pixmap(size: int, color: QColor, text: str):
     """Creates a circular QPixmap with text centered on it."""
     pixmap = QPixmap(size, size)
     pixmap.fill(Qt.transparent)
@@ -117,16 +117,17 @@ class WorkspaceController(QObject):
 
     @pyqtSlot()
     def add_memory_circle(self):
-    """
+        """
         Creates a new, manually-added DraggableItemGUI and adds it to the model.
         """
         
         try:
             CIRCLE_SIZE = 25 # Pixels (made slightly larger for text)
             item_id_str = str(self._memory_item_counter)
+            
             dummy_obj = OneDetectedObject()
-            dummy_obj.id = f"memory_{item_id_str}"
-            dummy_obj.center_point = Point2D(x=0.0, y=0.0)
+            dummy_obj.id = self._memory_item_counter
+            dummy_obj.center_point = Point2D(x=200.0, y=0.0)
             dummy_obj.width = CIRCLE_SIZE
             dummy_obj.height = CIRCLE_SIZE
             
