@@ -1,4 +1,4 @@
-[LAST EDITED: 13 OKT 2025 04:00]
+[LAST EDITED:3 NOV 2025 14:01]
 
 
 
@@ -48,6 +48,13 @@ yg berjudul :
 
 # === GUI evolution: ===  
 
+on branch `FINAL_VERSION`
+
+bentar lagi maw ubah gui lagi. ini latest ss sebelom ngubah2 lg.
+![](ASSET_README/ss_memory_circlessss.png)
+
+
+--- 
 on branch `begin_REFACTORING_GUI_forthethirdtime`
 
 INI GUI UDH REFACTOR, UDAH OKLAH.
