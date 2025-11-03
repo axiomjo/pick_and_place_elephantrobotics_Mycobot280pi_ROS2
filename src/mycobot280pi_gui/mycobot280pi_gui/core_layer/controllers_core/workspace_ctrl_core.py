@@ -54,7 +54,13 @@ class WorkspaceController(QObject):
 
     @pyqtSlot(np.ndarray)
     def cache_annotated_image(self, cv_image):
+        """
+        Slot to receive the annotated image from the ROS facade.
+        """
         self.latest_annotated_image = cv_image
+        bg_pixmap = convert_cv_to_pixmap(cv_image)
+        if self.model and not bg_pixmap.isNull():
+            self.model.set_background_pixmap(bg_pixmap)
 
     @pyqtSlot(list)
     def cache_current_selection(self, selected_items):
