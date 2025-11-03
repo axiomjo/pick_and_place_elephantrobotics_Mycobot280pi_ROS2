@@ -32,6 +32,7 @@ class SignalConnector:
         action_panel.reset_btn.clicked.connect(ws_ctrl.reset_plane)
         action_panel.add_object_btn.clicked.connect(ws_ctrl.add_new_objects_from_cutouts)
         action_panel.delete_btn.clicked.connect(ws_ctrl.delete_selected)
+        action_panel.add_memory_btn.clicked.connect(ws_ctrl.add_memory_circle)
         
         cmd_panel.send_rgb_command.connect(simple_cmd_hdlr.handle_rgb_command)
         cmd_panel.send_vacuum_command.connect(simple_cmd_hdlr.handle_vacuum_command)
@@ -40,7 +41,6 @@ class SignalConnector:
         
         action_panel.analyze_btn.clicked.connect(complex_cmd_hdlr.start_action)
         action_panel.emergency_btn.clicked.connect(complex_cmd_hdlr.cancel_action)
-
         # --- 3. Models -> Views ---
         app_state_model.state_changed.connect(action_panel.update_button_states)
         
