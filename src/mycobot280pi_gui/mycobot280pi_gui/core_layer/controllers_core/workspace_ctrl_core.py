@@ -9,13 +9,13 @@ import numpy as np
 import traceback
 from copy import deepcopy
 
-from PyQt5.QtCore import QObject, pyqtSlot, pyqtSignal
-from PyQt5.QtGui import QImage, QPixmap, QTransform
+from PyQt5.QtCore import QObject, pyqtSlot, pyqtSignal, QRectF, Qt
+from PyQt5.QtGui import QImage, QPixmap, QTransform, QPainter, QColor, QBrush, QFont
 
 from ..workspace_model_core import WorkspaceModel
 from ...gui_layer.widgets_gui.graphics_gui.draggable_item_gui import DraggableItemGUI
 from ...ros_layer.ros_facade_bridge import ROS_Facade_Bridge
-from mycobot280pi_interfaces.msg import ManyDetectedObjects, OneDetectedObject
+from mycobot280pi_interfaces.msg import ManyDetectedObjects, OneDetectedObject, Point2D
 from ...gui_layer.widgets_gui.gui_utils import convert_cv_to_pixmap
 
 def _create_cutout_pixmap(source_image, obj): # (np.ndarray, OneDetectedObject) -> QPixmap
@@ -35,6 +35,32 @@ def _create_cutout_pixmap(source_image, obj): # (np.ndarray, OneDetectedObject) 
     except cv2.error:
         return QPixmap()
 
+def _create_circle_pixmap(size: int, color: QColor, text: str)
+    """Creates a circular QPixmap with text centered on it."""
+    pixmap = QPixmap(size, size)
+    pixmap.fill(Qt.transparent)
+    
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.Antialiasing)
+    
+    painter.setBrush(QBrush(color))
+    painter.setPen(Qt.NoPen)
+    painter.drawEllipse(0, 0, size, size)
+    
+    font = QFont()
+    font.setPixelSize(int(size * 0.6))
+    font.setBold(True)
+    painter.setFont(font)
+    painter.setPen(QColor("white")) # White text
+    
+    text_rect = QRectF(0, 0, size, size)
+    painter.drawText(text_rect, Qt.AlignCenter, text)
+    painter.end()
+    
+    return pixmap
+
+
+
 
 class WorkspaceController(QObject):
     status_message_changed = pyqtSignal(str)
@@ -47,6 +73,8 @@ class WorkspaceController(QObject):
         self.latest_objects_msg = None
         self.latest_annotated_image = None
         self._current_selection = []
+        self._memory_item_counter = 0 # To give unique IDs
+        
 
     @pyqtSlot(ManyDetectedObjects)
     def cache_detected_objects(self, objects_msg):
@@ -70,7 +98,10 @@ class WorkspaceController(QObject):
     def reset_plane(self):
         self.logger.info("Resetting the workspace plane...")
         self.model.clear_all_items()
+        self._memory_item_counter = 0
         self.status_message_changed.emit("Plane has been reset. Ready for new plan.")
+        
+        
 
     @pyqtSlot()
     def delete_selected(self):
@@ -83,6 +114,44 @@ class WorkspaceController(QObject):
         self.status_message_changed.emit("Deleted {} item(s).".format(len(items_to_delete)))
         self._current_selection = []
 
+
+    @pyqtSlot()
+    def add_memory_circle(self):
+    """
+        Creates a new, manually-added DraggableItemGUI and adds it to the model.
+        """
+        
+        try:
+            CIRCLE_SIZE = 25 # Pixels (made slightly larger for text)
+            item_id_str = str(self._memory_item_counter)
+            dummy_obj = OneDetectedObject()
+            dummy_obj.id = f"memory_{item_id_str}"
+            dummy_obj.center_point = Point2D(x=0.0, y=0.0)
+            dummy_obj.width = CIRCLE_SIZE
+            dummy_obj.height = CIRCLE_SIZE
+            
+            base_color = QColor("#3498db")
+            base_hue = base_color.hue()
+            hue_shift = (self._memory_item_counter * 37) % 360
+            new_hue = (base_hue + hue_shift) % 360
+            new_color = QColor.fromHsv(new_hue, base_color.saturation(), base_color.value())
+            
+            pixmap = _create_circle_pixmap(CIRCLE_SIZE, new_color, item_id_str)
+            
+            transform = QTransform() 
+            transform.scale(1, -1)
+            flipped_pixmap = pixmap.transformed(transform)
+            
+            item = DraggableItemGUI(pixmap=flipped_pixmap, detected_object=dummy_obj)
+            self.model.add_items([item])
+            self.status_message_changed.emit(f"Added new memory item: {dummy_obj.id}")
+            self._memory_item_counter += 1
+            
+        except Exception as e:
+            self.logger.error(f"Failed to add memory circle: {e}")
+            self.status_message_changed.emit("Error adding memory item.")
+        
+    
     @pyqtSlot()
     def add_new_objects_from_cutouts(self):
         """
