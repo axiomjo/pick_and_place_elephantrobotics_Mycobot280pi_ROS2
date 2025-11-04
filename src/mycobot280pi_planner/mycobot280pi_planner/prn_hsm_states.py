@@ -53,20 +53,29 @@ class Event(Enum):
     
     # ------- from busy_PLANNING ------
     QUEUE_BUILT = auto()
+    # ------- from busy_FETCHING_COMMAND ------
+    EMPTY_QUEUE_VERIFIED = auto() 
+    COMMAND_ACQUIRED = auto()   
+    # ------- from busy_SENDING_COMMAND ------
+    MOVECOMMAND_SENT = auto()
+    NONMOVECOMMAND_SENT = auto()
+    # ------- from busy_WAITING_MOVE_DONE ------
+    TARGET_REACHED = auto() 
+    # ------- from busy_WAITING_DONE ---
+    TIMER_FINISHED = auto()
+    # ------- from busy_READY ------
+    NEXT_COMMAND_ASKED = auto() 
     
-    # ------- from busy_EXECUTING ------
+    # --- from DONE ---
+    DONE_REPORTED = auto()        
     
-    ERROR_OCCURRED = auto()  # e.g., an emergency stop or motor fault
+    # --- from ERROR ---
+    ERROR_REPORTED = auto()        
     
-    # --- Internal events (states triggering other states) ---
-    PLANNING_COMPLETE = auto()
-    EXECUTION_COMPLETE = auto()
-    FETCH_NEXT_COMMAND = auto()
-    SEND_COMPLETE = auto()
-    MOVE_COMPLETE = auto()
-    RECORDING_COMPLETE = auto()
-    SAVE_COMPLETE = auto()
-    DELETE_COMPLETE = auto()
+    # --- from CANCELLED ---
+    CANCEL_REPORTED = auto()        
+    
+
      
 #====== jojo baru ngupdate sampe sini
 
