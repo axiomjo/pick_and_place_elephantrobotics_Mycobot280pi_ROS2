@@ -20,13 +20,16 @@ class StateName(Enum):
     ERROR = auto()
     CANCELLED = auto()
     
-    # BUSY superstate's states
+    # BUSY's sub states
     busy_PLANNING = auto()
-    busy_FETCHING_COMMAND = auto()
-    busy_SENDING_COMMAND = auto()
-    busy_WAITING_MOVE_DONE = auto()
-    busy_WAITING_DONE = auto() 
-    busy_READY = auto() 
+    busy_EXECUTING = auto()
+    
+    # sub sub states
+    busy_executing_FETCHING_COMMAND = auto()
+    busy_executing_SENDING_COMMAND = auto()
+    busy_executing_WAITING_MOVE_DONE = auto()
+    busy_executing_WAITING_DONE = auto() 
+    busy_executing_READY = auto() 
     
     """
     # not implemented krn waktu gacukup
@@ -53,17 +56,18 @@ class Event(Enum):
     
     # ------- from busy_PLANNING ------
     QUEUE_BUILT = auto()
-    # ------- from busy_FETCHING_COMMAND ------
-    EMPTY_QUEUE_VERIFIED = auto() 
+    
+    # ------- from busy_executing_FETCHING_COMMAND ------
+    QUEUE_EMPTIED = auto() 
     COMMAND_ACQUIRED = auto()   
-    # ------- from busy_SENDING_COMMAND ------
+    # ------- from busy_executing_SENDING_COMMAND ------
     MOVECOMMAND_SENT = auto()
     NONMOVECOMMAND_SENT = auto()
-    # ------- from busy_WAITING_MOVE_DONE ------
+    # ------- from busy_executing_WAITING_MOVE_DONE ------
     TARGET_REACHED = auto() 
-    # ------- from busy_WAITING_DONE ---
+    # ------- from busy_executing_WAITING_DONE ---
     TIMER_FINISHED = auto()
-    # ------- from busy_READY ------
+    # ------- from busy_executing_READY ------
     NEXT_COMMAND_ASKED = auto() 
     
     # --- from DONE ---
