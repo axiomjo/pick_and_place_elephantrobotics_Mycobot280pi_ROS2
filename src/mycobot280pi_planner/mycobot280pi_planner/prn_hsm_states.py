@@ -11,42 +11,51 @@ from enum import Enum, auto
 from mycobot280pi_interfaces.action import ProcessWorkspace, SimpleCommandsAction
 
 # state is the fsm circles
-class StateID(Enum):
-    #auto() is used coz the assigned number doesn't matter, as long as they're unique to each other
+class StateName(Enum):
+    
+    # top-level states
     IDLE = auto()
     BUSY = auto()
-    CANCELLED = auto()
-    ERROR = auto()
     DONE = auto() 
-
+    ERROR = auto()
+    CANCELLED = auto()
+    
     # BUSY superstate's states
     busy_PLANNING = auto()
-    busy_EXECUTING = auto()
+    busy_FETCHING_COMMAND = auto()
+    busy_SENDING_COMMAND = auto()
+    busy_WAITING_MOVE_DONE = auto()
+    busy_WAITING_DONE = auto() 
+    busy_READY = auto() 
+    
+    """
+    # not implemented krn waktu gacukup
     busy_RECORDING = auto()
     
-    # BUSY EXECUTING's states
-    busy_executing_FETCH_COMMAND = auto()
-    busy_executing_SEND_COMMAND = auto()
-    busy_executing_WAIT = auto()
-    busy_executing_WAIT_MOVE_COMPLETE = auto() 
-    busy_executing_READY = auto() 
-    
+
     # BUSY RECORDING's state
     busy_recording_START = auto()
-    busy_recording_RECORD = auto()
+    busy_recording_RECORDING = auto()
     busy_recording_END = auto()
     busy_recording_SAVE = auto() 
     busy_recording_DELETE = auto()
-
+    """
 
 # event is fsm arrow labels      
-class EventID(Enum):        
-    # --- Triggers from the outside world (PlannerNode) ---
-    NEW_GOAL = auto()        # User sent a new goal
-    CANCEL = auto()          # User requested a cancel
-    RESET = auto()           # User wants to reset from an ERROR/DONE state
+class Event(Enum):        
     
-    # --- Triggers from hardware/monitors ---
+    # --- from IDLE ---
+    PROCESS_WORKSPACE_BUTTON_PRESSED = auto()        
+    
+    # --- from BUSY ---
+    ERROR_ACQUIRED = auto()
+    CANCEL_REQUESTED = auto()
+    
+    # ------- from busy_PLANNING ------
+    QUEUE_BUILT = auto()
+    
+    # ------- from busy_EXECUTING ------
+    
     ERROR_OCCURRED = auto()  # e.g., an emergency stop or motor fault
     
     # --- Internal events (states triggering other states) ---
@@ -59,6 +68,8 @@ class EventID(Enum):
     SAVE_COMPLETE = auto()
     DELETE_COMPLETE = auto()
      
+#====== jojo baru ngupdate sampe sini
+
 
 class PlannerHSM:
     def __init__(self,node):

@@ -4,6 +4,8 @@ repository konten TA untuk sistem ini, tersedia di
 https://github.com/axiomjo/konten_TA  
 apabila sidang sudah selesai.
 
+
+
 # === SYSTEM OVERVIEW ===
 
 pake framework ROS2. makanya didesain pake nodes. ini nodes + interface2 yg dipake buat komunikasi antarnodes. desain sistem ini terdiri atas ![final nodes design.](ASSET_README/nodesfull.png)
@@ -13,9 +15,11 @@ Dilengkapi computer vision sederhana, sehingga bisa metain konteks objek di ling
 
 ![block diagram](ASSET_README/blokdiagramfull.png)
 
-planner node pake Hierarchical State Machine krn mau pake async + mau bisa cancel kapanpun + ada action service + action server di satu node ini. yg abu2 aku gayakin mau diimplement ga, soalnya ntar kudu ngedit desain nodesnya... lagi... dan waktuku tinggal 3 minggu lagi... soo... gtw.
+planner node pake Hierarchical State Machine krn mau pake async + mau bisa cancel kapanpun + ada action service + action server di satu node ini. 
 
-![hsm diagram for planner](ASSET_README/planner_hsm_plan.png)
+btw, yg abu2 aku gayakin mau diimplement, soalnya ntar kudu ngedit desain nodesnya... lagi... dan waktuku tinggal 3 minggu lagi... soo... highly unlikely to be implemented.
+
+![block diagram](/home/axiomjo/lab_robotik/eksperimental/pick_and_place_elephantrobotics_Mycobot280pi_ROS2/ASSET_README/planner_hsm_plan.png)
 
 # === HOW TO RUN THIS SYSTEM ===
 
