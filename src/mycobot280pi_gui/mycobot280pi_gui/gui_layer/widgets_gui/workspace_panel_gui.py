@@ -32,7 +32,7 @@ class InteractiveGraphicsScene(QGraphicsScene):
         self._background_item = QGraphicsPixmapItem()
         # 2. Set its properties as requested
         self._background_item.setZValue(-100) # Bottom-most layer
-        self._background_item.setOpacity(0.25) # 25% opacity
+        self._background_item.setOpacity(0.5) # 25% opacity
         # 3. Make it uneditable (as requested)
         self._background_item.setFlag(QGraphicsPixmapItem.ItemIsSelectable, False)
         # 4. Add it to the scene permanently

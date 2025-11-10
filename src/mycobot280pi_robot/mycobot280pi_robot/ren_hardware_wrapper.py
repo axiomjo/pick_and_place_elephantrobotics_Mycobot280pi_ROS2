@@ -151,14 +151,29 @@ class MycobotHardwareWrapper:
             return self._fail(f"Internal Python exception: {e}")
 
         # --- 2. Check robot error code ---
-        try:
-            error_code = self.mc.get_error_information()
-            self.mc.clear_error_information()
-        except Exception as e:
-            return self._fail(f"Failed reading/clearing robot error register: {e}")
+        error_code = None
+        attempts = 0
+        max_attempts = 3
+        
+        while attempts < max_attempts:
+            try:
+                error_code = self.mc.get_error_information()
+                if error_code is not None:
+                    self.mc.clear_error_information()
+                    break # Successfully got a response
+                
+                # If error_code is None, it's a communication issue. Retry.
+                self.logger.warn(f"Failed to get error code (Attempt {attempts+1}/{max_attempts}). Retrying...")
+                
+            except Exception as e:
+                # This catches a hardware-level exception
+                return self._fail(f"Failed reading/clearing robot error register: {e}")
+            
+            time.sleep(0.05) # Wait before retrying
+            attempts += 1
 
         if error_code is None:
-            return self._fail("Robot error code returned None (communication issue).")
+            return self._fail("Robot error code returned None (communication issue) after 3 attempts.")
 
         if error_code != 0:
             error_string = ERROR_CODE_MAPPING.get(

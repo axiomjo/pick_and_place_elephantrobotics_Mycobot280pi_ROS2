@@ -1,32 +1,41 @@
-"""
 # prn_main.py
-
-main entrypoint.
-"""
-
 import rclpy
-import asyncio
+from rclpy.executors import MultiThreadedExecutor
 from .prn_action_client_server import PlannerNode
 
-async def main_async(args=None):
+def main(args=None):
     """
-    Main async function to run the node and spin rclpy.
+    Main function to run the synchronous node with a MultiThreadedExecutor.
     """
     rclpy.init(args=args)
+    
     planner_node = None
+    executor = None
     
-    planner_node = PlannerNode()
-    
-    while rclpy.ok():
-        rclpy.spin_once(planner_node, timeout_sec=0.01)
-        await asyncio.sleep(0.001)
+    try:
+        planner_node = PlannerNode()
         
-    if planner_node:    
-        planner_node.destroy_node()
-    rclpy.shutdown()
-    
-def main(args=None): 
-    asyncio.run(main_async(args))
+        # Use a MultiThreadedExecutor to handle callbacks in parallel.
+        # This is essential for a blocking action server.
+        executor = MultiThreadedExecutor()
+        executor.add_node(planner_node)
+        
+        planner_node.get_logger().info("Spinning node with MultiThreadedExecutor...")
+        executor.spin()
+        
+    except SystemExit:
+        rclpy.logging.get_logger('prn_main').error("Node startup failed (e.g., action server not found).")
+    except KeyboardInterrupt:
+        pass
+    except Exception as e:
+        rclpy.logging.get_logger('prn_main').error(f"Unhandled exception in main: {e}")
+    finally:
+        if executor:
+            executor.shutdown()
+        if planner_node:
+            planner_node.destroy_node()
+        rclpy.shutdown()
+        print("ROS 2 shutdown complete.")
 
 if __name__ == '__main__':
     main()
