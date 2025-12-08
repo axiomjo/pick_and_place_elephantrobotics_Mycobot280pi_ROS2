@@ -117,3 +117,6 @@ class ComplexCommandHandler(QObject):
         
         # 2. Emit a specific signal to trigger a result popup.
         self.action_completed.emit(success, result_message)
+
+        # 3. reset to idle
+        self.app_state_model.set_state(AppState.IDLE)

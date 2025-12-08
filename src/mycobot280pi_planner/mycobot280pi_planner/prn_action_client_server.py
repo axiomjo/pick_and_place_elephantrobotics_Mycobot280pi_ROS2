@@ -71,193 +71,225 @@ class PlannerNode(Node):
         # will see the 'is_cancel_requested' flag on its next iteration.
         self.get_logger().warn("Received CANCEL request from GUI. Will cancel between steps.")
         return CancelResponse.ACCEPT
+
+
+#====================================== mbenerin planner=======
+
+#====================================== mbenerin planner=======
+
+PICK_AND_PLACE_STEPS = [
+        # 1. RGB: Blue (Start)
+        ("set_rgb", "Set RGB Blue (Start)", 0, None, "BLUE", {"r": 0, "g": 0, "b": 255}),
+
+        # 2. Home Position
+        ("move_joints", "Go to Home", 100, None, "home", {"joints": [0, 0, 0, 0, 0, 0]}),
+
+        # 3. Approach Object (Safe Height)
+        ("move", "Approach Object (Hover)", 100, 150.0, "pick", None),
+
+        # 4. Descend to Object (Pick Height)
+        ("move", "Descend to Object", 50, 60.0, "pick", None),
+
+        # 5. RGB: Red (Picking)
+        ("set_rgb", "Set RGB Red (Picking)", 0, None, "fixed", {"r": 255, "g": 0, "b": 0}),
+
+        # 6. Vacuum On
+        ("vacuum_strong", "Vacuum ON", 0, None, "fixed", None),
+
+        # 7. Lift Object (Safe Height)
+        ("move", "Lift Object", 80, 150.0, "pick", None),
+
+        # 8. Move to Target (Hover)
+        ("move", "Move to Target (Hover)", 100, 150.0, "place", None),
+
+        # 9. Descend to Target (Place Height)
+        ("move", "Descend to Target", 50, 60.0, "place", None),
+
+        # 10. RGB: Green (Placing)
+        ("set_rgb", "Set RGB Green (Placing)", 0, None, "fixed", {"r": 0, "g": 255, "b": 0}),
+
+        # 11. Vacuum Off
+        ("vacuum_off", "Vacuum OFF", 0, None, "fixed", None),
+
+        # 12. Lift After Place
+        ("move", "Retract after place", 80, 150.0, "place", None),
+        
+        # 13. RGB: Blue (Done)
+        ("set_rgb", "Set RGB Blue (Done)", 0, None, "fixed", {"r": 0, "g": 0, "b": 255}),
+    ]
+
+
+
+
+
+    def _generate_all_steps(self, objects, targets, orientations)):
+        """
+        Factory method that generates the full list of goal steps for all objects.
+        Returns a list of tuples: (SimpleCommandsAction.Goal, description_string, OneDetectedObject_msg)
+        """
+        
+        ALL_STEPS = []
+        
+        for i, (obj, tgt, orient) in enumerate(zip(objects, targets, orientations)):
+        
+            for step in PICK_AND_PLACE_STEPS:
+            
+                cmd_type, desc, speed, z_h, intent, params = step
+                
+                goal = SimpleCommandsAction.Goal()
+                goal.command_type = cmd_type
+                
+                if cmd_type == 'move':
+                    goal.speed = speed
+                    
+                    # Determine X, Y, and Rotation based on source
+                    if source == 'pick':
+                        target_x = obj.center_point.x
+                        target_y = obj.center_point.y
+                        target_rz = 0.0 # Picking usually aligns with base or 0
+                    elif source == 'place':
+                        target_x = tgt.x
+                        target_y = tgt.y
+                        target_rz = float(orient) # Use user-specified orientation for placing
+                    else:
+                        # Fallback for fixed coords if needed
+                        target_x, target_y, target_rz = 0.0, 0.0, 0.0
+
+                    # Construct the 6D coordinate list [x, y, z, rx, ry, rz]
+                    goal.coords = [
+                        target_x, 
+                        target_y, 
+                        float(z_h), 
+                        RX_DOWN, 
+                        RY_DOWN, 
+                        target_rz
+                    ]
+
+                # Handle Joint Moves
+                elif cmd_type == 'move_joints':
+                    goal.speed = speed
+                    if params and 'joints' in params:
+                        goal.joint_angles = [float(x) for x in params['joints']]
+
+                # Handle RGB
+                elif cmd_type == 'set_rgb':
+                    if params:
+                        goal.r = params.get('r', 0)
+                        goal.g = params.get('g', 0)
+                        goal.b = params.get('b', 0)
+
+                # Handle Vacuum (No extra params needed usually)
+                elif 'vacuum' in cmd_type:
+                    pass
+
+                # Append the fully constructed step to the master sequence
+                # We store 'obj' so feedback knows which object is currently being manipulated
+                ALL_STEPS.append((goal, desc, obj))
+
+        return ALL_STEPS
+            
         
     def execute_callback(self, goal_handle):
         """
-        Executes the logic from PlannerLogicActionClient,
-        in a blocking, synchronous way.
+        Decoupled execution callback. 
+        1. Generates steps.
+        2. Executes steps linearly.
+        3. Handles Feedback & Cancellation.
         """
-        self.get_logger().info("Starting execution of complex goal...")
-        
-        # Create a feedback callback
-        def feedback_callback(msg: str):
-            feedback = ProcessWorkspace.Feedback()
-            feedback.current_state = msg
-            goal_handle.publish_feedback(feedback)
-        
+        self.get_logger().info("Starting ProcessWorkspace execution...")
         result = ProcessWorkspace.Result()
-        
 
+        # 1. DATA EXTRACTION
         try:
-            
             objects_to_move = goal_handle.request.objects_to_move.objects
             target_positions = goal_handle.request.objects_target_position.points
             target_orientations = goal_handle.request.objects_target_orientation
-        
+
             if not (len(objects_to_move) == len(target_positions) == len(target_orientations)):
-                raise ValueError("Mismatched goal lists: objects, targets, and orientations are not the same length.")
-            self.get_logger().info(f"Received {len(objects_to_move)} objects to process.")   
-            all_steps_succeeded = True
+                raise ValueError("Mismatched goal lists input.")
+
+            # 2. GENERATION
+            # Generate the entire stack of moves for ALL objects at once
+            all_steps = self._generate_all_steps(
+                objects_to_move, target_positions, target_orientations
+            )
             
-            for i, (obj, target, orientation) in enumerate(zip(objects_to_move, target_positions, target_orientations)):
-            
-                self.get_logger().info(f"--- Processing Object {i+1} / {len(objects_to_move)} ---")
-                feedback_callback(f"Starting to process object {i+1} of {len(objects_to_move)}")
-                
-                feedback = ProcessWorkspace.Feedback()
-                feedback.current_state = f"Processing object {i+1}"
-                feedback.current_object = obj
-                goal_handle.publish_feedback(feedback)
-                
-                steps = [
-                    # 0. RGB: BLUE (Preparing / Home)
-                    (SimpleCommandsAction.Goal(
-                        command_type="set_rgb",
-                        r=0, g=0, b=255
-                    ), "set RGB to blue (ready/home)"),
+            self.get_logger().info(f"Generated {len(all_steps)} steps for {len(objects_to_move)} objects.")
 
-                    # 1. GO HOME (Initial State)
-                    (SimpleCommandsAction.Goal(
-                        command_type="move_joints",
-                        joint_angles=[0, 0, 0, 0, 0, 0],
-                        speed=100
-                    ), "return to home position (angles 0)"),
-
-                    # 2. RGB: YELLOW (Approaching object)
-                    (SimpleCommandsAction.Goal(
-                        command_type="set_rgb",
-                        r=255, g=255, b=0
-                    ), "set RGB to yellow (approaching object)"),
-
-                    # 3. GOTO ABOVE OBJECT (Z=70)
-                    (SimpleCommandsAction.Goal(
-                        command_type="move",
-                        coords=[obj.center_point.x, obj.center_point.y, 70.0, RX_DOWN, RY_DOWN, 0.0],
-                        speed=100
-                    ), "move above object (Z=70, RZ=0)"),
-
-                    # 4. RGB: RED (Picking)
-                    (SimpleCommandsAction.Goal(
-                        command_type="set_rgb",
-                        r=255, g=0, b=0
-                    ), "set RGB to red (picking object)"),
-
-                    # 5. ACTIVATE VACUUM STRONG
-                    (SimpleCommandsAction.Goal(
-                        command_type="vacuum_strong",
-                    ), "activate vacuum strong"),
-
-                    # 6. DESCEND TO OBJECT HEIGHT (Z=30)
-                    (SimpleCommandsAction.Goal(
-                        command_type="move",
-                        coords=[obj.center_point.x, obj.center_point.y, 30.0, RX_DOWN, RY_DOWN, 0.0],
-                        speed=50
-                    ), "descend exactly to object (Z=30)"),
-
-                    # 7. LIFT UP to safe place
-                    (SimpleCommandsAction.Goal(
-                        command_type="move_joints",
-                        joint_angles=[0, 0, 0, 0, 0, 0],
-                        speed=100
-                    ), "return to home position (angles 0)"),
-
-                    # 8. RGB: GREEN (Placing)
-                    (SimpleCommandsAction.Goal(
-                        command_type="set_rgb",
-                        r=0, g=255, b=0
-                    ), "set RGB to green (placing object)"),
-
-                    # 9. MOVE TO ABOVE PLACE POSITION (Z=70)
-                    (SimpleCommandsAction.Goal(
-                        command_type="move",
-                        coords=[target.x, target.y, 70.0, RX_DOWN, RY_DOWN, float(orientation)],
-                        speed=100
-                    ), "move to above place position (Z=70, RZ=User)"),
-
-                    # 10. DESCEND TO PLACE POSITION (Z=30)
-                    (SimpleCommandsAction.Goal(
-                        command_type="move",
-                        coords=[target.x, target.y, 30.0, RX_DOWN, RY_DOWN, float(orientation)],
-                        speed=50
-                    ), "descend to final placement height (Z=30)"),
-
-                    # 11. DEACTIVATE VACUUM
-                    (SimpleCommandsAction.Goal(
-                        command_type="vacuum_off",
-                    ), "deactivate vacuum"),
-
-                    # 12. LIFT UP (Z=70)
-                    (SimpleCommandsAction.Goal(
-                        command_type="move",
-                        coords=[target.x, target.y, 70.0, RX_DOWN, RY_DOWN, float(orientation)],
-                        speed=DEFAULT_SPEED
-                    ), "lift up after place (Z=70)"),
-
-                    # 13. RGB: BLUE (Return to idle)
-                    (SimpleCommandsAction.Goal(
-                        command_type="set_rgb",
-                        r=0, g=0, b=255
-                    ), "set RGB to blue (done/idle)")
-                ]
-            
-
-            for cmd, description in steps:
-                # THIS IS THE SYNC CANCELLATION CHECK
-                if goal_handle.is_cancel_requested:
-                    feedback_callback("Sequence CANCELLED.")
-                    all_steps_succeeded = False
-                    sequence_message = "Action canceled by user."
-                    break
-                
-                # This is the blocking call
-                success, message = self._execute_primitive_step(
-                    cmd, description, feedback_callback, goal_handle
-                )
-                
-                if not success:
-                    all_steps_succeeded = False
-                    feedback_callback(f"ERROR: Step failed: {message}. Aborting all operations.")
-                    break
-
-                # *** NEW BLOCK FOR SLEEPING ***
-                command_type = cmd.command_type
-                if "move" in command_type:
-                    self.get_logger().info("Post-move sleep: 4.0s")
-                    time.sleep(4.0)
-                elif "vacuum" in command_type:
-                    self.get_logger().info("Post-vacuum sleep: 0.5s")
-                    time.sleep(0.5)
-                
-                if not all_steps_succeeded:
-                    break
-
-            # --- End of logic ---
-            
-            if all_steps_succeeded:
-                self.get_logger().info("Complex goal SUCCEEDED: All objects processed.")
-                result.success = True
-                result.message = "All objects processed successfully."
-                goal_handle.succeed()
-            else:
-                self.get_logger().warn("Complex goal FAILED or CANCELED.")
-                result.success = False
-                result.message = "Operation failed or was canceled."
-                goal_handle.abort()
-                
         except Exception as e:
-            self.get_logger().error(f"Unhandled exception in execute_callback: {e}")
+            self.get_logger().error(f"Generation Failed: {e}")
             result.success = False
-            result.message = f"An internal error occurred: {e}"
+            result.message = f"Input Data Error: {e}"
             goal_handle.abort()
+            return result
+
+        # Define local feedback helper
+        def publish_feedback(state_msg, object_msg):
+            feedback = ProcessWorkspace.Feedback()
+            feedback.current_state = state_msg
+            feedback.current_object = object_msg
+            goal_handle.publish_feedback(feedback)
+
+        # 3. EXECUTION LOOP
+        all_succeeded = True
+
+        for i, (goal, description, current_obj) in enumerate(all_steps):
             
-        finally:
-            # IMPORTANT: Reset the busy flag so new goals can be accepted
-            with self.logic_lock:
-                self.is_busy = False
-                self.current_primitive_goal_handle = None
-            self.get_logger().info("Execution finished. Reset to IDLE.")
+            # A. Check for Cancellation
+            if goal_handle.is_cancel_requested:
+                self.get_logger().warn("Goal Canceled by Client.")
+                publish_feedback("CANCELED", current_obj)
+                goal_handle.canceled()
+                result.success = False
+                result.message = "Canceled by user."
+                return result
+
+            # B. Publish Pre-Execution Feedback
+            publish_feedback(f"Step {i+1}/{len(all_steps)}: {description}", current_obj)
+
+            # C. Execute Primitive Step (Blocking Call)
+            # Note: We pass a simple lambda for the inner feedback if needed, 
+            # or just rely on the outer feedback we just sent.
+            success, msg = self._execute_primitive_step(
+                goal, 
+                description, 
+                lambda x: None, # Inner feedback silencer, or pass a real logger
+                goal_handle
+            )
+
+            if not success:
+                self.get_logger().error(f"Step Failed: {description} -> {msg}")
+                publish_feedback(f"FAILED: {description}", current_obj)
+                all_succeeded = False
+                result.message = f"Failure at step '{description}': {msg}"
+                break
+            
+            # Optional: Sleep for stability if it's a move command
+            if "move" in goal.command_type:
+                time.sleep(0.5)
+
+        # 4. FINALIZATION
+        if all_succeeded:
+            result.success = True
+            result.message = "All objects processed successfully."
+            goal_handle.succeed()
+        else:
+            result.success = False
+            # Message already set in loop
+            goal_handle.abort()
+
+        # Reset flags (Safety)
+        with self.logic_lock:
+            self.is_busy = False
+            self.current_primitive_goal_handle = None
 
         return result
+
+
+#====================================== mbenerin planner=======
+
+#====================================== mbenerin planner=======
+
 
     def _execute_primitive_step(self, cmd_goal: SimpleCommandsAction.Goal, description: str, feedback_callback, complex_goal_handle):
         """
