@@ -10,6 +10,7 @@
   <depend>rclpy</depend>
   <depend>mycobot280pi_interfaces</depend>
   <depend>sensor_msgs</depend>
+  <depend>tf2_ros</depend>
   <depend>tf2_msgs</depend>
   <depend>cv_bridge</depend>
   <depend>std_msgs</depend>

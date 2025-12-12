@@ -1,4 +1,3 @@
-# prn_action_client_command_primitives.py
 import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
@@ -11,6 +10,7 @@ ACTION_COMMAND_PRIMITIVES = '/planner/act_command_primitives'
 class CommandPrimitivesActionClient:
     """
     A SYNCHRONOUS, blocking wrapper for the SimpleCommandsAction client.
+    SAFE for MultiThreadedExecutor use.
     """
     def __init__(self, node: Node, callback_group: CallbackGroup):
         self.node = node
@@ -23,6 +23,7 @@ class CommandPrimitivesActionClient:
             callback_group=callback_group
         )
         
+        # wait_for_server is safe to call in init usually, but better to use a timeout loop
         if not self.action_client.wait_for_server(timeout_sec=5.0):
             self.logger.error(f"Action server '{ACTION_COMMAND_PRIMITIVES}' not available! Shutting down.")
             raise SystemExit(f"Action server '{ACTION_COMMAND_PRIMITIVES}' not available")
@@ -36,26 +37,39 @@ class CommandPrimitivesActionClient:
         """
         self.logger.info(f"Sending sync goal: {cmd_goal.command_type}")
         
-        # 1. Send the goal and wait for it to be accepted
+        # 1. Send goal asynchronously
         send_goal_future = self.action_client.send_goal_async(cmd_goal)
         
-        # This spins the node just enough to complete this future
-        rclpy.spin_until_future_complete(self.node, send_goal_future)
-        
-        goal_handle = send_goal_future.result()
+        # 2. BLOCKING WAIT (Safe because of MultiThreadedExecutor)
+        try:
+            goal_handle = send_goal_future.result()
+        except Exception as e:
+            self.logger.error(f"Service call failed: {e}")
+            return False, f"Service call failed: {e}", None
+
+        # --- FIX START: CRITICAL SAFETY CHECK ---
+        # This prevents the "AttributeError: 'NoneType' object has no attribute 'accepted'"
+        if goal_handle is None:
+            self.logger.error("Goal rejected: ClientGoalHandle is None. Server might be unreachable.")
+            return False, "Goal rejected (handle is None)", None
+        # --- FIX END ---
+
         if not goal_handle.accepted:
             self.logger.warn(f"Simple command '{cmd_goal.command_type}' was REJECTED.")
             return False, "Goal was rejected", None
             
         self.logger.info(f"Simple command '{cmd_goal.command_type}' was ACCEPTED.")
 
-        # 2. Wait for the goal to be finished
+        # 3. Request result asynchronously
         get_result_future = goal_handle.get_result_async()
         
-        # This spins the node just enough to get the result
-        rclpy.spin_until_future_complete(self.node, get_result_future)
-        
-        result_wrapper = get_result_future.result()
+        # 4. BLOCKING WAIT again
+        try:
+            result_wrapper = get_result_future.result()
+        except Exception as e:
+            self.logger.error(f"Failed to get result: {e}")
+            return False, f"Failed to get result: {e}", goal_handle
+
         result = result_wrapper.result
         
         if not result.success:
