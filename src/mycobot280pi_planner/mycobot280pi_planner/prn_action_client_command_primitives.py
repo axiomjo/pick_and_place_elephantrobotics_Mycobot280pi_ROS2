@@ -42,6 +42,8 @@ class CommandPrimitivesActionClient:
         
         # 2. BLOCKING WAIT (Safe because of MultiThreadedExecutor)
         try:
+            rclpy.spin_until_future_complete(self.node, send_goal_future)            
+
             goal_handle = send_goal_future.result()
         except Exception as e:
             self.logger.error(f"Service call failed: {e}")
@@ -65,6 +67,8 @@ class CommandPrimitivesActionClient:
         
         # 4. BLOCKING WAIT again
         try:
+            rclpy.spin_until_future_complete(self.node, get_result_future)
+
             result_wrapper = get_result_future.result()
         except Exception as e:
             self.logger.error(f"Failed to get result: {e}")
